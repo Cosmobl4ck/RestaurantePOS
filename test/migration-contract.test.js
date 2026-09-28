@@ -30,4 +30,20 @@ test('invoice idempotency remains compatible with historical nulls', () => {
   assert.match(sql, /add column pedido_id bigint null/);
   assert.match(sql, /where pedido_id is not null/);
   assert.match(sql, /exception when unique_violation/);
+  assert.match(sql, /if p\.estado='cerrado' then raise exception 'pedido cerrado sin factura vinculada/);
+});
+
+test('order invariants are enforced inside the transaction', () => {
+  assert.match(sql, /coalesce\(m\.reservada,false\)/);
+  assert.match(sql, /unidad no soportada en comandas/);
+  assert.match(sql, /if not exists\(select 1 from public\.pedidos[^;]+estado not in \('cerrado','cancelado'\)\)/s);
+  assert.match(sql, /case when coalesce\(reservada,false\) then 'reservada' else 'libre' end/);
+  assert.match(sql, /perform 1 from public\.usuarios where id=\$3 and restaurante_id=\$1 and estado=1/);
+});
+
+test('legacy functions and waste data are hardened', () => {
+  assert.match(sql, /public\.desperdicios/);
+  assert.match(sql, /alter function public\.fn_set_updated_at\(\) set search_path=''/);
+  assert.match(sql, /alter function public\.fn_sync_stock_temporales\(\) set search_path=public/);
+  assert.match(sql, /alter function public\.descontar_stock_desde_temp\(integer\) set search_path=public/);
 });
