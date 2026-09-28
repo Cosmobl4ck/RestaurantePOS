@@ -61,7 +61,7 @@ Server/session, KDS, croquis, transactional, tenant-isolation, and cleanup E2E w
 
 The Supabase CLI was not present in the pnpm workspace, so the documented MCP/versioned-migration fallback was used. A new immutable repository migration, `20260928225500_restrict_app_sessions_service_role.sql`, was applied as live migration history version `20260928225532` with name `restrict_app_sessions_service_role`.
 
-`app_sessions` ACL before: `service_role=ALL` (CRUD plus TRUNCATE, REFERENCES, and TRIGGER).  
+`app_sessions` ACL before: `service_role=ALL` (CRUD plus TRUNCATE, REFERENCES, and TRIGGER).
 ACL after: `postgres=arwdDxtm/postgres,service_role=arwd/postgres`.
 
 The final explicit grants for `service_role` are exactly DELETE, INSERT, SELECT, and UPDATE. `anon` and `authenticated` have no table privileges. RLS remains enabled.
