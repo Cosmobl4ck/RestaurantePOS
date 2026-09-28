@@ -183,9 +183,4 @@ router.get('/export', verificarSesion, async (req, res) => {
 // ===============================
 // LIMPIAR TEMPORALES DEL PEDIDO
 // ===============================
-router.delete('/limpiar-temporales/:pedidoId', verificarSesion, (req, res) => {
-    return res.status(410).json({ error: 'Flujo temporal legado eliminado. Usa /mesas/pedido/limpiar-temporales/:pedidoId.' });
-});
-
 module.exports = router;
-

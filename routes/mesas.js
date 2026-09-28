@@ -134,6 +134,9 @@ router.post('/pedidos/:pedidoId/items', verificarSesion, async (req, res) => {
     if (!producto_id || !Number.isFinite(qty) || qty <= 0) {
         return res.status(400).json({ error: 'Producto/cantidad inválidos.' });
     }
+    if (String(unidad || 'UND').toUpperCase() !== 'UND') {
+        return res.status(400).json({ error: 'La comanda solo admite unidades UND.' });
+    }
     try {
         const { data, error } = await supabase.rpc('pos_add_order_item', {
             p_restaurante_id: Number(restauranteId),
@@ -141,7 +144,7 @@ router.post('/pedidos/:pedidoId/items', verificarSesion, async (req, res) => {
             p_producto_id: Number(producto_id),
             p_cantidad: qty,
             p_nota: String(nota || '').slice(0, 500) || null,
-            p_unidad: ['UND', 'KG', 'LB'].includes(String(unidad || '').toUpperCase()) ? String(unidad).toUpperCase() : 'UND'
+            p_unidad: 'UND'
         });
         if (error) throw error;
         res.status(201).json({ success: true, item: data });
@@ -200,30 +203,21 @@ router.post('/pedidos/:pedidoId/facturar', verificarSesion, async (req, res) => 
 });
 
 // =========================================================================
-// PUT /mesas/:mesaId/liberar - Cancelar y devolver stock
+// DELETE /mesas/pedidos/:pedidoId - Cancelar atómicamente pedido, stock y mesa
 // =========================================================================
-router.put('/:mesaId/liberar', verificarSesion, async (req, res) => {
+router.delete('/pedidos/:pedidoId', verificarSesion, async (req, res) => {
     const restauranteId = req.session.usuario.restaurante_id;
-    const mesaId = Number(req.params.mesaId);
     try {
-        const { data: mesa, error: mesaError } = await supabase.from('mesas').select('id').eq('id', mesaId).eq('restaurante_id', restauranteId).maybeSingle();
-        if (mesaError) throw mesaError;
-        if (!mesa) return res.status(404).json({ error: 'Mesa no encontrada.' });
-
-        const { data: abiertos, error: pedidosError } = await supabase
-            .from('pedidos').select('id').eq('mesa_id', mesaId).eq('restaurante_id', restauranteId)
-            .not('estado', 'in', '("cerrado","cancelado")');
-        if (pedidosError) throw pedidosError;
-        for (const pedido of (abiertos || [])) {
-            const { error } = await supabase.rpc('pos_cancel_order', { p_restaurante_id: Number(restauranteId), p_pedido_id: Number(pedido.id) });
-            if (error) throw error;
-        }
-        const { error: liberarError } = await supabase.from('mesas').update({ estado: 'libre', descripcion: null }).eq('id', mesaId).eq('restaurante_id', restauranteId);
-        if (liberarError) throw liberarError;
-        res.json({ message: 'Mesa y pedidos abiertos cancelados correctamente.' });
+        const { data, error } = await supabase.rpc('pos_cancel_order', {
+            p_restaurante_id: Number(restauranteId),
+            p_pedido_id: Number(req.params.pedidoId)
+        });
+        if (error) throw error;
+        res.json({ success: true, ...data });
     } catch (error) {
-        console.error('Error liberando mesa:', error.message);
-        res.status(500).json({ error: error.message || 'Error al liberar.' });
+        console.error('Error cancelando pedido:', error.message);
+        const status = /pedido|facturado/i.test(error.message || '') ? 409 : 500;
+        res.status(status).json({ error: error.message || 'No se pudo cancelar el pedido.' });
     }
 });
 
@@ -271,24 +265,6 @@ router.post('/mover-pedido', verificarSesion, async (req, res) => {
         console.error('❌ Error al mover pedido:', error.message);
         const status = /mesa|pedido|disponible|movible/i.test(error.message || '') ? 409 : 500;
         res.status(status).json({ success: false, error: error.message || 'No se pudo mover el pedido.' });
-    }
-});
-
-// =====================================================
-// LIMPIAR ITEMS DEL PEDIDO (Cancelar ticket)
-// =====================================================
-router.delete('/pedido/limpiar-temporales/:pedidoId', verificarSesion, async (req, res) => {
-    const restauranteId = req.session.usuario.restaurante_id;
-    try {
-        const { data, error } = await supabase.rpc('pos_cancel_order', {
-            p_restaurante_id: Number(restauranteId),
-            p_pedido_id: Number(req.params.pedidoId)
-        });
-        if (error) throw error;
-        res.json({ success: true, ...data });
-    } catch (error) {
-        console.error('Error cancelando pedido:', error.message);
-        res.status(500).json({ error: error.message || 'No se pudo cancelar el pedido.' });
     }
 });
 
