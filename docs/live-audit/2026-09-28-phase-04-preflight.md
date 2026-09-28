@@ -62,3 +62,21 @@ The candidate reconciliation migration is expected to resolve the two view error
 - Decision: stop before migration
 
 To resume, provide verifiable evidence of a managed backup/PITR restore point or an authenticated PostgreSQL dump that covers schema, data, functions, views, triggers, constraints, indexes, grants, and policies.
+
+## Backup verification
+
+Phase 04A rechecked the backup gate without repeating the completed live audit.
+
+- Method: no managed-backup API is exposed by the available Supabase connector; authenticated PostgreSQL dump unavailable
+- Timestamp UTC: not available
+- Project ref: `dnqkeqvyqtfnhhxxvamw`
+- Backup artifact location: none
+- File size: not applicable
+- Validation command: tool availability check for `pg_dump` and `pg_restore`
+- Validation result: both tools unavailable; no local `.env` containing database credentials; only `DATABASE_URL_TEST` exists in the process environment and was not treated as production authorization
+- Restore tested: no
+- Restore target: none
+- Restore capability: unknown
+- Gate result: blocked
+
+The repository now ignores `*.dump`, `*.backup`, `*.sql.gz`, and `backups/` so a future production dump cannot be committed accidentally. No live migration was applied.

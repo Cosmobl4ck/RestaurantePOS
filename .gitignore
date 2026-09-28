@@ -15,6 +15,12 @@ package-lock.json
 yarn.lock
 supabase/.temp/
 
+# Backups de base de datos (nunca versionar datos LIVE)
+*.dump
+*.backup
+*.sql.gz
+backups/
+
 # SO/Editor
 .DS_Store
 Thumbs.db
