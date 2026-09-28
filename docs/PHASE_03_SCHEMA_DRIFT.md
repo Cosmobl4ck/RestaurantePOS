@@ -35,7 +35,7 @@ Expected immediately before apply: roles `admin=4,cocinero=1,bartender=1`; `id_e
 
 - Rows affected: exactly two role rows are expected; historical invoices are not backfilled.
 - DDL: one role check, one private session table, nullable `facturas.pedido_id`, one FK, tenant-aware uniqueness for `mesas.id_externo`, eight RPCs, and query-driven indexes.
-- Grants: operational tables are revoked from `anon`/`authenticated`; `storage.*` is untouched. RPC execution is limited to `service_role`.
+- Grants: backend-only operational tables (including `desperdicios`) are revoked from `anon`/`authenticated`; `storage.*` is untouched. RPC execution is limited to `service_role`. Tables outside this reviewed set retain their existing grants pending consumer classification.
 - Views: two waste-report views are changed to `security_invoker=true`.
 - Risk: MEDIUM/HIGH because the legacy schema has no migration history and exact column compatibility must be confirmed in staging.
 
@@ -43,9 +43,11 @@ Expected immediately before apply: roles `admin=4,cocinero=1,bartender=1`; `id_e
 
 Rollback is possible only after stopping application writes. Restore the backup for the safest rollback. A manual rollback must revoke/drop the eight new RPCs, drop the new indexes/FK/column/session table, restore the original single-column `id_externo` constraint, restore legacy roles and their check, restore prior table grants, and reset both views. Do not run a generic rollback on production without first capturing the pre-apply grants and constraint names.
 
-## Deferred security items
+## Legacy functions and order-state contract
 
-The exact signatures and definitions of `descontar_stock_desde_temp`, `fn_sync_stock_temporales`, and `fn_set_updated_at` were not supplied, so their mutable `search_path` is not changed by this migration. The 18 policy-less RLS tables and nine auth-initplan warnings are documented, not replaced with fictitious `auth.uid()` policies because restaurant identity comes from Express sessions.
+The confirmed legacy helpers are pinned to explicit lookup paths. `descontar_stock_desde_temp(integer)` remains an obsolete candidate and is not deleted until live dependencies are audited. The 18 policy-less RLS tables and nine auth-initplan warnings are documented, not replaced with fictitious `auth.uid()` policies because restaurant identity comes from Express sessions.
+
+The ordering UI has a single supported unit contract: `UND`; weighted `KG`/`LB` prices remain catalog data and are not accepted by the order RPC. A parent order intentionally remains `en_cocina` while its item states progress through KDS and is changed to `cerrado` only by invoicing.
 
 ## Gate
 

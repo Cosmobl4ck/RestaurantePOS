@@ -33,8 +33,7 @@ Copy-Item .env.example .env
 Completa `.env` sin versionarlo:
 
 - `SUPABASE_URL`: URL del proyecto.
-- `SUPABASE_KEY`: clave publicable/anon para compatibilidad del cliente servidor.
-- `SUPABASE_SERVICE_ROLE`: secreto exclusivo del backend; obligatorio en producción.
+- `SUPABASE_SERVICE_ROLE`: secreto exclusivo y obligatorio del backend.
 - `SESSION_SECRET`: secreto largo y aleatorio para cookies de sesión.
 - `SUPERADMIN_USER` y `SUPERADMIN_PASSWORD`: opcionales; `/superadmin` permanece deshabilitado si faltan.
 

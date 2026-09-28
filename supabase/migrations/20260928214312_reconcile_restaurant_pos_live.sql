@@ -68,7 +68,7 @@ declare r public.pedidos%rowtype; m public.mesas%rowtype;
 begin
   select * into m from public.mesas where id=$2 and restaurante_id=$1 for update;
   if not found then raise exception 'Mesa no encontrada'; end if;
-  if m.estado<>'libre' or coalesce(m.bloqueada,false) then raise exception 'Mesa no disponible'; end if;
+  if m.estado<>'libre' or coalesce(m.bloqueada,false) or coalesce(m.reservada,false) then raise exception 'Mesa no disponible'; end if;
   select * into r from public.pedidos where restaurante_id=$1 and mesa_id=$2 and estado not in ('cerrado','cancelado') limit 1;
   if found then return to_jsonb(r)||jsonb_build_object('existing',true); end if;
   insert into public.pedidos(restaurante_id,mesa_id,estado,total,notas)
@@ -99,6 +99,7 @@ language plpgsql security invoker set search_path='' as $$
 declare p public.pedidos%rowtype; pr public.productos%rowtype; i public.pedido_items%rowtype;
 begin
   if $4 is null or $4<=0 then raise exception 'Cantidad invalida'; end if;
+  if upper(coalesce(nullif(trim($6),''),'UND'))<>'UND' then raise exception 'Unidad no soportada en comandas'; end if;
   select * into p from public.pedidos where id=$2 and restaurante_id=$1 for update;
   if not found or p.estado in ('cerrado','cancelado') then raise exception 'Pedido no disponible'; end if;
   select * into pr from public.productos where id=$3 and restaurante_id=$1 for update;
@@ -106,7 +107,7 @@ begin
   if pr.maneja_stock and coalesce(pr.stock,0)<$4 then raise exception 'Stock insuficiente'; end if;
   if pr.maneja_stock then update public.productos set stock=stock-$4,updated_at=now() where id=$3 and restaurante_id=$1; end if;
   insert into public.pedido_items(restaurante_id,pedido_id,producto_id,cantidad,unidad_medida,precio_unitario,subtotal,estado,nota)
-    values($1,$2,$3,$4,coalesce(nullif($6,''),'UND'),coalesce(pr.precio_unidad,0),$4*coalesce(pr.precio_unidad,0),'pendiente',nullif(trim(coalesce($5,'')),'')) returning * into i;
+    values($1,$2,$3,$4,'UND',coalesce(pr.precio_unidad,0),$4*coalesce(pr.precio_unidad,0),'pendiente',nullif(trim(coalesce($5,'')),'')) returning * into i;
   update public.pedidos set total=(select coalesce(sum(subtotal),0) from public.pedido_items where pedido_id=$2 and restaurante_id=$1 and estado<>'cancelado'),updated_at=now() where id=$2 and restaurante_id=$1;
   return to_jsonb(i);
 end $$;
@@ -120,6 +121,7 @@ begin
   if not found or p.estado='cancelado' then raise exception 'Pedido no disponible'; end if;
   select * into f from public.facturas where restaurante_id=$1 and pedido_id=$2 limit 1;
   if found then return jsonb_build_object('factura_id',f.id,'total',f.total,'already_invoiced',true); end if;
+  if p.estado='cerrado' then raise exception 'Pedido cerrado sin factura vinculada; requiere conciliacion manual'; end if;
   select coalesce(sum(subtotal),0) into amount from public.pedido_items where restaurante_id=$1 and pedido_id=$2 and estado<>'cancelado';
   if amount<=0 then raise exception 'No hay productos para cobrar'; end if;
   select id into cid from public.clientes where restaurante_id=$1 and nombre='Consumidor Final' order by id limit 1;
@@ -148,6 +150,13 @@ begin
   end loop;
   update public.pedido_items set estado='cancelado',updated_at=now() where pedido_id=$2 and restaurante_id=$1 and estado<>'cancelado';
   update public.pedidos set estado='cancelado',total=0,updated_at=now() where id=$2 and restaurante_id=$1;
+  if not exists(select 1 from public.pedidos where restaurante_id=$1 and mesa_id=p.mesa_id and id<>p.id and estado not in ('cerrado','cancelado')) then
+    update public.mesas
+      set estado=case when coalesce(reservada,false) then 'reservada' else 'libre' end,
+          descripcion=case when coalesce(reservada,false) then nombre_reserva else null end,
+          personas_actuales=0,hora_apertura=null,updated_at=now()
+      where id=p.mesa_id and restaurante_id=$1;
+  end if;
   return jsonb_build_object('already_cancelled',false,'pedido_id',p.id,'mesa_id',p.mesa_id);
 end $$;
 
@@ -155,6 +164,8 @@ create or replace function public.pos_void_invoice(p_restaurante_id bigint,p_fac
 language plpgsql security invoker set search_path='' as $$
 declare f public.facturas%rowtype; r record;
 begin
+  perform 1 from public.usuarios where id=$3 and restaurante_id=$1 and estado=1;
+  if not found then raise exception 'Usuario no autorizado para anular'; end if;
   select * into f from public.facturas where id=$2 and restaurante_id=$1 for update;
   if not found then raise exception 'Factura no encontrada'; end if;
   if f.estado='anulada' then return jsonb_build_object('already_voided',true,'factura_id',f.id); end if;
@@ -203,12 +214,18 @@ end $$;
 revoke select,insert,update,delete,truncate,references,trigger on table
   public.restaurantes,public.usuarios,public.productos,public.clientes,public.mesas,
   public.pedidos,public.pedido_items,public.facturas,public.detalle_factura,
-  public.cortes_caja,public.areas_restaurante,public.croquis_areas,
+  public.cortes_caja,public.areas_restaurante,public.croquis_areas,public.desperdicios,
   public.pedido_items_temporales,public.configuracion_impresion
 from anon,authenticated;
 
 alter view public.v_desperdicios_por_producto set (security_invoker=true);
 alter view public.v_desperdicios_por_motivo set (security_invoker=true);
+
+-- Legacy trigger helpers retained for compatibility but pinned to a safe lookup path.
+alter function public.fn_set_updated_at() set search_path='';
+alter function public.fn_sync_stock_temporales() set search_path=public;
+-- Obsolete candidate: retained until live dependencies are audited.
+alter function public.descontar_stock_desde_temp(integer) set search_path=public;
 
 revoke execute on function public.pos_open_order(bigint,bigint,text,text) from public,anon,authenticated;
 revoke execute on function public.pos_move_order(bigint,bigint,bigint,bigint) from public,anon,authenticated;

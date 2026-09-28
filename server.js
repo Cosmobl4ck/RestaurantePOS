@@ -26,19 +26,14 @@ const { requirePermission, requireSuperadmin, sameOriginForMutations } = require
 // ==========================================
 // 1. VALIDAR CONFIGURACIÓN
 // ==========================================
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY || !process.env.SESSION_SECRET) {
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE || !process.env.SESSION_SECRET) {
     console.error('❌ FALTA CONFIGURACIÓN');
     console.error('   Crear archivo .env con:');
     console.error('   - SUPABASE_URL');
-    console.error('   - SUPABASE_KEY');
+    console.error('   - SUPABASE_SERVICE_ROLE');
     console.error('   - SESSION_SECRET');
     process.exit(1);
 }
-if (process.env.NODE_ENV === 'production' && !process.env.SUPABASE_SERVICE_ROLE) {
-    console.error('❌ SUPABASE_SERVICE_ROLE es obligatoria en producción para el backend/RPC y las sesiones.');
-    process.exit(1);
-}
-
 // ==========================================
 // 2. CREAR DIRECTORIOS NECESARIOS
 // ==========================================
