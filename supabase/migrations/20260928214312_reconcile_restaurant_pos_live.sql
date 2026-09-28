@@ -87,7 +87,7 @@ begin
   if not found or p.estado in ('cerrado','cancelado') or p.mesa_id<>$3 then raise exception 'Pedido no movible'; end if;
   perform id from public.mesas where restaurante_id=$1 and id in ($3,$4) order by id for update;
   select * into d from public.mesas where id=$4 and restaurante_id=$1;
-  if not found or d.estado<>'libre' or coalesce(d.bloqueada,false) then raise exception 'Mesa destino no disponible'; end if;
+  if not found or d.estado<>'libre' or coalesce(d.bloqueada,false) or coalesce(d.reservada,false) then raise exception 'Mesa destino no disponible'; end if;
   update public.pedidos set mesa_id=$4,updated_at=now() where id=$2 and restaurante_id=$1;
   update public.mesas set estado='ocupada',updated_at=now() where id=$4 and restaurante_id=$1;
   update public.mesas set estado='libre',descripcion=null,updated_at=now() where id=$3 and restaurante_id=$1;

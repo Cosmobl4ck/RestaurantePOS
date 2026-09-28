@@ -35,6 +35,7 @@ test('invoice idempotency remains compatible with historical nulls', () => {
 
 test('order invariants are enforced inside the transaction', () => {
   assert.match(sql, /coalesce\(m\.reservada,false\)/);
+  assert.match(sql, /d\.estado<>'libre' or coalesce\(d\.bloqueada,false\) or coalesce\(d\.reservada,false\)/);
   assert.match(sql, /unidad no soportada en comandas/);
   assert.match(sql, /if not exists\(select 1 from public\.pedidos[^;]+estado not in \('cerrado','cancelado'\)\)/s);
   assert.match(sql, /case when coalesce\(reservada,false\) then 'reservada' else 'libre' end/);
