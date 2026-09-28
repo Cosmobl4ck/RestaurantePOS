@@ -78,3 +78,37 @@ The post-migration schema audit now passes. The `app_sessions` RLS-without-polic
 Local verification passed (`pnpm install --frozen-lockfile`, `pnpm check`, 16/16 tests, and `node --check server.js`). `pnpm dev` was then attempted, but the runtime has no local `.env` and did not provide `SUPABASE_URL` or `SUPABASE_SERVICE_ROLE`. The server exited before establishing its database/session store.
 
 Per the Phase 04C stop condition, no E2E fixtures were created and session, KDS, croquis, transaction, and tenant-isolation E2E remain not run. Business tables remain empty; no cleanup operation was necessary.
+
+## Phase 04D — Database/RPC E2E
+
+Track A ran in one controlled SQL session. It created two tenants and only `E2E_TEST_*` fixtures, executed assertions, then removed those fixtures dependency-first. Any unexpected result would have aborted and rolled back the transaction.
+
+Passed database/RPC checks (31 assertions):
+
+- Cross-tenant `id_externo` accepted and same-tenant collision rejected.
+- Croquis coordinates, dimensions, area, external ID, and tenant persisted.
+- Order opening, reserved-table rejection, normal move, reserved-destination rejection, and cross-tenant move rejection.
+- Stock 10→8 from quantity 2, database-controlled price/subtotal, insufficient-stock rejection, and KG/LB rejection without stock drift.
+- Send transitioned both items to `enviado`, set timestamps, and kept the parent at `en_cocina`; wrong-tenant send was rejected.
+- Cocina and Bar station isolation, full KDS state machines, jump rejection, and reverse-transition rejection.
+- Cancellation restored stock to 10; a second cancellation returned `already_cancelled` without additional stock.
+- Reservation state/name were restored on cancellation.
+- Invoicing created one linked invoice and detail; retry returned the same invoice; closed unlinked historical order was rejected.
+- Cross-tenant and inactive-user voids were rejected; valid void restored stock and recorded the actor; retry was idempotent.
+- No cross-tenant references existed across orders, items, invoices, tables, or products.
+
+Real stock concurrency was not run because the available authenticated SQL tool does not provide two simultaneous database sessions. Occupied-table deletion, cash, HTTP routes, and SSE remain Track B concerns.
+
+### Database cleanup
+
+Selective cleanup removed only the two test tenants and their dependent fixtures. A separate final query confirmed zero rows in restaurantes, usuarios, productos, clientes, mesas, pedidos, pedido_items, facturas, detalle_factura, areas_restaurante, croquis_areas, and app_sessions.
+
+### Runtime environment status
+
+- `SUPABASE_URL` present: NO
+- `SUPABASE_SERVICE_ROLE` present: NO
+- `SESSION_SECRET` present: NO
+
+Runtime environment is blocked. Server/session, KDS HTTP/SSE, Croquis HTTP, occupied-delete HTTP, and Cash HTTP E2E were not run. This is an environment limitation, not a functional failure. Backend code still fails closed and has no active `SUPABASE_KEY` fallback; remaining mentions occur only in legacy migration/troubleshooting documents.
+
+Final local verification: frozen pnpm install passed, static checks passed, tests passed 16/16, and `node --check server.js` passed.
