@@ -63,12 +63,12 @@ He creado **4 archivos clave** en tu proyecto:
 [ ] 2. Copiar SUPABASE_URL y SUPABASE_KEY
 [ ] 3. Ejecutar SQL migration en Supabase
 [ ] 4. Crear .env local con credenciales
-[ ] 5. Instalar dependencias: npm install @supabase/supabase-js helmet express-rate-limit joi
+[ ] 5. Instalar dependencias: pnpm install @supabase/supabase-js helmet express-rate-limit joi
 ```
 
 ### FASE 2: TESTING (1-2 horas)
 ```
-[ ] 6. npm run dev → Verificar que Supabase conecta
+[ ] 6. pnpm dev → Verificar que Supabase conecta
 [ ] 7. Test login: MARROCOS01 / Admin / 1234
 [ ] 8. Test CRUD en /productos
 [ ] 9. Test multi-tenant con segundo restaurante

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bar — MarrocosPOS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: #0a0f1e;
+            color: #eee;
+            font-family: 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .kds-header {
+            background: #05101f;
+            padding: .75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 3px solid #185FA5;
+        }
+        .kds-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #378ADD;
+            margin: 0;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .kds-clock {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #fff;
+            font-variant-numeric: tabular-nums;
+        }
+        .kds-status {
+            font-size: .75rem;
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-weight: 600;
+        }
+        .status-live { background: #1d9e75; color: #fff; }
+        .status-offline { background: #e24b4a; color: #fff; }
+
+        #grid-comandas {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+            padding: 1.5rem;
+            height: calc(100vh - 80px);
+            overflow-y: auto;
+        }
+
+        .comanda-card {
+            background: #05101f;
+            border: 3px solid #0c1f3f;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: slideIn .3s ease;
+            transition: transform .2s;
+        }
+        .comanda-card:hover { transform: translateY(-4px); }
+        .comanda-card.bar.preparando { border-color: #378ADD; }
+        .comanda-card.bar.listo { border-color: #1d9e75; }
+
+        .comanda-header {
+            padding: .8rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #0c1f3f;
+        }
+        .comanda-card.bar.preparando .comanda-header { background: #0c2d5a; }
+        .comanda-card.bar.listo .comanda-header { background: #0c4a35; }
+
+        .comanda-mesa {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .comanda-hora {
+            font-size: .8rem;
+            color: #adb5bd;
+            font-variant-numeric: tabular-nums;
+        }
+        .tiempo-badge {
+            font-size: .75rem;
+            padding: 3px 10px;
+            border-radius: 99px;
+            font-weight: 600;
+            background: rgba(255,255,255,.12);
+            color: #fff;
+        }
+        .tiempo-badge.urgente { background: #e24b4a; animation: pulse 1s infinite; }
+
+        .comanda-items {
+            padding: 1rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+        .comanda-item {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: .5rem 0;
+            border-bottom: 1px solid rgba(255,255,255,.07);
+        }
+        .comanda-item:last-child { border-bottom: none; }
+        
+        .item-qty {
+            background: #185FA5;
+            color: #fff;
+            font-weight: 700;
+            font-size: 1rem;
+            min-width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .item-nombre { 
+            font-size: 1rem; 
+            font-weight: 600; 
+            color: #f0f0f0;
+            word-break: break-word;
+        }
+        .item-nota { 
+            font-size: .8rem; 
+            color: #ffc107; 
+            margin-top: 3px;
+            font-style: italic;
+        }
+
+        .comanda-actions {
+            padding: 1rem;
+            display: flex;
+            gap: 10px;
+        }
+        .btn-kds {
+            flex: 1;
+            border: none;
+            border-radius: 8px;
+            padding: .6rem;
+            font-size: .85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity .15s, transform .15s;
+            color: #fff;
+        }
+        .btn-kds:active { opacity: .75; transform: scale(0.98); }
+        .btn-preparar { background: #185FA5; }
+        .btn-listo { background: #1d9e75; }
+        .btn-finalizar { background: #6f42c1; }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 6rem 2rem;
+            color: #495057;
+        }
+        .empty-state i { font-size: 5rem; display: block; margin-bottom: 1.5rem; }
+
+        #toast-container {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .kds-toast {
+            background: #05101f;
+            border: 2px solid #185FA5;
+            color: #fff;
+            border-radius: 10px;
+            padding: .8rem 1.2rem;
+            font-size: .9rem;
+            animation: slideIn .3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @media (max-width: 768px) {
+            #grid-comandas {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="kds-header">
+    <h1><i class="bi bi-cup-straw me-2"></i>Bar</h1>
+    <div class="d-flex align-items-center gap-3">
+        <span id="realtime-status" class="kds-status status-offline">Sin conexión</span>
+        <div class="kds-clock" id="reloj">--:--:--</div>
+    </div>
+</div>
+
+<div id="grid-comandas">
+    <div class="empty-state">
+        <i class="bi bi-clock-history"></i>
+        <p>Cargando comandas...</p>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+    window.tipoMonitor = 'bar';
+</script>
+<script src="/js/kds.js"></script>
+
+</body>
+</html>

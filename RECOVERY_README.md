@@ -19,19 +19,19 @@ Restaurar un baseline coherente y seguro del POS de restaurante, con prioridad e
 2. Usa una `SESSION_SECRET` larga y aleatoria.
 3. Configura `SUPABASE_SERVICE_ROLE` exclusivamente en el servidor. En producción es obligatoria.
 4. Configura `SUPERADMIN_USER` y `SUPERADMIN_PASSWORD`. Si faltan, `/superadmin` queda deshabilitado.
-5. Instala dependencias frescas con `npm install`. El paquete entregado no incluye `node_modules` ni un lockfile activo porque el entorno de recuperación no pudo resolver el registro npm para regenerarlo de forma verificable. Se conserva `package-lock.pre-recovery.json` solo como evidencia del baseline anterior.
-6. Antes de usar la aplicación contra una BD existente, sigue `DATABASE_MIGRATION_PLAN.md` y aplica `config/20260928_recovery_hardening.sql` en staging/backup primero.
+5. Instala exactamente las dependencias bloqueadas con `pnpm install --frozen-lockfile`. `package-lock.pre-recovery.json` se conserva solo como evidencia histórica y no debe usarse para instalar.
+6. Antes de usar la aplicación contra una BD existente, sigue `DATABASE_MIGRATION_PLAN.md` y revisa `supabase/migrations/` en staging/backup primero.
 
 ## Ejecución
 
 ```bash
 cd SistemaBase
-npm install
-npm run check
-npm start
+pnpm install --frozen-lockfile
+pnpm check
+pnpm start
 ```
 
-No uses `npm ci` hasta que `npm install` haya generado un `package-lock.json` nuevo y revisado.
+No generes `package-lock.json` ni `yarn.lock`; el único lockfile activo es `pnpm-lock.yaml`.
 
 ## Cambios arquitectónicos importantes
 
@@ -68,7 +68,7 @@ Se normalizó el uso de `id_externo` para mesas, el orden de carga de `croquis-d
 
 ## Limitación de validación
 
-Durante esta recuperación el proyecto Supabase asociado aparecía inactivo y la consulta de esquema vivo terminó por timeout. Por seguridad no se restauró ni se migró infraestructura productiva. Por eso las pruebas realizadas son de código, compilación EJS y arranque del servidor; los E2E contra la BD real deben ejecutarse tras restaurar una copia/staging y aplicar la migración.
+No había credenciales ni enlace de Supabase disponibles en el workspace. Por seguridad no se aplicó ninguna migración a infraestructura real. Las pruebas realizadas son locales y el E2E contra la BD viva permanece `NOT VERIFIED` hasta revisar un backup/staging y aplicar la migración.
 
 Consulta también:
 

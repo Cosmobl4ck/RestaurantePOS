@@ -1,0 +1,460 @@
+<%- include('partials/navbar') %>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --teal:        #00A19C;
+    --teal-dim:    rgba(0,161,156,0.12);
+    --teal-glow:   rgba(0,161,156,0.3);
+    --teal-border: rgba(0,161,156,0.45);
+    --bg:          #08090A;
+    --surface:     #0D0E10;
+    --surface2:    #101214;
+    --border:      #1A1D20;
+    --border2:     #222528;
+    --text:        #E5E4E2;
+    --muted:       #55595E;
+    --green:       #10B981;
+    --amber:       #F59E0B;
+    --red:         #EF4444;
+    --blue:        #3B82F6;
+}
+
+body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); overflow: hidden; }
+
+.page-wrap { display: flex; flex-direction: column; height: calc(100vh - 64px); overflow: hidden; }
+
+/* ─── TOPBAR ─── */
+.topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 24px; background: var(--surface);
+    border-bottom: 1px solid var(--border); flex-shrink: 0; gap: 12px;
+}
+.topbar-title { font-family:'Rajdhani',sans-serif; font-size:1.15rem; font-weight:700; color:var(--teal); letter-spacing:2px; text-transform:uppercase; line-height:1.1; }
+.topbar-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+
+.global-stats { display:flex; align-items:center; gap:20px; flex-shrink:0; }
+.gstat { display:flex; flex-direction:column; align-items:center; gap:1px; }
+.gstat-val { font-family:'Rajdhani',sans-serif; font-size:18px; font-weight:700; line-height:1; }
+.gstat-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+.gstat-sep { width:1px; height:28px; background:var(--border); }
+
+.legend { display:flex; align-items:center; gap:12px; flex-shrink:0; }
+.legend-item { display:flex; align-items:center; gap:5px; font-size:10px; color:var(--muted); }
+.ldot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+
+.btn-add {
+    display:flex; align-items:center; gap:6px;
+    background:var(--teal); color:#08090A; border:none; border-radius:6px;
+    font-family:'Rajdhani',sans-serif; font-size:12px; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; padding:9px 16px;
+    cursor:pointer; transition:all 0.15s; flex-shrink:0;
+    box-shadow:0 0 14px var(--teal-glow); white-space:nowrap;
+}
+.btn-add:hover { background:#00C4BE; transform:translateY(-1px); }
+
+/* ─── CANVAS ─── */
+.areas-canvas {
+    flex:1; position:relative; overflow:hidden;
+    background-color:var(--bg);
+    background-image:linear-gradient(rgba(0,161,156,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,161,156,0.03) 1px,transparent 1px);
+    background-size:24px 24px;
+}
+
+.empty-state {
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:10px;
+    pointer-events:none; opacity:0; transition:opacity 0.3s;
+}
+.empty-state.visible { opacity:1; }
+.empty-state svg { color:var(--teal); opacity:0.15; }
+.empty-state p { color:var(--teal); font-family:'Rajdhani',sans-serif; font-size:13px; font-weight:600; letter-spacing:2px; text-transform:uppercase; opacity:0.25; }
+
+.canvas-tip {
+    position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
+    background:rgba(13,14,16,0.8); border:1px solid var(--border); border-radius:20px;
+    padding:5px 14px; font-size:10px; color:var(--muted);
+    pointer-events:none; letter-spacing:0.3px; backdrop-filter:blur(6px); white-space:nowrap;
+}
+.canvas-tip kbd { background:var(--border2); color:var(--muted); border-radius:3px; padding:1px 5px; font-size:9px; }
+
+/* ─── CARD ─── */
+.area-card {
+    position:absolute; background:var(--surface); border:2px solid var(--teal-border);
+    border-radius:10px; cursor:move; user-select:none;
+    display:flex; flex-direction:column; overflow:visible;
+    transition:border-color 0.2s, box-shadow 0.2s;
+    min-width:170px; min-height:130px;
+}
+.area-card:hover { border-color:var(--teal); box-shadow:0 0 0 1px rgba(0,161,156,0.15),0 8px 28px rgba(0,0,0,0.45); }
+.area-card.selected { border-color:var(--teal); box-shadow:0 0 0 3px rgba(0,161,156,0.25),0 8px 28px rgba(0,0,0,0.5); }
+.area-card.is-circle { border-radius:50%; }
+
+.card-inner { display:flex; flex-direction:column; width:100%; height:100%; border-radius:inherit; overflow:hidden; }
+
+.card-header {
+    padding:9px 10px 6px; border-bottom:1px solid var(--border);
+    display:flex; align-items:flex-start; justify-content:space-between;
+    gap:6px; flex-shrink:0; background:var(--surface2);
+}
+.card-nombre { font-family:'Rajdhani',sans-serif; font-size:13px; font-weight:700; color:var(--teal); letter-spacing:0.8px; text-transform:uppercase; line-height:1.2; flex:1; word-break:break-word; }
+
+.card-actions { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+.btn-ca {
+    background:transparent; border:1px solid var(--border2); color:var(--muted);
+    border-radius:4px; font-size:9px; font-weight:700; padding:2px 6px;
+    cursor:pointer; font-family:'Rajdhani',sans-serif; letter-spacing:0.5px;
+    text-transform:uppercase; transition:all 0.15s; white-space:nowrap; line-height:1.5;
+}
+.btn-ca.teal:hover { background:var(--teal); color:#08090A; border-color:var(--teal); }
+.btn-ca.danger { color:rgba(239,68,68,0.5); border-color:rgba(239,68,68,0.15); }
+.btn-ca.danger:hover { background:rgba(239,68,68,0.1); color:var(--red); border-color:rgba(239,68,68,0.4); }
+
+.card-body { flex:1; padding:8px 10px; display:flex; flex-direction:column; justify-content:center; gap:5px; overflow:hidden; }
+.card-empty-msg { text-align:center; color:var(--muted); font-size:10px; opacity:0.6; padding:4px 0; line-height:1.4; }
+
+.occ-wrap { display:flex; align-items:center; gap:7px; }
+.occ-bar { flex:1; height:4px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.occ-fill { height:100%; border-radius:2px; transition:width 0.5s ease; }
+.occ-label { font-size:10px; font-weight:700; font-family:'Rajdhani',sans-serif; white-space:nowrap; }
+
+.stat-row { display:flex; align-items:center; gap:5px; font-size:10px; color:var(--muted); line-height:1; }
+.stat-row strong { color:var(--text); font-weight:500; }
+.stat-row svg { flex-shrink:0; opacity:0.65; }
+
+.chips-wrap { display:flex; flex-wrap:wrap; gap:2px; margin-top:2px; }
+.chip { width:13px; height:13px; border-radius:2px; border:1px solid var(--border2); flex-shrink:0; }
+.chip.libre     { background:rgba(16,185,129,0.15); border-color:rgba(16,185,129,0.35); }
+.chip.ocupada   { background:rgba(239,68,68,0.2);   border-color:rgba(239,68,68,0.45); }
+.chip.reservada { background:rgba(245,158,11,0.15); border-color:rgba(245,158,11,0.4); }
+.chip.limpieza  { background:rgba(59,130,246,0.15); border-color:rgba(59,130,246,0.4); }
+
+/* Resize handles */
+.rh { position:absolute; width:10px; height:10px; background:var(--teal); border:2px solid var(--bg); border-radius:2px; opacity:0; transition:opacity 0.15s; z-index:30; }
+.area-card:hover .rh, .area-card.selected .rh { opacity:1; }
+.rh-nw { top:-5px; left:-5px; cursor:nw-resize; }
+.rh-ne { top:-5px; right:-5px; cursor:ne-resize; }
+.rh-sw { bottom:-5px; left:-5px; cursor:sw-resize; }
+.rh-se { bottom:-5px; right:-5px; cursor:se-resize; }
+
+/* ─── MODAL ─── */
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,0.78); backdrop-filter:blur(5px); z-index:2000; display:none; align-items:center; justify-content:center; }
+.modal-bg.open { display:flex; animation:fadein 0.15s ease; }
+@keyframes fadein { from{opacity:0} to{opacity:1} }
+@keyframes slideup { from{transform:translateY(18px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+.modal-box { background:var(--surface); border:1px solid var(--border2); border-radius:12px; padding:28px 24px 24px; width:360px; max-width:92vw; box-shadow:0 24px 60px rgba(0,0,0,0.7),0 0 0 1px rgba(0,161,156,0.08); animation:slideup 0.18s ease; }
+
+.modal-ico { width:40px; height:40px; background:var(--teal-dim); border:1px solid rgba(0,161,156,0.25); border-radius:8px; display:flex; align-items:center; justify-content:center; margin-bottom:14px; color:var(--teal); }
+.modal-title { font-family:'Rajdhani',sans-serif; font-size:1.05rem; font-weight:700; color:var(--text); letter-spacing:1px; text-transform:uppercase; margin-bottom:4px; }
+.modal-desc { font-size:12px; color:var(--muted); line-height:1.55; margin-bottom:20px; }
+.modal-label { display:block; font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+.modal-input { width:100%; background:var(--bg); border:1px solid var(--border2); color:var(--text); font-size:14px; font-family:'DM Sans',sans-serif; padding:10px 12px; border-radius:6px; outline:none; transition:border-color 0.15s,box-shadow 0.15s; margin-bottom:20px; }
+.modal-input:focus { border-color:var(--teal); box-shadow:0 0 0 3px rgba(0,161,156,0.1); }
+.modal-input::placeholder { color:var(--muted); opacity:0.7; }
+.modal-input.error { border-color:var(--red); }
+.modal-btns { display:flex; gap:10px; }
+.btn-cancel { flex:1; background:transparent; border:1px solid var(--border2); color:var(--muted); border-radius:6px; font-size:11px; font-weight:600; padding:10px; cursor:pointer; text-transform:uppercase; letter-spacing:0.8px; font-family:'Rajdhani',sans-serif; transition:all 0.15s; }
+.btn-cancel:hover { border-color:var(--muted); color:var(--text); }
+.btn-crear { flex:2; background:var(--teal); border:none; color:#08090A; border-radius:6px; font-size:12px; font-weight:800; padding:10px; cursor:pointer; text-transform:uppercase; letter-spacing:0.8px; font-family:'Rajdhani',sans-serif; transition:all 0.15s; box-shadow:0 0 14px var(--teal-glow); }
+.btn-crear:hover { background:#00C4BE; }
+.btn-crear:disabled { opacity:0.5; cursor:not-allowed; }
+</style>
+
+<div class="page-wrap">
+    <div class="topbar">
+        <div>
+            <div class="topbar-title">Plano del Restaurante</div>
+            <div class="topbar-sub">Vista operativa · arrastra y redimensiona cada área</div>
+        </div>
+        <div class="global-stats">
+            <div class="gstat"><span class="gstat-val" id="stat-areas" style="color:var(--teal);">0</span><span class="gstat-lbl">Áreas</span></div>
+            <div class="gstat-sep"></div>
+            <div class="gstat"><span class="gstat-val" id="stat-total">0</span><span class="gstat-lbl">Mesas</span></div>
+            <div class="gstat-sep"></div>
+            <div class="gstat"><span class="gstat-val" id="stat-ocup" style="color:var(--red);">0</span><span class="gstat-lbl">Ocupadas</span></div>
+            <div class="gstat-sep"></div>
+            <div class="gstat"><span class="gstat-val" id="stat-pers" style="color:var(--amber);">0</span><span class="gstat-lbl">Personas</span></div>
+            <div class="gstat-sep"></div>
+            <div class="gstat"><span class="gstat-val" id="stat-lib" style="color:var(--green);">0</span><span class="gstat-lbl">Libres</span></div>
+        </div>
+        <div class="legend">
+            <div class="legend-item"><div class="ldot" style="background:var(--green);"></div>Libre</div>
+            <div class="legend-item"><div class="ldot" style="background:var(--red);"></div>Ocupada</div>
+            <div class="legend-item"><div class="ldot" style="background:var(--amber);"></div>Reservada</div>
+            <div class="legend-item"><div class="ldot" style="background:var(--blue);"></div>Limpieza</div>
+        </div>
+        <button class="btn-add" onclick="abrirModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nueva Área
+        </button>
+    </div>
+
+    <div class="areas-canvas" id="areas-canvas">
+        <div class="empty-state" id="empty-state">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                <rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/>
+                <rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/>
+            </svg>
+            <p>Crea tu primera área con el botón Nueva Área</p>
+        </div>
+        <div class="canvas-tip">
+            <kbd>Drag</kbd> mover &nbsp;·&nbsp; <kbd>Esquinas</kbd> redimensionar &nbsp;·&nbsp; <kbd>Doble clic</kbd> ir al croquis de mesas
+        </div>
+    </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal-bg">
+    <div class="modal-box">
+        <div class="modal-ico">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+        </div>
+        <div class="modal-title">Nueva Área</div>
+        <div class="modal-desc">Dale un nombre al espacio físico: Terraza, Salón VIP, Bar, etc. Luego diseñarás el croquis de mesas.</div>
+        <label class="modal-label">Nombre del Área</label>
+        <input class="modal-input" id="input-nombre" type="text" placeholder="Ej: Terraza Norte, Salón VIP..." maxlength="60" autocomplete="off" />
+        <div class="modal-btns">
+            <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
+            <button class="btn-crear" id="btn-crear" onclick="crearArea()">Crear y diseñar →</button>
+        </div>
+    </div>
+</div>
+
+<!-- DATOS DEL SERVIDOR -->
+<script id="srv-areas" type="application/json">
+    <%- JSON.stringify(areas.map(a => ({
+        id:    a.id,
+        nombre:a.nombre,
+        tipo:  a.tipo || 'rect-h',
+        pos_x: a.pos_x  != null ? a.pos_x  : null,
+        pos_y: a.pos_y  != null ? a.pos_y  : null,
+        ancho: a.ancho_canvas || 260,
+        alto:  a.alto_canvas  || 180
+    }))) %>
+</script>
+<script id="srv-mesas" type="application/json">
+    <%- JSON.stringify(typeof mesasPorArea !== 'undefined' ? mesasPorArea : {}) %>
+</script>
+
+<script>
+const SNAP  = 10;
+const CARDS = new Map();
+let dragging=null, resizing=null, selected=null;
+let offX=0, offY=0, rsStart=null, rsHandle=null, saveTimer=null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const areas = JSON.parse(document.getElementById('srv-areas').textContent || '[]');
+    const mesas = JSON.parse(document.getElementById('srv-mesas').textContent  || '{}');
+
+    const cols=Math.max(1,Math.ceil(Math.sqrt(areas.length)));
+    const defW=260, defH=180, padX=40, padY=40, gapX=24, gapY=24;
+
+    areas.forEach((a,i) => {
+        if (a.pos_x===null) {
+            a.pos_x = padX + (i%cols)*(defW+gapX);
+            a.pos_y = padY + Math.floor(i/cols)*(defH+gapY);
+            a.ancho = defW; a.alto = defH;
+        }
+        a.mesas = mesas[a.id] || [];
+        crearCard(a);
+    });
+
+    actualizarEmptyState();
+    actualizarStats();
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup',   onUp);
+    document.getElementById('areas-canvas').addEventListener('click', e => { if(e.target.id==='areas-canvas') deselect(); });
+    document.getElementById('input-nombre').addEventListener('keydown', e => { if(e.key==='Enter') crearArea(); if(e.key==='Escape') cerrarModal(); });
+    document.getElementById('modal-bg').addEventListener('click', e => { if(e.target.id==='modal-bg') cerrarModal(); });
+    document.addEventListener('keydown', e => { if(e.key==='Escape') cerrarModal(); });
+});
+
+function snap(v) { return Math.round(v/SNAP)*SNAP; }
+function esc(s)  { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function crearCard(area) {
+    const canvas = document.getElementById('areas-canvas');
+    const m      = area.mesas||[];
+    const total  = m.length;
+    const ocup   = m.filter(x=>x.estado==='ocupada').length;
+    const res    = m.filter(x=>x.estado==='reservada').length;
+    const limp   = m.filter(x=>x.estado==='limpieza').length;
+    const pers   = m.reduce((s,x)=>s+(parseInt(x.personas_actuales)||0),0);
+    const pct    = total>0?Math.round((ocup/total)*100):0;
+    const barClr = pct>=80?'var(--red)':pct>=40?'var(--amber)':'var(--green)';
+
+    const chipsHtml = m.slice(0,30).map(x=>`<div class="chip ${x.estado||'libre'}" title="${esc(x.numero||'')}"></div>`).join('')
+        + (m.length>30?`<span style="font-size:9px;color:var(--muted);align-self:center;">+${m.length-30}</span>`:'');
+
+    const bodyHtml = total===0
+        ? `<div class="card-empty-msg">Sin mesas · diseña el croquis</div>`
+        : `<div class="occ-wrap">
+               <div class="occ-bar"><div class="occ-fill" style="width:${pct}%;background:${barClr};"></div></div>
+               <span class="occ-label" style="color:${barClr};">${ocup}/${total}</span>
+           </div>
+           <div class="stat-row">
+               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+               <strong>${pers}</strong>&nbsp;persona${pers!==1?'s':''} en sala
+           </div>
+           ${res>0?`<div class="stat-row">
+               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+               <strong style="color:var(--amber);">${res}</strong>&nbsp;reservada${res!==1?'s':''}
+           </div>`:''}
+           <div class="chips-wrap">${chipsHtml}</div>`;
+
+    const el = document.createElement('div');
+    el.className = `area-card${area.tipo==='circulo'?' is-circle':''}`;
+    el.id = `card-${area.id}`;
+    el.dataset.id = area.id;
+    Object.assign(el.style,{left:`${area.pos_x}px`,top:`${area.pos_y}px`,width:`${area.ancho}px`,height:`${area.alto}px`});
+
+    el.innerHTML = `
+        <div class="card-inner">
+            <div class="card-header">
+                <span class="card-nombre">${esc(area.nombre)}</span>
+                <div class="card-actions">
+                    <button class="btn-ca teal" onclick="event.stopPropagation();irCroquis(${area.id})">✏ Croquis</button>
+                    <button class="btn-ca danger" onclick="event.stopPropagation();eliminarArea(${area.id},'${esc(area.nombre)}')">✕</button>
+                </div>
+            </div>
+            <div class="card-body">${bodyHtml}</div>
+        </div>
+        <div class="rh rh-nw" data-h="nw"></div>
+        <div class="rh rh-ne" data-h="ne"></div>
+        <div class="rh rh-sw" data-h="sw"></div>
+        <div class="rh rh-se" data-h="se"></div>`;
+
+    el.querySelectorAll('.rh').forEach(rh => {
+        rh.addEventListener('mousedown', e => {
+            e.stopPropagation();
+            resizing=area; rsHandle=rh.dataset.h;
+            rsStart={mx:e.clientX,my:e.clientY,x:area.pos_x,y:area.pos_y,w:area.ancho,h:area.alto};
+            selectCard(area); e.preventDefault();
+        });
+    });
+
+    el.addEventListener('mousedown', e => {
+        if(e.target.closest('.rh')||e.target.closest('.btn-ca')) return;
+        dragging=area;
+        const cr=document.getElementById('areas-canvas').getBoundingClientRect();
+        offX=e.clientX-cr.left-area.pos_x; offY=e.clientY-cr.top-area.pos_y;
+        selectCard(area); e.preventDefault();
+    });
+
+    el.addEventListener('dblclick', e => {
+        if(e.target.closest('.btn-ca')) return;
+        irCroquis(area.id);
+    });
+
+    CARDS.set(area.id,{data:area,el});
+    canvas.appendChild(el);
+}
+
+function onMove(e) {
+    const cr=document.getElementById('areas-canvas').getBoundingClientRect();
+    if(dragging) {
+        dragging.pos_x=Math.max(0,snap(e.clientX-cr.left-offX));
+        dragging.pos_y=Math.max(0,snap(e.clientY-cr.top-offY));
+        const c=CARDS.get(dragging.id);
+        if(c){c.el.style.left=`${dragging.pos_x}px`;c.el.style.top=`${dragging.pos_y}px`;}
+    }
+    if(resizing&&rsStart) {
+        const dx=e.clientX-rsStart.mx, dy=e.clientY-rsStart.my, min=160;
+        let{x,y,w,h}=rsStart; const p=rsHandle;
+        if(p.endsWith('e'))  w=Math.max(min,snap(rsStart.w+dx));
+        if(p.endsWith('w'))  {w=Math.max(min,snap(rsStart.w-dx));x=rsStart.x+(rsStart.w-w);}
+        if(p.startsWith('s')) h=Math.max(min,snap(rsStart.h+dy));
+        if(p.startsWith('n')) {h=Math.max(min,snap(rsStart.h-dy));y=rsStart.y+(rsStart.h-h);}
+        resizing.pos_x=x;resizing.pos_y=y;resizing.ancho=w;resizing.alto=h;
+        const c=CARDS.get(resizing.id);
+        if(c) Object.assign(c.el.style,{left:`${x}px`,top:`${y}px`,width:`${w}px`,height:`${h}px`});
+    }
+}
+
+function onUp() {
+    if(dragging||resizing) debounceSave();
+    dragging=null;resizing=null;rsStart=null;rsHandle=null;
+}
+
+function selectCard(area) {
+    deselect(); selected=area;
+    const c=CARDS.get(area.id); if(c) c.el.classList.add('selected');
+}
+function deselect() {
+    if(selected){const c=CARDS.get(selected.id);if(c)c.el.classList.remove('selected');}
+    selected=null;
+}
+
+function actualizarStats() {
+    let tot=0,ocu=0,per=0,lib=0;
+    CARDS.forEach(({data})=>{
+        const m=data.mesas||[];
+        tot+=m.length; ocu+=m.filter(x=>x.estado==='ocupada').length;
+        per+=m.reduce((s,x)=>s+(parseInt(x.personas_actuales)||0),0);
+        lib+=m.filter(x=>!x.estado||x.estado==='libre').length;
+    });
+    document.getElementById('stat-areas').textContent=CARDS.size;
+    document.getElementById('stat-total').textContent=tot;
+    document.getElementById('stat-ocup').textContent=ocu;
+    document.getElementById('stat-pers').textContent=per;
+    document.getElementById('stat-lib').textContent=lib;
+}
+
+function actualizarEmptyState() {
+    const el=document.getElementById('empty-state');
+    if(el) el.classList.toggle('visible',CARDS.size===0);
+}
+
+function abrirModal() {
+    document.getElementById('modal-bg').classList.add('open');
+    setTimeout(()=>document.getElementById('input-nombre').focus(),120);
+}
+function cerrarModal() {
+    document.getElementById('modal-bg').classList.remove('open');
+    const inp=document.getElementById('input-nombre');
+    inp.value=''; inp.classList.remove('error');
+    const btn=document.getElementById('btn-crear');
+    btn.disabled=false; btn.textContent='Crear y diseñar →';
+}
+function crearArea() {
+    const inp=document.getElementById('input-nombre');
+    const nombre=inp.value.trim();
+    if(!nombre){inp.classList.add('error');inp.focus();setTimeout(()=>inp.classList.remove('error'),1500);return;}
+    const btn=document.getElementById('btn-crear');
+    btn.disabled=true; btn.textContent='Creando...';
+    const form=document.createElement('form');
+    form.method='POST'; form.action='/areas/crear';
+    const f=document.createElement('input');
+    f.type='hidden'; f.name='nombre_area'; f.value=nombre;
+    form.appendChild(f); document.body.appendChild(form); form.submit();
+}
+
+function irCroquis(id) { window.location.href=`/areas/editar-croquis/${id}`; }
+
+async function eliminarArea(id, nombre) {
+    if(!confirm(`¿Eliminar el área "${nombre}"?\nSolo se borrarán las mesas libres. Las ocupadas o reservadas no se tocarán.`)) return;
+    try {
+        const r=await fetch(`/areas/eliminar/${id}`,{method:'DELETE'});
+        const d=await r.json();
+        if(d.success){
+            const c=CARDS.get(id); if(c) c.el.remove();
+            CARDS.delete(id); actualizarEmptyState(); actualizarStats();
+        } else alert('No se pudo eliminar: '+d.message);
+    } catch(e){ alert('Error de red.'); }
+}
+
+function debounceSave() { clearTimeout(saveTimer); saveTimer=setTimeout(guardarPosiciones,800); }
+async function guardarPosiciones() {
+    const pos=[];
+    CARDS.forEach(({data})=>pos.push({id:data.id,pos_x:data.pos_x,pos_y:data.pos_y,ancho:data.ancho,alto:data.alto}));
+    try { await fetch('/areas/guardar-posiciones',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({posiciones:pos})}); }
+    catch(_){}
+}
+</script>

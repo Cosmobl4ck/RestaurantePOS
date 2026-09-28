@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarrocosPOS - Crear Usuario</title>
+    <link rel="icon" href="/uploads/MarrocosPOS_ico250px.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        .card-register { max-width: 500px; margin: 50px auto; }
+    </style>
+</head>
+<body>
+<%- include('partials/navbar') %>
+
+    <div class="container">
+        <div class="card shadow card-register">
+            <div class="card-header bg-primary text-white text-center">
+                <h4 class="mb-0"><i class="bi bi-person-plus-fill"></i> Crear Nuevo Empleado</h4>
+            </div>
+            <div class="card-body p-4">
+
+                <!-- Mensajes de Alerta -->
+                <% if (typeof error !== 'undefined' && error) { %>
+                    <div class="alert alert-danger d-flex align-items-center" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <div><%= error %></div>
+                    </div>
+                <% } %>
+                
+                <% if (typeof success !== 'undefined' && success) { %>
+                    <div class="alert alert-success d-flex align-items-center" role="alert">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        <div><%= success %></div>
+                    </div>
+                <% } %>
+
+                <form action="/register" method="POST">
+                    
+                    <!-- Nombre -->
+                    <div class="mb-3">
+                        <label for="nombre" class="form-label">Nombre del Empleado</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input type="text" class="form-control" id="nombre" name="nombre" placeholder="Ej: JuanPerez" required autofocus>
+                        </div>
+                    </div>
+
+                    <!-- Rol -->
+                    <div class="mb-3">
+                        <label for="rol" class="form-label">Rol / Cargo</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-briefcase"></i></span>
+                            <select class="form-select" id="rol" name="rol" required>
+                                <option value="" selected disabled>Seleccione un rol...</option>
+                                <option value="mesero">Mesero (Toma pedidos)</option>
+                                <option value="cajero">Cajero (Cobra y ve caja)</option>
+                                <option value="cocina">Cocina (Monitor de comandas)</option>
+                                <option value="bar">Bar (Monitor de bebidas)</option>
+                                <option value="gerente">Gerente (Gestión total)</option>
+                                
+                                <!-- Solo el Admin puede ver la opción de crear otro Admin -->
+                                <!-- CORRECCIÓN: Se cambió 'user' por 'usuario' 
+                                <% if (typeof usuario !== 'undefined' && usuario && usuario.rol === 'admin') { %>
+                                    <option value="admin" class="text-danger fw-bold">Administrador (Acceso total)</option>
+                                <% } %>-->
+                            </select>
+                        </div>
+                        <!-- CORRECCIÓN: Se cambió 'user' por 'usuario' -->
+                        <% if (typeof usuario !== 'undefined' && usuario && usuario.rol === 'gerente') { %>
+                            <div class="form-text text-muted">Como gerente, no puedes crear Administradores.</div>
+                        <% } %>
+                    </div>
+
+                    <!-- PIN -->
+                    <div class="mb-4">
+                        <label for="pin" class="form-label">PIN de Acceso (4 dígitos)</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                            <input type="text" class="form-control" id="pin" name="pin" 
+                                   placeholder="Ej: 1234" maxlength="4" pattern="\d{4}" 
+                                   title="Debe ser un número de 4 dígitos" required>
+                        </div>
+                        <div class="form-text">Este PIN será usado para iniciar sesión.</div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">Crear Usuario</button>
+                        <a href="/dashboard" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

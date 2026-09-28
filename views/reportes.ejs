@@ -1,0 +1,262 @@
+<%- include('partials/navbar') %>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+<title>MarrocosPOS - Reportes</title>
+<link rel="icon" href="/uploads/MarrocosPOS_ico250px.png">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-dark mb-0">
+            <i class="bi bi-graph-up-arrow me-2"></i>Panel de Reportes
+        </h2>
+        <div class="btn-group shadow-sm">
+            <a href="/facturas" class="btn btn-primary">
+                <i class="bi bi-receipt me-1"></i> Ver Historial de Ventas
+            </a>
+            <button onclick="generarListaCompras()" class="btn btn-dark">
+                <i class="bi bi-printer me-1"></i> Lista de Compras
+            </button>
+        </div>
+    </div>
+
+    <% if (stats.stockCritico && stats.stockCritico.length > 0) { %>
+        <div class="alert alert-danger border-0 shadow-sm mb-4">
+            <h5 class="fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Bebidas por Agotarse</h5>
+            <div class="row g-2 mt-2">
+                <% stats.stockCritico.forEach(p => { %>
+                    <div class="col-md-3">
+                        <div class="bg-white p-2 rounded text-dark shadow-sm border-start border-danger border-4">
+                            <div class="d-flex justify-content-between">
+                                <strong><%= p.nombre %></strong>
+                                <span class="badge bg-danger"><%= Math.round(p.stock) %></span>
+                            </div>
+                            <small class="text-muted">Mínimo: <%= Math.round(p.stock_minimo) %></small>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+        </div>
+    <% } %>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-primary text-white p-4 h-100">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <small class="text-white-50 fw-bold text-uppercase">Ventas de Hoy</small>
+                        <h1 class="fw-bold mb-0">$<%= Number(stats.ingresosHoy).toLocaleString('es-CO') %></h1>
+                    </div>
+                    <i class="bi bi-currency-dollar fs-1 text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-success text-white p-4 h-100">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <small class="text-white-50 fw-bold text-uppercase">Pedidos Finalizados Hoy</small>
+                        <h1 class="fw-bold mb-0"><%= stats.pedidosHoy %></h1>
+                    </div>
+                    <i class="bi bi-check-circle fs-1 text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-danger text-white p-4 h-100">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <small class="text-white-50 fw-bold text-uppercase">Anulaciones (7d)</small>
+                        <h1 class="fw-bold mb-0">
+                            <%= stats.anulacionesSemana.reduce((acc, curr) => acc + curr.cantidad, 0) %>
+                        </h1>
+                    </div>
+                    <i class="bi bi-x-octagon fs-1 text-white-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm p-4 h-100">
+                <h5 class="card-title text-muted mb-4">Ingresos de la Semana</h5>
+                <div style="height: 300px;">
+                    <canvas id="chartVentas"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm p-4 h-100">
+                <h5 class="card-title text-muted mb-4">Top 5 Productos</h5>
+                <div style="height: 300px;">
+                    <canvas id="chartProductos"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm p-4">
+                <h5 class="card-title text-danger mb-4"><i class="bi bi-exclamation-octagon me-2"></i>Anulaciones por Día</h5>
+                <div style="height: 200px;">
+                    <canvas id="chartAnulaciones"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    // Recuperar datos del backend
+    const datosVentas = <%- JSON.stringify(stats.ventasSemana) %>;
+    const datosTop = <%- JSON.stringify(stats.topProductos) %>;
+    const datosAnulaciones = <%- JSON.stringify(stats.anulacionesSemana) %>;
+
+    // --- GRÁFICAS (Chart.js) ---
+    new Chart(document.getElementById('chartVentas'), {
+        type: 'line',
+        data: {
+            labels: datosVentas.map(d => new Date(d.dia).toLocaleDateString()),
+            datasets: [{
+                label: 'Ventas ($)',
+                data: datosVentas.map(d => d.total),
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: { maintainAspectRatio: false }
+    });
+
+    new Chart(document.getElementById('chartProductos'), {
+        type: 'doughnut',
+        data: {
+            labels: datosTop.map(p => p.nombre),
+            datasets: [{
+                data: datosTop.map(p => p.total_vendido),
+                backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6c757d']
+            }]
+        },
+        options: { maintainAspectRatio: false }
+    });
+
+    new Chart(document.getElementById('chartAnulaciones'), {
+        type: 'bar',
+        data: {
+            labels: datosAnulaciones.map(d => new Date(d.dia).toLocaleDateString()),
+            datasets: [{
+                label: 'Anulaciones',
+                data: datosAnulaciones.map(d => d.cantidad),
+                backgroundColor: 'rgba(220, 53, 69, 0.6)'
+            }]
+        },
+        options: { maintainAspectRatio: false }
+    });
+
+    // --- LÓGICA DE LISTA DE COMPRAS (SweetAlert + PDF) ---
+    async function generarListaCompras() {
+        try {
+            const resp = await fetch('/reportes/lista-compras');
+            const productos = await resp.json();
+            
+            if (productos.length === 0) {
+                return Swal.fire('Sin Datos', 'No hay productos que necesiten compra.', 'info');
+            }
+
+            // HTML para el Pop-up de previsualización
+            let html = `
+                <div class="table-responsive" style="max-height: 400px;">
+                    <table class="table table-sm text-start">
+                        <thead>
+                            <tr class="table-dark">
+                                <th>Producto</th>
+                                <th>Stock Actual</th>
+                                <th>Mínimo</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${productos.map(p => `
+                                <tr>
+                                    <td>${p.nombre}</td>
+                                    <td class="fw-bold ${p.stock <= p.stock_minimo ? 'text-danger' : 'text-dark'}">${Math.round(p.stock)}</td>
+                                    <td>${Math.round(p.stock_minimo)}</td>
+                                    <td>${p.stock <= p.stock_minimo ? '<span class="badge bg-danger">REQUERIDO</span>' : '<span class="badge bg-success">OK</span>'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
+
+            Swal.fire({
+                title: 'Reporte de Inventario Diario',
+                html: html,
+                width: '750px',
+                showCancelButton: true,
+                confirmButtonText: '<i class="bi bi-file-pdf"></i> Descargar PDF',
+                confirmButtonColor: '#dc3545',
+                cancelButtonText: 'Cerrar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    descargarPDFInventario(productos);
+                }
+            });
+        } catch (error) {
+            Swal.fire('Error', 'No se pudo obtener la lista.', 'error');
+        }
+    }
+
+    function descargarPDFInventario(datos) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        const ahora = new Date();
+        const fechaNombre = ahora.toLocaleDateString('es-ES').replace(/\//g, '-');
+        const nombreArchivo = `ListaCompras_${fechaNombre}.pdf`;
+
+        // Título y Estilo
+        doc.setFontSize(18);
+        doc.text("MARROCOS POS - LISTA DE COMPRAS", 14, 20);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Generado el: ${ahora.toLocaleString()}`, 14, 28);
+        doc.line(14, 32, 196, 32);
+
+        // Mapeo de datos para la tabla del PDF
+        const rows = datos.map(p => [
+            p.nombre, 
+            Math.round(p.stock).toString(), 
+            Math.round(p.stock_minimo).toString(),
+            (p.stock <= p.stock_minimo) ? 'REQUERIDO' : 'SUFICIENTE'
+        ]);
+
+        doc.autoTable({
+            startY: 38,
+            head: [['Producto', 'Stock Act.', 'Stock Mín.', 'Estado']],
+            body: rows,
+            theme: 'striped',
+            headStyles: { fillColor: [33, 37, 41] },
+            didParseCell: function(data) {
+                if (data.section === 'body' && data.column.index === 3) {
+                    if (data.cell.raw === 'REQUERIDO') {
+                        data.cell.styles.textColor = [220, 53, 69];
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                }
+            }
+        });
+
+        doc.save(nombreArchivo);
+    }
+</script>

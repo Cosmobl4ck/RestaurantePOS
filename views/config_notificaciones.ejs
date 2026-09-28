@@ -1,0 +1,161 @@
+<%- include('partials/navbar') %>
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light border-bottom">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-bell-fill me-2"></i>Configuración de Notificaciones KDS
+                    </h5>
+                </div>
+                <div class="card-body">
+
+                    <!-- Estado actual de monitores -->
+                    <div class="alert alert-info mb-4">
+                        <h6 class="alert-heading mb-2">Estado de los monitores</h6>
+                        <div class="row">
+                            <div class="col-6">
+                                <p class="mb-0">
+                                    <i class="bi bi-egg-fried text-warning"></i> <strong>Cocina:</strong>
+                                    <span id="cocina-count">0</span> comandas activas
+                                </p>
+                            </div>
+                            <div class="col-6">
+                                <p class="mb-0">
+                                    <i class="bi bi-cup-straw text-info"></i> <strong>Bar:</strong>
+                                    <span id="bar-count">0</span> comandas activas
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Toggles de notificaciones -->
+                    <form id="formNotificaciones">
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input 
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    id="notif_cocina"
+                                    <%= config.notif_cocina ? 'checked' : '' %>
+                                >
+                                <label class="form-check-label" for="notif_cocina">
+                                    <strong>Notificaciones de cocina</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        Cuando el chef marca "Comanda finalizada", el mesero recibe una notificación 
+                                        de que la comida está lista para retirar.
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input 
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    id="notif_bar"
+                                    <%= config.notif_bar ? 'checked' : '' %>
+                                >
+                                <label class="form-check-label" for="notif_bar">
+                                    <strong>Notificaciones de bar</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        Cuando el bartender marca "Comanda finalizada", el mesero recibe una notificación 
+                                        de que las bebidas están listas para retirar.
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-primary" id="btnGuardar">
+                            <i class="bi bi-save me-1"></i>Guardar cambios
+                        </button>
+                    </form>
+
+                    <!-- Información útil -->
+                    <hr class="my-5">
+                    <div class="alert alert-warning">
+                        <h6 class="alert-heading">💡 Consejo</h6>
+                        <p class="mb-2">
+                            <strong>¿Cuándo desactivar las notificaciones?</strong>
+                        </p>
+                        <ul class="mb-0 ps-3">
+                            <li>En días de alta demanda o eventos especiales donde los meseros están abrumados</li>
+                            <li>En horarios de poco movimiento si las notificaciones causan distracciones innecesarias</li>
+                            <li>Los monitores KDS seguirán mostrando las comandas en cuadritos — solo que sin sonido/notificación</li>
+                        </ul>
+                    </div>
+
+                    <!-- Links a los monitores -->
+                    <hr class="my-5">
+                    <div class="d-grid gap-2">
+                        <a href="/cocina" target="_blank" class="btn btn-outline-warning btn-lg">
+                            <i class="bi bi-egg-fried me-2"></i>Abrir monitor de cocina
+                        </a>
+                        <a href="/bar" target="_blank" class="btn btn-outline-info btn-lg">
+                            <i class="bi bi-cup-straw me-2"></i>Abrir monitor de bar
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+// Cargar estado de los monitores
+async function actualizarEstado() {
+    try {
+        const resp = await fetch('/configuracion/kds-status');
+        const data = await resp.json();
+        document.getElementById('cocina-count').textContent = data.cocina_activas;
+        document.getElementById('bar-count').textContent = data.bar_activas;
+    } catch (err) {
+        console.error('Error al cargar estado:', err);
+    }
+}
+
+// Guardar cambios
+document.getElementById('btnGuardar').addEventListener('click', async function() {
+    const notif_cocina = document.getElementById('notif_cocina').checked;
+    const notif_bar = document.getElementById('notif_bar').checked;
+
+    Swal.fire({
+        title: 'Guardando...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    try {
+        const resp = await fetch('/configuracion/notificaciones', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notif_cocina, notif_bar })
+        });
+
+        if (!resp.ok) throw new Error('Error al guardar');
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Guardado',
+            text: 'Las notificaciones se han actualizado. Los cambios tomarán efecto en los próximos pedidos.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    } catch (err) {
+        Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+    }
+});
+
+// Auto-actualizar estado cada 10 segundos
+actualizarEstado();
+setInterval(actualizarEstado, 10000);
+</script>

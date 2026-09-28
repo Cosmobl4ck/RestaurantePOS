@@ -4,7 +4,7 @@
 
 ### Sintaxis JavaScript
 
-`npm run check` ejecuta `node --check` sobre rutas, middlewares, config y JS público.
+`pnpm check` ejecuta `node --check` sobre rutas, middlewares, config y JS público.
 
 Resultado: **PASS**.
 
@@ -60,4 +60,4 @@ Pendiente después de montar staging y aplicar la migración:
 
 ## Dependencias
 
-El entorno de recuperación no logró completar `npm install --package-lock-only` antes del timeout de red. Por esa razón, el ZIP final excluye el `node_modules` antiguo y no usa el lockfile parcialmente regenerado. Ejecutar `npm install` con conectividad antes de las pruebas E2E y revisar el lock resultante.
+El entorno de recuperación no logró completar `pnpm install --package-lock-only` antes del timeout de red. Por esa razón, el ZIP final excluye el `node_modules` antiguo y no usa el lockfile parcialmente regenerado. Ejecutar `pnpm install` con conectividad antes de las pruebas E2E y revisar el lock resultante.

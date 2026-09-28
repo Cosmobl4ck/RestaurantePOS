@@ -21,7 +21,7 @@ const app = express();
 const { supabase } = require('./config/supabase');
 const SupabaseSessionStore = require('./config/SupabaseSessionStore');
 const authRole = require('./middlewares/authRole');
-const { requireSuperadmin, sameOriginForMutations } = require('./middlewares/access');
+const { requirePermission, requireSuperadmin, sameOriginForMutations } = require('./middlewares/access');
 
 // ==========================================
 // 1. VALIDAR CONFIGURACIÓN
@@ -190,7 +190,7 @@ app.use('/superadmin', requireSuperadmin, superadminRoutes);
 // ==========================================
 
 // Dashboard
-app.get('/dashboard', authRole(ROLES_OPERACION), (req, res) => {
+app.get('/dashboard', requirePermission('dashboard.view'), (req, res) => {
     res.render('dashboard');
 });
 
@@ -261,7 +261,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3005;
 
-app.listen(PORT, () => {
+if (require.main === module) app.listen(PORT, () => {
     console.log('========================================');
     console.log(`🚀 SERVIDOR INICIADO EN PUERTO: ${PORT}`);
     console.log(`📍 http://localhost:${PORT}`);

@@ -1,0 +1,189 @@
+<style>
+    :root { --mp-accent:#00A19C; --mp-bg:#f4f6f8; --mp-surface:#fff; --mp-text:#202428; --mp-muted:#6c757d; }
+    body { background-color: var(--mp-bg); color: var(--mp-text); }
+    .card { border: 1px solid rgba(0,0,0,.06); border-radius: 14px; box-shadow: 0 8px 24px rgba(17,24,39,.06); }
+    .table { --bs-table-bg: transparent; }
+    .form-control:focus, .form-select:focus, .btn:focus-visible { border-color: var(--mp-accent); box-shadow: 0 0 0 .2rem rgba(0,161,156,.15); }
+    @media (max-width: 991.98px) { .navbar-custom .user-badge { width:100%; justify-content:center; } }
+
+    /* Estilos base del Navbar - Gris Carbono y Acqua */
+    .navbar-custom {
+        background-color: #1c1f22; /* Gris Carbono oscuro */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+        font-size: 1.1rem;
+    }
+    .navbar-custom .navbar-brand {
+        color: #00A19C !important; /* Texto Acqua principal */
+        font-weight: bold;
+        font-size: 1.4rem;
+    }
+    .navbar-custom .navbar-brand .text-business {
+        color: #e0e0e0 !important; /* Blanco hueso para el nombre del negocio */
+    }
+    
+    /* Botones Acqua personalizados */
+    .btn-outline-aqua {
+        color: #00A19C;
+        border: 1px solid rgba(0, 161, 156, 0.6);
+        background: transparent;
+        transition: all 0.2s ease-in-out;
+    }
+    .btn-outline-aqua:hover {
+        background-color: rgba(0, 161, 156, 0.15); /* Brillo acqua translÃºcido */
+        color: #00A19C;
+        border-color: #00A19C;
+    }
+    .btn-solid-aqua {
+        background-color: #00A19C;
+        color: #1c1f22;
+        border: 1px solid #00A19C;
+        font-weight: bold;
+    }
+    .btn-solid-aqua:hover {
+        background-color: #008f89;
+        color: #1c1f22;
+    }
+
+    /* Estilo para el usuario logueado */
+    .user-badge {
+        background-color: rgba(0, 0, 0, 0.3); /* Fondo carbÃ³n mÃ¡s oscuro */
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        color: #00A19C; /* Texto y logo Acqua */
+        font-size: 0.9rem;
+        border: 1px solid rgba(0, 161, 156, 0.4); /* Borde Acqua sutil */
+    }
+    
+    /* Resaltado de pÃ¡gina activa */
+    .nav-active {
+        background-color: #00A19C !important;
+        color: #1c1f22 !important; /* Ãcono en carbono para resaltar */
+        border-color: #00A19C !important;
+        box-shadow: 0 0 8px rgba(0, 161, 156, 0.4); /* Resplandor neÃ³n suave */
+    }
+</style>
+
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="/dashboard">
+            <img src="/uploads/MarrocosPOS_ico250px_wh.png" alt="Logo" width="30" height="30" class="d-inline-block align-text-top" style="filter: drop-shadow(0px 0px 2px #00A19C);">
+            MarrocosPOS 
+            <% if (locals.usuario && usuario.nombre_negocio) { %>
+                | <span class="fw-light small text-business"><%= usuario.nombre_negocio %></span>
+            <% } else { %>
+                | <span class="fw-light small text-business">Demo</span>
+            <% } %>
+        </a>
+        
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" style="border-color: rgba(0,161,156,0.5);">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarContent">
+            <div class="d-flex flex-wrap ms-auto align-items-center gap-2 mt-3 mt-lg-0">
+                
+                <% if (locals.usuario) { %>
+                    
+                    <!-- DASHBOARD: Solo Admin -->
+                    <% if (['admin', 'gerente'].includes(usuario.rol)) { %>
+                        <a href="/dashboard" class="btn btn-outline-aqua <%= locals.page === 'dashboard' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Panel de Ventas">
+                            <i class="bi bi-grid-fill"></i>
+                        </a>
+                    <% } %>
+
+                    <!-- MESAS: Admin, Cajero y Mesero -->
+                    <% if (['admin', 'gerente', 'cajero', 'mesero'].includes(usuario.rol)) { %>
+                        <a href="/mesas" class="btn btn-outline-aqua <%= locals.page === 'mesas' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Mesas y Mostrador">
+                            <i class="bi bi-grid"></i>
+                        </a>
+                    <% } %>
+
+                    <!-- INVENTARIO / MENÃš: Admin y Cajero -->
+                    <% if (['admin', 'gerente', 'cajero'].includes(usuario.rol)) { %>
+                        <a href="/productos" class="btn btn-outline-aqua <%= locals.page === 'productos' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Inventario y MenÃº">
+                            <i class="bi bi-box"></i>
+                        </a>
+                    <% } %>
+
+                    <!-- CAJA Y REPORTES: Admin y Cajero -->
+                    <% if (['admin', 'gerente', 'cajero'].includes(usuario.rol)) { %>
+                        <a href="/caja" class="btn btn-outline-aqua <%= locals.page === 'caja' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Movimientos de Caja">
+                            <i class="bi bi-cart-check"></i>
+                        </a>
+                        <a href="/reportes" class="btn btn-outline-aqua <%= locals.page === 'reportes' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Historial de Ventas">
+                            <i class="bi bi-receipt"></i>
+                        </a>
+                    <% } %>
+
+                    <!-- CLIENTES: Admin, Cajero y Mesero -->
+                    <% if (['admin', 'gerente', 'cajero', 'mesero'].includes(usuario.rol)) { %>
+                        <a href="/clientes" class="btn btn-outline-aqua <%= locals.page === 'clientes' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Clientes">
+                            <i class="bi bi-people"></i>
+                        </a>
+                    <% } %>
+
+                    <!-- MONITOR DE COCINA: Admin y Cocina -->
+                    <% if (['admin', 'gerente', 'cajero', 'cocina'].includes(usuario.rol)) { %>
+                        <a href="/kds/cocina" class="btn btn-outline-aqua <%= locals.currentPath && locals.currentPath.startsWith('/kds/cocina') ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Monitor de Cocina">
+                            <i class="bi bi-egg-fried"></i>
+                        </a>
+                    <% } %>
+
+                    <!-- MONITOR DE BAR: Admin y Bar -->
+                    <% if (['admin', 'gerente', 'cajero', 'bar'].includes(usuario.rol)) { %>
+                        <a href="/kds/bar" class="btn btn-outline-aqua <%= locals.currentPath && locals.currentPath.startsWith('/kds/bar') ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Monitor de Bar">
+                            <i class="bi bi-cup-straw"></i>
+                        </a>
+                    <% } %>
+
+
+                    <% if (['admin', 'gerente'].includes(usuario.rol)) { %>
+                        <a href="/areas" class="btn btn-outline-aqua <%= locals.page === 'areas' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Croquis y Ã¡reas del restaurante">
+                            <i class="bi bi-bounding-box-circles"></i>
+                        </a>
+                    <% } %>
+
+                    <!-- GESTIÃ“N DE PERSONAL: Solo Admin -->
+                    <% if (['admin', 'gerente'].includes(usuario.rol)) { %>
+                        <a href="/register" class="btn btn-solid-aqua ms-lg-2" data-bs-toggle="tooltip" title="GestiÃ³n de Personal">
+                            <i class="bi bi-person-plus"></i> <span class="d-none d-lg-inline">Personal</span>
+                        </a>
+                    <% } %>
+
+                    <div class="vr mx-2 d-none d-lg-block" style="background-color: #00A19C; opacity: 0.3;"></div>
+
+                    <!-- BADGE DE USUARIO -->
+                    <div class="user-badge ms-2 ms-lg-0 mb-2 mb-lg-0 d-flex align-items-center">
+                        <i class="bi bi-person-circle me-2"></i>
+                        <span class="fw-bold me-1 text-light"><%= usuario.nombre %></span> 
+                        <span class="badge ms-1 text-uppercase" style="background-color: #00A19C; color: #1c1f22; font-size: 0.7rem;">
+                            <%= usuario.rol %>
+                        </span>
+                        <span class="badge ms-1" style="font-size: 0.7rem; background-color: transparent; border: 1px solid #00A19C; color: #00A19C; text-transform: uppercase;">
+                            <%= (usuario.plan || 'trial').toUpperCase().replace(/_/g, ' ') %>
+                        </span>
+                    </div>
+                    
+                    <!-- BOTÃ“N SALIR -->
+                    <form action="/logout" method="post" class="d-inline ms-2">
+                        <button type="submit" class="btn btn-danger btn-sm" data-bs-toggle="tooltip" title="Cerrar SesiÃ³n">
+                            <i class="bi bi-box-arrow-right"></i> <span class="d-none d-lg-inline">Salir</span>
+                        </button>
+                    </form>
+
+                <% } %>
+
+            </div>
+        </div>
+    </div>
+</nav>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function(){
+        // Inicializar tooltips de Bootstrap
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        if (window.bootstrap && bootstrap.Tooltip) {
+            tooltipTriggerList.map(function (tooltipTriggerEl) { return new bootstrap.Tooltip(tooltipTriggerEl); });
+        }
+    });
+</script>

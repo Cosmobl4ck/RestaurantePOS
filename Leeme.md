@@ -15,7 +15,7 @@
 2. Abrir una terminal en la carpeta del proyecto
 3. Instalar las dependencias:
 ```bash o cmd o desde vsc
-npm install
+pnpm install
 ```
 4. Variables de entorno (opcional):
    - El sistema usa estos valores por defecto (ver `config/database.js`):
@@ -29,7 +29,7 @@ npm install
 ### 3. Iniciar el Sistema
 1. Ejecutar el siguiente comando:
 ```bash
-npm start
+pnpm start
 ```
 2. Abrir el navegador y acceder a: `http://localhost:3000`
 3. Acceso desde otra PC o celular en la misma red (LAN):
@@ -78,16 +78,16 @@ npm start
   - Totales por forma de pago (efectivo/transferencia) y total general
 
 ## Construir ejecutable (Windows)
-Requisitos: `pkg` instalado globalmente o usar `npx`.
+Requisitos: `pkg` instalado globalmente o usar `pnpm exec`.
 
 - Usando script ya definido:
 ```bash
-npm run build
+pnpm build
 ```
 
 - Alternativa directa:
 ```bash
-npx pkg . --public --target node18-win-x64 --out-path dist
+pnpm exec pkg . --public --target node18-win-x64 --out-path dist
 ```
 
 El ejecutable queda en `dist/`.
