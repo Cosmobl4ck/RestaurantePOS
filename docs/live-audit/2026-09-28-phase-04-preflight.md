@@ -80,3 +80,9 @@ Phase 04A rechecked the backup gate without repeating the completed live audit.
 - Gate result: blocked
 
 The repository now ignores `*.dump`, `*.backup`, `*.sql.gz`, and `backups/` so a future production dump cannot be committed accidentally. No live migration was applied.
+
+## Owner waiver and Phase 04B
+
+The owner explicitly waived the backup gate because all existing application rows were disposable test data and authorized a reset limited to RestaurantePOS application data. This waiver did not extend to Supabase system schemas, Storage, Auth infrastructure, extensions, secrets, or migration history.
+
+On `2026-09-28`, the approved application tables were reset transactionally and the reconciliation migration was applied. See `2026-09-28-phase-04-live-apply.md` for the post-apply stop condition. The earlier sentence above records the state at the time of Phase 04A and is retained as historical context.
