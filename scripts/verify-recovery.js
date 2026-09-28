@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const cp = require('child_process');
+const ejs = require('ejs');
 const root = path.resolve(__dirname, '..');
 let failures = 0;
 
@@ -15,6 +16,21 @@ for (const dir of ['routes', 'middlewares', 'config', 'public/js']) {
     const r = cp.spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
     if (r.status !== 0) fail(`${path.relative(root, file)}\n${r.stderr}`);
   }
+}
+
+function walkFiles(dir, extension) {
+  const out = [];
+  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+    const abs = path.join(dir, ent.name);
+    if (ent.isDirectory()) out.push(...walkFiles(abs, extension));
+    else if (ent.name.endsWith(extension)) out.push(abs);
+  }
+  return out;
+}
+
+for (const file of walkFiles(path.join(root, 'views'), '.ejs')) {
+  try { ejs.compile(fs.readFileSync(file, 'utf8'), { filename: file }); }
+  catch (error) { fail(`${path.relative(root, file)} EJS syntax: ${error.message}`); }
 }
 
 for (const rel of [
@@ -75,6 +91,12 @@ else {
   const lock = fs.readFileSync(lockPath, 'utf8');
   if (!lock.includes('dependencies:') || !lock.includes('snapshots:')) fail('pnpm-lock.yaml is incomplete');
 }
+
+const trackedEnv = cp.spawnSync('git', ['-c', `safe.directory=${root.replace(/\\/g, '/')}`, 'ls-files', '--error-unmatch', '.env'], {
+  cwd: root,
+  encoding: 'utf8'
+});
+if (trackedEnv.status === 0) fail('.env must not be tracked');
 
 const access = read('middlewares/access.js');
 for (const role of ['admin', 'gerente', 'cajero', 'mesero', 'cocina', 'bar']) {

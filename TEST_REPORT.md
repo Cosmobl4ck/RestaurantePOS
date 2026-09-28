@@ -60,4 +60,4 @@ Pendiente después de montar staging y aplicar la migración:
 
 ## Dependencias
 
-El entorno de recuperación no logró completar `pnpm install --package-lock-only` antes del timeout de red. Por esa razón, el ZIP final excluye el `node_modules` antiguo y no usa el lockfile parcialmente regenerado. Ejecutar `pnpm install` con conectividad antes de las pruebas E2E y revisar el lock resultante.
+El lockfile PNPM fue regenerado y validado con `pnpm install --frozen-lockfile`. El ZIP histórico y su `package-lock.pre-recovery.json` no son fuentes de instalación. Las pruebas E2E siguen pendientes de una conexión autenticada a Supabase staging/live.
