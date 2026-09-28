@@ -34,7 +34,7 @@ for (const file of walkFiles(path.join(root, 'views'), '.ejs')) {
 }
 
 for (const rel of [
-  'supabase/migrations/20260928211534_restaurant_pos_recovery.sql',
+  'supabase/migrations/20260928214312_reconcile_restaurant_pos_live.sql',
   'config/SupabaseSessionStore.js',
   'routes/kds.js',
   'routes/areas.js',
