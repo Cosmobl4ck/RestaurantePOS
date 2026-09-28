@@ -85,6 +85,14 @@ $(function() {
         }
     };
 
+    document.querySelectorAll('.mesa-card[data-mesa-id]').forEach((card) => {
+        card.addEventListener('click', () => window.gestionarMesa(
+            Number(card.dataset.mesaId),
+            card.dataset.mesaNumero,
+            card.dataset.mesaEstado
+        ));
+    });
+
     async function abrirMesaNueva(mesaId, nombreCliente) {
         try {
             const resp = await fetch('/mesas/abrir', {
@@ -119,13 +127,24 @@ $(function() {
         items.forEach((it) => {
             const subtotal = Number(it.subtotal || (it.cantidad * (it.precio_unitario || it.precio)));
             total += subtotal;
-            tbody.append(`
-                <tr>
-                    <td>${it.producto_nombre || it.nombre} ${it.nota ? `<br><small class="text-muted">(${it.nota})</small>` : ''}</td>
-                    <td class="text-end">${it.cantidad}</td>
-                    <td class="text-end">${formatear(subtotal)}</td>
-                </tr>
-            `);
+            const row = document.createElement('tr');
+            const productCell = document.createElement('td');
+            productCell.append(document.createTextNode(it.producto_nombre || it.nombre || 'Producto'));
+            if (it.nota) {
+                productCell.append(document.createElement('br'));
+                const note = document.createElement('small');
+                note.className = 'text-muted';
+                note.textContent = `(${it.nota})`;
+                productCell.append(note);
+            }
+            const quantityCell = document.createElement('td');
+            quantityCell.className = 'text-end';
+            quantityCell.textContent = String(it.cantidad);
+            const subtotalCell = document.createElement('td');
+            subtotalCell.className = 'text-end';
+            subtotalCell.textContent = formatear(subtotal);
+            row.append(productCell, quantityCell, subtotalCell);
+            tbody.append(row);
         });
         $('#totalPedido').text(formatear(total));
     }
@@ -155,15 +174,22 @@ $(function() {
                 $list.empty().show();
 
                 productos.forEach(p => {
-                    const $item = $(`
-                        <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="fw-bold">${p.nombre}</span><br>
-                                <small class="text-muted">${p.codigo || ''}</small>
-                            </div>
-                            <span class="badge bg-primary rounded-pill">${formatear(p.precio_unidad)}</span>
-                        </button>
-                    `);
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                    const description = document.createElement('div');
+                    const name = document.createElement('span');
+                    name.className = 'fw-bold';
+                    name.textContent = p.nombre;
+                    const code = document.createElement('small');
+                    code.className = 'text-muted';
+                    code.textContent = p.codigo || '';
+                    description.append(name, document.createElement('br'), code);
+                    const price = document.createElement('span');
+                    price.className = 'badge bg-primary rounded-pill';
+                    price.textContent = formatear(p.precio_unidad);
+                    button.append(description, price);
+                    const $item = $(button);
                     $item.on('click', () => {
                         window.seleccionarProducto(p);
                         $list.hide();

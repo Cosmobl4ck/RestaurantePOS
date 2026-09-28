@@ -118,8 +118,8 @@
                 %>
 
                 <div class="col-6 col-md-4 col-lg-3 col-xl-2"> 
-                    <div class="card h-100 text-center p-3 mesa-card <%= cardClass %>" 
-                        onclick="gestionarMesa(<%= m.id %>, '<%= m.numero %>', '<%= m.estado %>', '<%= m.descripcion || '' %>')">
+                    <div class="card h-100 text-center p-3 mesa-card <%= cardClass %>"
+                        data-mesa-id="<%= m.id %>" data-mesa-numero="<%= m.numero %>" data-mesa-estado="<%= m.estado %>">
                         
                         <div class="card-body p-2 d-flex flex-column justify-content-center align-items-center">
                             <h3 class="fw-bold mb-1 <%= titleColor %>" style="font-size: 1.2rem;">
@@ -215,7 +215,7 @@
                 
                 <div class="d-grid gap-2">
                     <!-- BOTÓN DE COBRO: Solo para Admin y Cajero -->
-                    <% if (usuario && (usuario.rol === 'admin' || usuario.rol === 'cajero')) { %>
+                    <% if (usuario && ['admin', 'gerente', 'cajero'].includes(usuario.rol)) { %>
                         <button id="btnFacturarPedido" class="btn btn-teal btn-lg fw-bold shadow-sm mb-1">
                             <i class="bi bi-cash-coin me-2"></i>Cobrar
                         </button>
@@ -227,7 +227,7 @@
                     
                     <!-- BOTÓN DE GUARDAR: Siempre habilitado -->
                     <button id="btnEnviarCocina" class="btn btn-warning w-100 text-dark fw-bold btn-lg shadow-sm">
-                        <i class="bi bi-printer me-1"></i> Guardar Ticket
+                        <i class="bi bi-send me-1"></i> Enviar comanda
                     </button>
                 </div>
             </div>
@@ -290,8 +290,8 @@
 
         // 4. Preguntar destino
         const { value: mesaDestinoId } = await Swal.fire({
-            title: `<i class="bi bi-arrow-left-right"></i> Mover Pedido`,
-            html: `¿A qué mesa quieres trasladar el pedido de <b>${numeroMesaOrigen}</b>?`,
+            title: 'Mover pedido',
+            text: `¿A qué mesa quieres trasladar el pedido de ${numeroMesaOrigen}?`,
             input: 'select',
             inputOptions: opciones,
             inputPlaceholder: 'Selecciona destino...',
@@ -366,13 +366,9 @@
             const { isConfirmed } = await Swal.fire({
                 icon: 'warning',
                 title: 'Limpiar ticket actual',
-                html: `
-                    Este pedido ya está guardado en el sistema.<br><br>
-                    <b>Solo se eliminarán los productos agregados recientemente.</b><br>
-                    El pedido original NO será borrado.
-                `,
+                text: 'Se cancelará el pedido completo, se devolverá su stock y la mesa quedará disponible si no tiene otro pedido activo.',
                 showCancelButton: true,
-                confirmButtonText: 'Sí, limpiar ticket',
+                confirmButtonText: 'Sí, cancelar pedido',
                 cancelButtonText: 'Volver',
                 confirmButtonColor: '#dc3545',
                 target: canvasEl
@@ -387,8 +383,7 @@
                 didOpen: () => Swal.showLoading()
             });
 
-            // 👉 NUEVO ENDPOINT (solo limpia temporales)
-            const resp = await fetch(`/ventas/limpiar-temporales/${pedidoId}`, {
+            const resp = await fetch(`/mesas/pedidos/${pedidoId}`, {
                 method: 'DELETE'
             });
 
@@ -397,8 +392,8 @@
 
             await Swal.fire({
                 icon: 'success',
-                title: 'Ticket limpiado',
-                text: 'Los productos no guardados fueron eliminados.',
+                title: 'Pedido cancelado',
+                text: 'El stock y el estado de la mesa fueron conciliados.',
                 timer: 1500,
                 showConfirmButton: false
             });
@@ -407,48 +402,12 @@
             return;
         }
 
-        // =====================================================
-        // CASO 2: NO HAY PEDIDO → liberar mesa 🪑
-        // =====================================================
-        const { isConfirmed } = await Swal.fire({
-            icon: 'question',
-            title: '¿Cancelar pedido?',
-            html: `
-                No hay pedido guardado.<br>
-                Se eliminará el ticket y la mesa quedará libre.
-            `,
-            showCancelButton: true,
-            confirmButtonText: 'Sí, liberar mesa',
-            cancelButtonText: 'Volver',
-            confirmButtonColor: '#6c757d',
+        await Swal.fire({
+            icon: 'info',
+            title: 'Sin pedido activo',
+            text: 'No existe un pedido que pueda cancelarse desde esta pantalla.',
             target: canvasEl
         });
-
-        if (!isConfirmed) return;
-
-        Swal.fire({
-            title: 'Liberando mesa...',
-            allowOutsideClick: false,
-            target: canvasEl,
-            didOpen: () => Swal.showLoading()
-        });
-
-        const resp = await fetch(`/mesas/${mesaId}/liberar`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' }
-        });
-
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || 'Error al liberar mesa');
-
-        await Swal.fire({
-            icon: 'success',
-            title: 'Mesa liberada',
-            timer: 1200,
-            showConfirmButton: false
-        });
-
-        location.reload();
 
     } catch (err) {
         console.error('❌ Error:', err);
