@@ -54,3 +54,27 @@ Remaining/new:
 ## E2E status
 
 Server/session, KDS, croquis, transactional, tenant-isolation, and cleanup E2E were not run because the schema post-check stop condition fired before fixtures were created. The business tables remain empty.
+
+## Phase 04C Forward Fix and E2E
+
+### Forward fix
+
+The Supabase CLI was not present in the pnpm workspace, so the documented MCP/versioned-migration fallback was used. A new immutable repository migration, `20260928225500_restrict_app_sessions_service_role.sql`, was applied as live migration history version `20260928225532` with name `restrict_app_sessions_service_role`.
+
+`app_sessions` ACL before: `service_role=ALL` (CRUD plus TRUNCATE, REFERENCES, and TRIGGER).  
+ACL after: `postgres=arwdDxtm/postgres,service_role=arwd/postgres`.
+
+The final explicit grants for `service_role` are exactly DELETE, INSERT, SELECT, and UPDATE. `anon` and `authenticated` have no table privileges. RLS remains enabled.
+
+The post-migration schema audit now passes. The `app_sessions` RLS-without-policy advisor item is accepted because this is a backend-only table with no anon/authenticated grants and service-role-only CRUD.
+
+### Advisor rerun
+
+- Security: 19 informational RLS-without-policy findings; zero security-definer-view errors; zero mutable-search-path warnings.
+- Performance: 22 unindexed foreign keys and 9 auth-initplan warnings remain deferred; 29 unused-index findings are not actionable on an empty database.
+
+### Runtime stop condition
+
+Local verification passed (`pnpm install --frozen-lockfile`, `pnpm check`, 16/16 tests, and `node --check server.js`). `pnpm dev` was then attempted, but the runtime has no local `.env` and did not provide `SUPABASE_URL` or `SUPABASE_SERVICE_ROLE`. The server exited before establishing its database/session store.
+
+Per the Phase 04C stop condition, no E2E fixtures were created and session, KDS, croquis, transaction, and tenant-isolation E2E remain not run. Business tables remain empty; no cleanup operation was necessary.
