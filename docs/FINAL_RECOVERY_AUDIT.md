@@ -354,3 +354,36 @@ P2 OPEN: 0
 ROLLBACK REQUIRED: NO
 READY FOR RUNTIME VALIDATION: YES
 READY TO MERGE RECOVERY INTO MAIN: NO
+
+## Phase 06B runtime validation — 2026-09-29
+
+The environment gate was unblocked with the project's modern server-only `SUPABASE_SECRET_KEY`. The backend now prefers that officially recommended key form while retaining legacy `SUPABASE_SERVICE_ROLE` compatibility; `.env` remained ignored and untracked.
+
+The opt-in `pnpm test:e2e:live` runner completed 50/50 assertions against the real Express process and live Supabase project. It verified all six roles, session create/read/touch/expiry/destroy, POST and compatibility GET logout, cookie flags, RBAC, Origin handling, tenant IDOR rejection, KDS queues/transitions/SSE updates and heartbeat, Croquis persistence/reservation/deletion/XSS safety, order/invoice HTTP flows, Cash open/close/conflicts/export, XLSX import, SuperAdmin fail-closed behavior, login throttling, true simultaneous stock contention, and true simultaneous cash-open contention.
+
+Runtime validation found and repaired two application defects: valid Croquis entities were removed by malformed PostgREST `in` filters, and invalid login responses used HTTP 200 so the failure-only rate limiter could not count them. Both fixes have static regressions and live coverage.
+
+Selective cleanup completed. Live SQL confirmed zero rows in all audited business tables and `app_sessions`. Migration history and advisor counts remained unchanged. Final local checks pass with 26/26 static tests. The single moderate transitive `exceljs -> uuid` advisory remains deferred; no high or critical advisory exists.
+
+Detailed evidence: `docs/live-audit/2026-09-29-runtime-e2e.md`.
+
+### Phase 06B gates
+
+RUNTIME ENVIRONMENT: PASS
+SERVER/SESSION E2E: PASS
+AUTH/RBAC E2E: PASS
+TENANT IDOR E2E: PASS
+KDS HTTP/SSE E2E: PASS
+CROQUIS HTTP E2E: PASS
+CASH HTTP E2E: PASS
+REAL STOCK CONCURRENCY E2E: PASS
+REAL CASH CONCURRENCY E2E: PASS
+XLSX UPLOAD/EXPORT E2E: PASS
+HTTPS SECURE COOKIE E2E: NOT RUN
+IMAGE/OVERSIZED UPLOAD E2E: NOT RUN
+DATABASE CLEAN STATE: PASS
+P0 OPEN: 0
+P1 OPEN: 0
+P2 OPEN: 0
+ROLLBACK REQUIRED: NO
+READY TO MERGE RECOVERY INTO MAIN: YES, subject to owner review of the explicitly unrun deployment/upload cases.
