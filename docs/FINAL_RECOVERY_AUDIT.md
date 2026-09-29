@@ -387,3 +387,31 @@ P1 OPEN: 0
 P2 OPEN: 0
 ROLLBACK REQUIRED: NO
 READY TO MERGE RECOVERY INTO MAIN: YES, subject to owner review of the explicitly unrun deployment/upload cases.
+
+## Phase 06C pre-merge acceptance — 2026-09-29
+
+The residual upload gate is closed. A focused one-tenant `E2E_UPLOAD_*` suite passed 13/13 checks for invalid MIME, invalid extension, malformed and corrupt XLSX, XLSX/image size limits, valid PNG, image MIME spoof rejection, tenant-only persistence, no partial writes, and selective cleanup.
+
+Phase 06C added content-signature checks for XLSX/PNG/JPEG and stable 400/413 upload errors. Final local verification passes with 28/28 tests. Live migrations and advisor counts are unchanged; no database migration was required. Live SQL confirmed zero upload fixtures and zero `app_sessions`.
+
+HTTPS staging is unavailable, so production Secure-cookie E2E remains `NOT RUN` and is an explicit deployment prerequisite. Static production cookie and one-hop trust-proxy contracts remain unchanged.
+
+Detailed evidence: `docs/live-audit/2026-09-29-phase-06c-pre-merge.md`.
+
+RUNTIME 06B BASELINE: PASS
+UPLOAD E2E: PASS
+UPLOAD CLEANUP: PASS
+HTTPS STAGING: UNAVAILABLE
+PRODUCTION COOKIE E2E: NOT RUN
+SECRET SCAN: PASS
+DEPENDENCY HIGH: 0
+DEPENDENCY CRITICAL: 0
+P0 OPEN: 0
+P1 OPEN: 0
+P2 OPEN: 0
+DATABASE CLEAN STATE: PASS
+STATIC TEST SUITE: PASS
+ROLLBACK REQUIRED: NO
+MERGE AUTHORIZED: YES
+
+No merge to `main` was performed.
