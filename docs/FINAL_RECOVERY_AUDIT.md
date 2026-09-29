@@ -111,29 +111,32 @@ None open. No demonstrated auth bypass, tenant escape, client-controlled sale pr
 
 ### P2 — medium
 
-#### F05-P2-01 — Cash close is not atomic
+#### F05-P2-01 — Cash close is not atomic — RESOLVED / LIVE VERIFIED IN PHASE 06A
 
 - File/function: `routes/caja.js`, POST `/cerrar`.
 - Evidence: `STATIC EVIDENCE`; row state is read, sales are separately read, then the row is updated without an open-state predicate or transactional RPC.
 - Impact: concurrent close requests can both report success or calculate against slightly different windows.
 - Recommended action: move open/close invariants and calculation to a tenant-aware transactional RPC, or use a compare-and-set update plus explicit conflict response; add two-session E2E.
 - Merge blocker: NO for runtime-validation gate; YES for an unconditional production-ready claim.
+- Resolution: migration `20260929141231 harden_cash_operations` added `pos_close_cash` with tenant/user validation, a row lock, DB-side cutoff/calculation/update, and stable conflict semantics. Controlled live E2E passed.
 
-#### F05-P2-02 — Cash validation and timezone contract are incomplete
+#### F05-P2-02 — Cash validation and timezone contract are incomplete — RESOLVED / STATIC + LIVE VERIFIED IN PHASE 06A
 
 - File/function: `routes/caja.js`, `hoyISO`, `/abrir`, `/cerrar`.
 - Evidence: `STATIC EVIDENCE`; UTC date is used for a local business day and body monetary/turn fields lack strict finite/nonnegative/enum validation.
 - Impact: wrong-day grouping near midnight and malformed values reaching the database.
 - Recommended action: define restaurant timezone, validate with a schema, and enforce matching DB constraints.
 - Merge blocker: NO; runtime validation required.
+- Resolution: restaurants now have a required IANA timezone; business date is tenant-local; Joi, RPC validation, DB constraints, and the `monto_apertura` render fix are in place. HTTP runtime remains environment-blocked.
 
-#### F05-P2-03 — Dynamic HTML hardening remains incomplete
+#### F05-P2-03 — Dynamic HTML hardening remains incomplete — RESOLVED FOR IDENTIFIED SINKS IN PHASE 06A
 
 - File/function: `public/js/alerts.js`; context-sensitive JSON/script bootstraps in EJS; historical/compatibility views.
 - Evidence: `STATIC EVIDENCE`; `public/js/alerts.js` interpolates `mensaje` into `innerHTML`, although no active include was found. Active high-value KDS/Croquis/Registro/Ventas flows mostly escape or use text nodes.
 - Impact: reusing the dormant helper with attacker-controlled content would introduce DOM XSS; script-context JSON requires continued care.
 - Recommended action: delete or convert the helper to `textContent`/DOM construction and adopt one safe JSON-to-script bootstrap pattern.
 - Merge blocker: NO because no reachable exploit was demonstrated.
+- Resolution: the alert helper now constructs DOM nodes and uses text; active Croquis, area-list, and report bootstraps use the tested central script-context serializer. CSP P3 remains deferred.
 
 ### P3 — low
 
@@ -246,7 +249,7 @@ None open. No demonstrated auth bypass, tenant escape, client-controlled sale pr
 - Backup: establish and test a production backup/restore policy despite the one-time recovery backup waiver.
 - Runtime E2E sequence: start server; login with each role; verify session row create/get/touch/expiry/destroy and POST logout; confirm GET logout migration consumer; exercise RBAC/tenant IDOR; KDS queue/transitions and SSE connect/reconnect/cleanup; Croquis save/reload and occupied/reserved deletion rejection; sale/add/send/cancel/invoice/void HTTP; Cash open/close/double-close/local-midnight/exports; upload valid/invalid/oversized files; finally run true two-session stock contention and clean only named test fixtures.
 
-## Final gates
+## Phase 05 final gates (historical snapshot)
 
 DATABASE/RPC RECOVERY: PASS
 DATABASE TENANT ISOLATION: PASS
@@ -268,6 +271,86 @@ CASH HTTP E2E: NOT RUN
 REAL CONCURRENCY E2E: NOT RUN
 P0 OPEN: 0
 P1 OPEN: 0
+ROLLBACK REQUIRED: NO
+READY FOR RUNTIME VALIDATION: YES
+READY TO MERGE RECOVERY INTO MAIN: NO
+
+## Phase 06A stabilization — 2026-09-29
+
+### Git
+
+- Start/local baseline: `67cdeaddb92e37309473342d7668d2dbf214ebaf`.
+- Remote baseline was `72952d67b53d5ddb4572d9912c6be05c280a5dd1`; the audit commit was published normally, without force, before implementation.
+- No merge to `main` was performed.
+
+### Cash schema and RPCs
+
+- Repository migration: `20260929080623_harden_cash_operations.sql`; live history version: `20260929141231`, name `harden_cash_operations`.
+- `restaurantes.timezone` is `text NOT NULL DEFAULT 'America/El_Salvador'`.
+- Checks reject negative/non-finite opening, closing, and cash-sales amounts; shift is limited to `1` or `2`. Difference remains allowed to be negative.
+- Partial unique index `uq_cortes_caja_restaurante_abierta` enforces one open cash session per restaurant.
+- `pos_open_cash(bigint,bigint,text,numeric,text)` validates restaurant, IANA timezone through `pg_timezone_names`, active tenant user, shift, amount, and details length; it derives the business date with `now() AT TIME ZONE restaurante.timezone`.
+- `pos_close_cash(bigint,bigint,bigint,numeric,text)` locks the tenant cash row `FOR UPDATE`, captures a single UTC cutoff compatible with the legacy timestamp-without-time-zone columns, counts only active cash invoices in the opening/cutoff window, calculates expected amount/difference, and closes in the same transaction.
+- Both functions are `SECURITY INVOKER`, use an empty search path, deny PUBLIC/anon/authenticated, and grant only `service_role` (`LIVE VERIFIED`).
+
+### Cash application
+
+- POST open/close now use the RPCs; Express no longer reads invoices or writes the close directly.
+- Joi rejects unknown shifts, malformed IDs, negative/non-numeric amounts, unexpected payload properties, excessive denomination entries, and invalid denomination counts.
+- Denomination details are validated and explicitly serialized to bounded JSON text.
+- GET Caja and daily Excel export use the reusable tenant-timezone helper; the UTC `hoyISO` contract is gone.
+- `views/caja.ejs` renders live `monto_apertura`, while the documented request field remains `monto_inicial`.
+- Expected RPC failures map to stable 400/403/404/409 responses; unexpected database messages are logged server-side but not returned raw.
+
+### HTML safety
+
+- `public/js/alerts.js` no longer interpolates messages through `innerHTML` and no longer uses inline alert-button `onclick`.
+- `utils/safe-json.js` neutralizes `<`, `>`, `&`, U+2028, and U+2029 while preserving JSON roundtrip.
+- Active JSON/script bootstraps in Croquis, area list, and reports use the central serializer.
+- CSP still allows inline scripts/styles; F05-P3-03 remains deferred as intended.
+
+### Cash DB/RPC E2E
+
+Controlled `E2E_TEST_CASH_*` fixtures ran in one transaction and passed:
+
+- Open with amount 100/shift 1, correct tenant and tenant-local business date.
+- Duplicate open rejected; a second tenant opened independently.
+- Both `America/El_Salvador` and `Pacific/Kiritimati` dates matched PostgreSQL business-date calculation; invalid timezone rejected.
+- Closing counted only the active cash invoice (25), excluding active transfer (40) and annulled cash (60).
+- Expected amount was 125 and closing amount 123 produced difference -2.
+- Double close rejected without changing the recorded close; cross-tenant close rejected.
+- Negative opening and numeric NaN closing were rejected.
+- True simultaneous-session cash concurrency was not run; the partial unique index and row lock are structurally verified only.
+- Selective cleanup removed all named fixtures. Final counts for restaurants, users, clients, invoices, and cash cuts are zero.
+
+### Advisors and tests
+
+- Security advisor unchanged: 19 expected/deferred `rls_enabled_no_policy` INFO findings; no new security finding.
+- Performance advisor unchanged: 22 unindexed foreign keys, 9 auth-initplan warnings, and 10 empty-database unused-index notices; no new finding from this migration.
+- Frozen pnpm install, recovery check, 23/23 tests, Node syntax check, and diff check pass.
+- Runtime environment remains blocked: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE`, and `SESSION_SECRET` are absent. Cash HTTP and other critical HTTP E2E were not run.
+
+### Phase 06A gates
+
+GIT BASELINE RECONCILED: PASS
+F05-P2-01 CASH ATOMICITY: PASS
+F05-P2-02 CASH VALIDATION/TIMEZONE: PASS
+F05-P2-03 HTML HARDENING: PASS
+CASH DB/RPC E2E: PASS
+CASH TENANT ISOLATION: PASS
+CASH E2E CLEANUP: PASS
+POST-FIX SECURITY AUDIT: PASS
+STATIC TEST SUITE: PASS
+RUNTIME ENVIRONMENT: BLOCKED
+SERVER/SESSION E2E: NOT RUN
+KDS HTTP/SSE E2E: NOT RUN
+CROQUIS HTTP E2E: NOT RUN
+CASH HTTP E2E: NOT RUN
+REAL STOCK CONCURRENCY E2E: NOT RUN
+REAL CASH CONCURRENCY E2E: NOT RUN
+P0 OPEN: 0
+P1 OPEN: 0
+P2 OPEN: 0
 ROLLBACK REQUIRED: NO
 READY FOR RUNTIME VALIDATION: YES
 READY TO MERGE RECOVERY INTO MAIN: NO
