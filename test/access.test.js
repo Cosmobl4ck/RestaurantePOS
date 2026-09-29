@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { normalizeRole, hasPermission } = require('../middlewares/access');
+const fs = require('node:fs');
+const path = require('node:path');
 
 test('normaliza exclusivamente los aliases históricos de roles', () => {
   assert.equal(normalizeRole('cocinero'), 'cocina');
@@ -24,4 +26,12 @@ test('los roles operativos no heredan permisos administrativos', () => {
   }
   assert.equal(hasPermission('cocina', 'sales.invoice'), false);
   assert.equal(hasPermission('bar', 'floorplan.edit'), false);
+});
+
+test('el limitador de login cuenta fallos, no autenticaciones validas', () => {
+  const server = fs.readFileSync(path.resolve(__dirname, '..', 'server.js'), 'utf8');
+  const auth = fs.readFileSync(path.resolve(__dirname, '..', 'routes', 'auth.js'), 'utf8');
+  assert.match(server, /skipSuccessfulRequests:\s*true/);
+  assert.match(auth, /status\(401\)\.render\('login'/);
+  assert.match(auth, /status\(403\)\.render\('login'/);
 });

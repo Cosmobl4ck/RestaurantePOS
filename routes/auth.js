@@ -30,7 +30,7 @@ router.post('/login', async (req, res) => {
     console.log(`📥 INTENTO DE LOGIN: Negocio[${codigoNegocio}] Usuario[${nombreUsuario}]`);
 
     if (!codigoNegocio || !nombreUsuario || !pinRecibido) {
-        return res.render('login', { error: 'Por favor completa todos los campos.' });
+        return res.status(400).render('login', { error: 'Por favor completa todos los campos.' });
     }
 
     try {
@@ -43,11 +43,11 @@ router.post('/login', async (req, res) => {
         if (restauranteError) throw restauranteError;
 
         if (!restaurante) {
-            return res.render('login', { error: 'Credenciales incorrectas o negocio no existe.' });
+            return res.status(401).render('login', { error: 'Credenciales incorrectas o negocio no existe.' });
         }
 
         if (restaurante.estado !== 'activo') {
-            return res.render('login', { error: 'Este negocio no esta activo.' });
+            return res.status(403).render('login', { error: 'Este negocio no esta activo.' });
         }
 
         const ahora = new Date();
@@ -57,7 +57,7 @@ router.post('/login', async (req, res) => {
         if (vencimiento && ahora > vencimiento) {
             const limiteBloqueo = new Date(vencimiento.getTime() + 48 * 60 * 60 * 1000);
             if (ahora > limiteBloqueo) {
-                return res.render('login', { error: 'La licencia de este negocio esta vencida (bloqueado).' });
+                return res.status(403).render('login', { error: 'La licencia de este negocio esta vencida (bloqueado).' });
             }
         }
 
@@ -73,13 +73,13 @@ router.post('/login', async (req, res) => {
         if (userError) throw userError;
 
         if (!user) {
-            return res.render('login', { error: 'Credenciales incorrectas o usuario inactivo.' });
+            return res.status(401).render('login', { error: 'Credenciales incorrectas o usuario inactivo.' });
         }
 
         const esValido = await bcrypt.compare(pinRecibido, String(user.pin_hash || '').trim());
 
         if (!esValido) {
-            return res.render('login', { error: 'PIN incorrecto.' });
+            return res.status(401).render('login', { error: 'PIN incorrecto.' });
         }
 
         const sessionUser = {

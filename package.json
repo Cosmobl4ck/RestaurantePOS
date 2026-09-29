@@ -24,6 +24,7 @@
     "build": "pkg . --public --target node18-win-x64",
     "check": "node scripts/verify-recovery.js",
     "test": "node --test test/*.test.js",
+    "test:e2e:live": "node scripts/runtime-e2e.js",
     "audit:deps": "pnpm audit"
   },
   "dependencies": {

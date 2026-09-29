@@ -27,11 +27,11 @@ const { serializeForHtmlScript } = require('./utils/safe-json');
 // ==========================================
 // 1. VALIDAR CONFIGURACIÓN
 // ==========================================
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE || !process.env.SESSION_SECRET) {
+if (!process.env.SUPABASE_URL || !(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE) || !process.env.SESSION_SECRET) {
     console.error('❌ FALTA CONFIGURACIÓN');
     console.error('   Crear archivo .env con:');
     console.error('   - SUPABASE_URL');
-    console.error('   - SUPABASE_SERVICE_ROLE');
+    console.error('   - SUPABASE_SECRET_KEY (recomendada) o SUPABASE_SERVICE_ROLE (legada)');
     console.error('   - SESSION_SECRET');
     process.exit(1);
 }
@@ -93,6 +93,7 @@ app.use(limiter);
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 5,  // Solo 5 intentos por 15 minutos
+    skipSuccessfulRequests: true,
     skip: (req) => req.method !== 'POST' || !req.path.includes('login')
 });
 app.use(loginLimiter);

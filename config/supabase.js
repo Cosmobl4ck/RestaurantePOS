@@ -1,27 +1,28 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
-const { SUPABASE_URL, SUPABASE_SERVICE_ROLE } = process.env;
+const { SUPABASE_URL, SUPABASE_SECRET_KEY, SUPABASE_SERVICE_ROLE } = process.env;
+const supabaseServerKey = SUPABASE_SECRET_KEY || SUPABASE_SERVICE_ROLE;
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE) {
-    console.error('ERROR: SUPABASE_URL y SUPABASE_SERVICE_ROLE son obligatorias para el backend.');
+if (!SUPABASE_URL || !supabaseServerKey) {
+    console.error('ERROR: SUPABASE_URL y una clave server-side de Supabase son obligatorias para el backend.');
     process.exit(1);
 }
 
-if (SUPABASE_SERVICE_ROLE.startsWith('eyJ')) {
+if (supabaseServerKey.startsWith('eyJ')) {
     try {
-        const payload = JSON.parse(Buffer.from(SUPABASE_SERVICE_ROLE.split('.')[1] || '', 'base64url').toString());
+        const payload = JSON.parse(Buffer.from(supabaseServerKey.split('.')[1] || '', 'base64url').toString());
         if (payload.role !== 'service_role') {
-            console.error(`ERROR: SUPABASE_SERVICE_ROLE contiene el rol "${payload.role}".`);
+            console.error(`ERROR: la clave server-side de Supabase contiene el rol "${payload.role}".`);
             process.exit(1);
         }
     } catch (error) {
-        console.error('ERROR: SUPABASE_SERVICE_ROLE no contiene un JWT valido.');
+        console.error('ERROR: la clave server-side de Supabase no contiene un JWT valido.');
         process.exit(1);
     }
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, {
+const supabase = createClient(SUPABASE_URL, supabaseServerKey, {
     auth: { persistSession: false, autoRefreshToken: false }
 });
 

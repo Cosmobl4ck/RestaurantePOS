@@ -177,7 +177,7 @@ router.post('/guardar-croquis', async (req, res) => {
                 .delete()
                 .eq('area_id', area_id)
                 .eq('restaurante_id', restaurante_id)
-                .not('id', 'in', `(${idsActuales.map(i => `'${i}'`).join(',')})`);
+                .not('id', 'in', `(${idsActuales.join(',')})`);
 
         } else {
             await supabase
@@ -245,7 +245,7 @@ router.post('/guardar-croquis', async (req, res) => {
                 .eq('area_id', area_id)
                 .eq('restaurante_id', restaurante_id)
                 .eq('estado', 'libre')           // NUNCA borrar mesas ocupadas/reservadas
-                .not('id_externo', 'in', `(${idsExternos.map(i => `'${i}'`).join(',')})`);
+                .not('id_externo', 'in', `(${idsExternos.join(',')})`);
 
         } else {
             // Si quitaron todas las mesas, borrar solo las libres

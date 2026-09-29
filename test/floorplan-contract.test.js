@@ -20,3 +20,9 @@ test('save and delete endpoints exist with occupied-table protection', () => {
   assert.match(route, /router\.delete\('\/eliminar\/:id'/);
   assert.match(route, /mesas ocupadas\/reservadas/);
 });
+
+test('PostgREST retention filters keep current croquis identifiers', () => {
+  assert.match(route, /`\(\$\{idsActuales\.join\(','\)\}\)`/);
+  assert.match(route, /`\(\$\{idsExternos\.join\(','\)\}\)`/);
+  assert.doesNotMatch(route, /map\(i => `?'\$\{i\}'`?\)/);
+});
