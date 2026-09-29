@@ -8,15 +8,15 @@
 cd SistemaBase
 
 # Instalar dependencias
-npm install
-npm install @supabase/supabase-js helmet express-rate-limit joi
+pnpm install
+pnpm install @supabase/supabase-js helmet express-rate-limit joi
 
 # Crear .env
 cp .env.example .env
 # Editar .env con tus credenciales
 
 # Iniciar en desarrollo
-npm run dev
+pnpm dev
 
 # Debería ver:
 # ✅ Supabase conectado correctamente
@@ -34,7 +34,7 @@ curl -X POST http://localhost:3005/login \
 curl http://localhost:3005/productos
 
 # Ver logs en tiempo real
-npm run dev 2>&1 | grep -i error
+pnpm dev 2>&1 | grep -i error
 ```
 
 ### Base de Datos
@@ -66,7 +66,7 @@ SELECT pg_size_pretty(pg_database_size('postgres'));
      - Project URL → SUPABASE_URL
      - anon public → SUPABASE_KEY
   4. Guardar en .env
-  5. Reiniciar: npm run dev
+  5. Reiniciar: pnpm dev
 ```
 
 ### Error 2: "401 Unauthorized - JWT signature invalid"
@@ -118,7 +118,7 @@ SELECT pg_size_pretty(pg_database_size('postgres'));
 
 ✅ SOLUCIÓN (Development):
   - En server.js: cookie.secure = false ✅
-  - Reiniciar: npm run dev
+  - Reiniciar: pnpm dev
 
 ✅ SOLUCIÓN (Production):
   - Necesita HTTPS obligatoriamente
@@ -141,7 +141,7 @@ SELECT pg_size_pretty(pg_database_size('postgres'));
   2. Limpiar cookies del navegador:
      F12 → Application → Cookies → Eliminar
   
-  3. Reiniciar servidor: npm run dev
+  3. Reiniciar servidor: pnpm dev
 ```
 
 ### Error 7: "Rate limit exceeded"
@@ -300,7 +300,7 @@ LIMIT 10;
 
 ```bash
 # 1. Instalar Vercel CLI
-npm i -g vercel
+pnpm add --global vercel
 
 # 2. Login
 vercel login
@@ -336,7 +336,7 @@ vercel
 # ⚠️ Heroku free tier descontinuado (solo pago)
 # Pero si quieres probar:
 
-npm i -g heroku
+pnpm add --global heroku
 
 heroku login
 heroku create your-app-name
@@ -383,7 +383,7 @@ const { data, error } = await supabase.auth.signInWithPassword({
 
 ### 4. Caché de Sesiones (Para escala)
 ```bash
-npm install redis connect-redis
+pnpm install redis connect-redis
 
 # Usar Redis en lugar de sesión en memoria
 ```
@@ -412,7 +412,7 @@ npm install redis connect-redis
 1. **¿Error en consola del navegador?**
    - F12 → Console tab → Ver error exacto
 
-2. **¿Error en terminal (npm run dev)?**
+2. **¿Error en terminal (pnpm dev)?**
    - Copiar mensaje completo
    - Buscar en Google
    - Ejecutar: `grep "error" ~/.npm/debug.log`
@@ -464,7 +464,7 @@ npm install redis connect-redis
 
 Después de migrar, verifica:
 
-- [ ] npm run dev se ejecuta sin errores
+- [ ] pnpm dev se ejecuta sin errores
 - [ ] Login funciona con MARROCOS01 / Admin / 1234
 - [ ] Puedo crear un producto
 - [ ] Puedo actualizar un producto
@@ -474,7 +474,7 @@ Después de migrar, verifica:
 - [ ] Segunda y tercera ruta migradas sin errores
 - [ ] Database tiene datos correctamente
 - [ ] Supabase Dashboard muestra actividad
-- [ ] npm start funciona para producción
+- [ ] pnpm start funciona para producción
 - [ ] Deploy en Vercel/Railway es exitoso
 - [ ] Acceso remoto funciona (no solo localhost)
 - [ ] Backups automáticos están configurados

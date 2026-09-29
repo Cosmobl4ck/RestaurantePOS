@@ -104,10 +104,10 @@ mysqldump -h localhost -u cosmo -p12345678 restaurante_caja > backup.sql
 ### Paso 3.1: Instalar Supabase
 ```bash
 cd SistemaBase
-npm uninstall mysql2                    # Eliminar MySQL driver
-npm install @supabase/supabase-js       # Supabase client
-npm install helmet express-rate-limit   # Seguridad
-npm install joi                         # Validación
+pnpm remove mysql2                    # Eliminar MySQL driver
+pnpm install @supabase/supabase-js       # Supabase client
+pnpm install helmet express-rate-limit   # Seguridad
+pnpm install joi                         # Validación
 ```
 
 ### Paso 3.2: Verificar package.json
@@ -364,7 +364,7 @@ router.get('/abiertos', authRole(['mesero', 'cajero']), async (req, res) => {
 ### Paso 6.1: Test Local
 ```bash
 cd SistemaBase
-npm run dev
+pnpm dev
 
 # Debería ver:
 # ✅ Supabase conectado correctamente
@@ -412,7 +412,7 @@ VALUES (2, 'Admin2', 'admin', '$2b$10$vI8A7S/Yw.wWf7yYVpS7fO6f7z8f9g0h1i2j3k4l5m
 ### Opción 1: VERCEL (Recomendado)
 ```bash
 # 1. Instalar vercel cli
-npm i -g vercel
+pnpm add --global vercel
 
 # 2. Deploy
 vercel
@@ -443,11 +443,11 @@ git push heroku main
 ssh user@your-server.com
 git clone your-repo.git
 cd your-repo/SistemaBase
-npm install
-npm start
+pnpm install
+pnpm start
 
 # Con PM2 (process manager):
-npm i -g pm2
+pnpm add --global pm2
 pm2 start server.js --name "pos-sistema"
 pm2 startup
 pm2 save
@@ -484,7 +484,7 @@ pm2 save
 ### Error: "Falta SUPABASE_URL"
 ```
 → Crear archivo .env con las credenciales
-→ Reiniciar servidor (npm run dev)
+→ Reiniciar servidor (pnpm dev)
 ```
 
 ### Error: "P0001: permission denied for schema public"

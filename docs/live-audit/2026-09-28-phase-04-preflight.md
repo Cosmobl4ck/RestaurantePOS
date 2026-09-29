@@ -1,0 +1,88 @@
+# Phase 04 live preflight — stopped at backup gate
+
+Timestamp: `2026-09-28T22:24:51Z`
+
+Project: `Marroco'sPOS`  
+Project ref: `dnqkeqvyqtfnhhxxvamw`  
+Region: `us-west-2`  
+Status: `ACTIVE_HEALTHY`  
+PostgreSQL: `17.6.1.121`
+
+No live migration was applied. The process stopped because a restorable backup could not be verified through the available Supabase connector, and no browser surface was available to inspect managed backups/PITR.
+
+## Git and local verification
+
+- Start SHA: `d4fbe9a4a2ed736cfd0a9f823e19f160b72677c2`
+- Branch: `recovery/restaurante-pos-pnpm-hardening`
+- Initial worktree: clean
+- `pnpm install --frozen-lockfile`: pass
+- `pnpm check`: pass
+- `pnpm test`: 16/16 pass
+- `node --check server.js`: pass
+
+The required reserved-destination guard for `pos_move_order` was added and committed as `0acc018` before any live apply.
+
+## Read-only live preflight
+
+| Check | Result |
+|---|---|
+| Roles | `admin=4`, `bartender=1`, `cocinero=1` |
+| Row counts | restaurantes=4, usuarios=6, productos=13, clientes=1, mesas=48, pedidos=16, pedido_items=45, facturas=11 |
+| Pedido states | abierto=3, cancelado=2, cerrado=11 |
+| Item states | pendiente=37, cancelado=8 |
+| `mesas.id_externo IS NOT NULL` | 0 |
+| `public.app_sessions` | absent |
+| `facturas.pedido_id` | absent |
+| `public.pos_*` functions | 0 |
+| Active order/table integrity anomalies | 0 |
+| Migration history | empty |
+
+## Advisor baseline
+
+Security:
+
+- 18 `rls_enabled_no_policy` informational findings.
+- 2 `security_definer_view` errors for the waste views.
+- 3 mutable function `search_path` warnings.
+
+Performance:
+
+- 22 unindexed foreign-key findings.
+- 9 `auth_rls_initplan` warnings.
+- 21 unused-index informational findings.
+
+The candidate reconciliation migration is expected to resolve the two view errors and the three mutable-function warnings. No after-state exists because it was not applied.
+
+## Backup gate
+
+- Method: unavailable/unverified
+- Backup timestamp: unavailable
+- Verified: no
+- Restore capability: not demonstrated
+- Decision: stop before migration
+
+To resume, provide verifiable evidence of a managed backup/PITR restore point or an authenticated PostgreSQL dump that covers schema, data, functions, views, triggers, constraints, indexes, grants, and policies.
+
+## Backup verification
+
+Phase 04A rechecked the backup gate without repeating the completed live audit.
+
+- Method: no managed-backup API is exposed by the available Supabase connector; authenticated PostgreSQL dump unavailable
+- Timestamp UTC: not available
+- Project ref: `dnqkeqvyqtfnhhxxvamw`
+- Backup artifact location: none
+- File size: not applicable
+- Validation command: tool availability check for `pg_dump` and `pg_restore`
+- Validation result: both tools unavailable; no local `.env` containing database credentials; only `DATABASE_URL_TEST` exists in the process environment and was not treated as production authorization
+- Restore tested: no
+- Restore target: none
+- Restore capability: unknown
+- Gate result: blocked
+
+The repository now ignores `*.dump`, `*.backup`, `*.sql.gz`, and `backups/` so a future production dump cannot be committed accidentally. No live migration was applied.
+
+## Owner waiver and Phase 04B
+
+The owner explicitly waived the backup gate because all existing application rows were disposable test data and authorized a reset limited to RestaurantePOS application data. This waiver did not extend to Supabase system schemas, Storage, Auth infrastructure, extensions, secrets, or migration history.
+
+On `2026-09-28`, the approved application tables were reset transactionally and the reconciliation migration was applied. See `2026-09-28-phase-04-live-apply.md` for the post-apply stop condition. The earlier sentence above records the state at the time of Phase 04A and is retained as historical context.

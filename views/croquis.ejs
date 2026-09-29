@@ -1,0 +1,528 @@
+<%- include('partials/navbar') %>
+
+<style>
+    /* ===== PETRONAS CROQUIS DESIGNER v2.0 ===== */
+    @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+    
+    * { box-sizing: border-box; }
+
+    .croquis-root {
+        display: flex;
+        height: calc(100vh - 64px);
+        width: 100%;
+        background: #08090A;
+        overflow: hidden;
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .croquis-aside {
+        width: 220px;
+        min-width: 220px;
+        background: #0D0E10;
+        border-right: 1px solid #1A1D20;
+        display: flex;
+        flex-direction: column;
+        z-index: 20;
+        box-shadow: 2px 0 20px rgba(0,0,0,0.6);
+        overflow: hidden; /* NUNCA scroll en el aside completo */
+    }
+
+    /* Zona central scrolleable — solo la lista de áreas/mesas */
+    .aside-scroll-zone {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        min-height: 0; /* crítico para que flex no expanda infinito */
+        scrollbar-width: thin;
+        scrollbar-color: #1A1D20 transparent;
+    }
+    .aside-scroll-zone::-webkit-scrollbar { width: 4px; }
+    .aside-scroll-zone::-webkit-scrollbar-track { background: transparent; }
+    .aside-scroll-zone::-webkit-scrollbar-thumb { background: #1A1D20; border-radius: 2px; }
+    .aside-scroll-zone::-webkit-scrollbar-thumb:hover { background: #00A19C44; }
+
+    /* Footer fijo — siempre visible abajo */
+    .aside-footer {
+        flex-shrink: 0;
+        border-top: 1px solid #1A1D20;
+        padding: 10px 12px 12px;
+        background: #0D0E10;
+    }
+
+    .aside-header {
+        padding: 16px 16px 10px;
+        border-bottom: 1px solid #1A1D20;
+    }
+
+    .aside-fase-title {
+        font-family: 'Rajdhani', sans-serif;
+        color: #00A19C;
+        font-size: 1.1rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        display: block;
+    }
+
+    .aside-area-badge {
+        display: none;
+        background: rgba(0,161,156,0.12);
+        border: 1px solid rgba(0,161,156,0.3);
+        border-radius: 4px;
+        padding: 3px 8px;
+        color: #00A19C;
+        font-size: 10px;
+        font-weight: 600;
+        margin-top: 6px;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+
+    /* Botón volver */
+    #btn-volver-areas {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        background: transparent;
+        border: 1px solid #1A1D20;
+        color: #8A8D91;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 10px 16px 0;
+        transition: all 0.15s;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    #btn-volver-areas:hover { border-color: #00A19C; color: #00A19C; }
+
+    /* Sección de formas */
+    .aside-section-title {
+        color: #555;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        padding: 12px 16px 6px;
+    }
+
+    .formas-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 0 12px 12px;
+    }
+
+    .forma-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 10px 6px 8px;
+        background: #101214;
+        border: 1px solid #1A1D20;
+        border-radius: 6px;
+        cursor: grab;
+        color: #8A8D91;
+        font-size: 9px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.15s;
+        user-select: none;
+    }
+    .forma-item:hover {
+        border-color: #00A19C;
+        color: #00A19C;
+        background: rgba(0,161,156,0.06);
+        box-shadow: 0 0 10px rgba(0,161,156,0.1);
+    }
+    .forma-item:active { cursor: grabbing; }
+
+    .forma-preview {
+        background: transparent;
+        border: 1.5px solid currentColor;
+        flex-shrink: 0;
+    }
+    .forma-preview.cuadrado { width: 28px; height: 28px; border-radius: 4px; }
+    .forma-preview.circulo { width: 28px; height: 28px; border-radius: 50%; }
+    .forma-preview.rect-h { width: 38px; height: 24px; border-radius: 3px; }
+    .forma-preview.rect-v { width: 24px; height: 38px; border-radius: 3px; }
+
+    /* Lista de áreas */
+    .aside-areas-list {
+        padding: 0 10px 8px;
+    }
+
+    /* Panel edición */
+    .aside-panel-edicion {
+        border-top: 1px solid #1A1D20;
+        padding: 12px;
+        display: none;
+        margin-top: 4px;
+    }
+
+    .panel-header {
+        font-family: 'Rajdhani', sans-serif;
+        color: #00A19C;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+    }
+
+    .panel-label {
+        display: block;
+        color: #555;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 4px;
+    }
+
+    .panel-input {
+        width: 100%;
+        background: #08090A;
+        border: 1px solid #1A1D20;
+        color: #E5E4E2;
+        font-size: 12px;
+        padding: 6px 8px;
+        border-radius: 4px;
+        outline: none;
+        transition: border-color 0.15s;
+        font-family: 'Inter', sans-serif;
+    }
+    .panel-input:focus { border-color: #00A19C; }
+
+    .btn-panel-primary {
+        display: block;
+        width: 100%;
+        background: #00A19C;
+        color: #08090A;
+        border: none;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 8px;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        transition: all 0.15s;
+    }
+    .btn-panel-primary:hover { background: #00C4BE; box-shadow: 0 0 12px rgba(0,161,156,0.4); }
+
+    .btn-panel-danger {
+        display: block;
+        width: 100%;
+        background: transparent;
+        color: #FF6B6B;
+        border: 1px solid #FF6B6B44;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 7px;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        transition: all 0.15s;
+    }
+    .btn-panel-danger:hover { background: rgba(255,107,107,0.08); border-color: #FF6B6B88; }
+
+    /* Botón guardar */
+    .btn-guardar-main {
+        width: 100%;
+        background: #00A19C;
+        color: #08090A;
+        border: none;
+        border-radius: 5px;
+        font-size: 11px;
+        font-weight: 800;
+        padding: 11px;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 0 20px rgba(0,161,156,0.3);
+        transition: all 0.15s;
+        font-family: 'Rajdhani', sans-serif;
+    }
+    .btn-guardar-main:hover { background: #00C4BE; box-shadow: 0 0 25px rgba(0,161,156,0.5); }
+    .btn-guardar-main:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ===== CANVAS ===== */
+    .croquis-canvas {
+        flex: 1;
+        position: relative;
+        background-color: #08090A;
+        background-image:
+            linear-gradient(rgba(0,161,156,0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,161,156,0.04) 1px, transparent 1px);
+        background-size: 20px 20px;
+        overflow: hidden;
+    }
+
+    /* Hint central cuando canvas vacío */
+    .canvas-hint {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        gap: 8px;
+        opacity: 0.25;
+    }
+    .canvas-hint svg { color: #00A19C; }
+    .canvas-hint p {
+        color: #00A19C;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+    }
+
+    /* Breadcrumb fase */
+    .fase-breadcrumb {
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(13,14,16,0.85);
+        border: 1px solid #1A1D20;
+        border-radius: 20px;
+        padding: 5px 16px;
+        font-size: 11px;
+        font-family: 'Rajdhani', sans-serif;
+        color: #555;
+        letter-spacing: 1px;
+        font-weight: 600;
+        pointer-events: none;
+        backdrop-filter: blur(8px);
+        z-index: 30;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .fase-breadcrumb .sep { color: #333; }
+    .fase-breadcrumb .active { color: #00A19C; }
+
+    /* Atajos de teclado hint */
+    .keyboard-hint {
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
+        background: rgba(13,14,16,0.7);
+        border: 1px solid #1A1D20;
+        border-radius: 6px;
+        padding: 8px 12px;
+        pointer-events: none;
+        backdrop-filter: blur(6px);
+    }
+    .keyboard-hint span {
+        display: block;
+        color: #333;
+        font-size: 9px;
+        letter-spacing: 0.5px;
+    }
+    .keyboard-hint kbd {
+        background: #1A1D20;
+        color: #555;
+        border-radius: 3px;
+        padding: 1px 4px;
+        font-size: 9px;
+    }
+    .aside-footer {
+        flex-shrink: 0;
+        border-top: 1px solid #1A1D20;
+        /* Aumentamos el padding inferior a 32px para subir el botón */
+        padding: 12px 12px 32px; 
+        background: #0D0E10;
+    }
+</style>
+
+<div id="modal-precaucion" style="display:none; position:fixed; inset:0; background:rgba(8,9,10,0.85); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(6px);">
+    <div style="background:#0D0E10; border:1px solid #FF6B6B; border-radius:8px; padding:30px; max-width:400px; text-align:center; box-shadow:0 10px 40px rgba(255,107,107,0.15);">
+        <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#FF6B6B" stroke-width="2" style="margin-bottom:16px;">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <h2 style="color:#E5E4E2; font-family:'Rajdhani', sans-serif; margin:0 0 10px; font-size:22px; letter-spacing:1px; text-transform:uppercase;">Precaución</h2>
+        <p style="color:#8A8D91; font-size:13px; margin-bottom:24px; line-height:1.6;">Modificarás tu croquis. Alterar la posición o eliminar áreas/mesas activas puede afectar las operaciones actuales del restaurante.</p>
+        <button id="btn-modal-editar" disabled style="background:#FF6B6B; color:#08090A; border:none; padding:12px 24px; border-radius:5px; font-weight:800; cursor:not-allowed; opacity:0.4; transition:all 0.3s; width:100%; text-transform:uppercase; letter-spacing:1px; font-family:'Rajdhani', sans-serif; font-size:14px;">
+            Continuar (5s)
+        </button>
+        <button onclick="window.location.href='/areas'" style="background:transparent; color:#8A8D91; border:1px solid #1A1D20; padding:10px 24px; border-radius:5px; font-weight:600; cursor:pointer; margin-top:10px; width:100%; transition:all 0.2s; font-size:12px; text-transform:uppercase;">
+            Cancelar y Volver
+        </button>
+    </div>
+</div>
+
+<div class="croquis-root">
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="croquis-aside">
+
+        <!-- CABECERA FIJA — siempre visible arriba -->
+        <div class="aside-header" style="flex-shrink:0;">
+            <span id="titulo-fase" class="aside-fase-title">Diseño de Áreas</span>
+            <span id="area-activa-nombre" class="aside-area-badge"></span>
+        </div>
+
+        <!-- Botón volver — fijo bajo la cabecera -->
+        <button id="btn-volver-areas" onclick="volverAreas()" style="flex-shrink:0;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            Volver a Áreas
+        </button>
+
+        <!-- FORMAS — fijas, no hacen scroll (son pocas y siempre visibles) -->
+        <div id="sidebar-formas-areas" style="flex-shrink:0;">
+            <p class="aside-section-title">Formas de Área</p>
+            <div class="formas-grid">
+                <div class="forma-item" draggable="true"
+                     ondragstart="event.dataTransfer.setData('figura-tipo','cuadrado')">
+                    <div class="forma-preview cuadrado"></div>
+                    Cuadrado
+                </div>
+                <div class="forma-item" draggable="true"
+                     ondragstart="event.dataTransfer.setData('figura-tipo','circulo')">
+                    <div class="forma-preview circulo"></div>
+                    Círculo
+                </div>
+                <div class="forma-item" draggable="true"
+                     ondragstart="event.dataTransfer.setData('figura-tipo','rect-h')">
+                    <div class="forma-preview rect-h"></div>
+                    Rect. Horiz.
+                </div>
+                <div class="forma-item" draggable="true"
+                     ondragstart="event.dataTransfer.setData('figura-tipo','rect-v')">
+                    <div class="forma-preview rect-v"></div>
+                    Rect. Vert.
+                </div>
+            </div>
+            <!-- Separador título lista -->
+            <p class="aside-section-title">Mis Áreas</p>
+        </div>
+
+        <div id="sidebar-formas-mesas" style="display:none; flex-shrink:0;">
+            <p class="aside-section-title">Tipo de Mesa</p>
+            <div class="formas-grid">
+                <div class="forma-item" draggable="true"
+                     ondragstart="event.dataTransfer.setData('figura-tipo','cuadrado')">
+                    <div class="forma-preview cuadrado"></div>
+                    Cuadrado
+                </div>
+                <div class="forma-item" draggable="true"
+                     ondragstart="event.dataTransfer.setData('figura-tipo','circulo')">
+                    <div class="forma-preview circulo"></div>
+                    Círculo
+                </div>
+                <div class="forma-item" draggable="true"
+                     ondragstart="event.dataTransfer.setData('figura-tipo','rect-h')">
+                    <div class="forma-preview rect-h"></div>
+                    Rect. Horiz.
+                </div>
+                <div class="forma-item" draggable="true"
+                     ondragstart="event.dataTransfer.setData('figura-tipo','rect-v')">
+                    <div class="forma-preview rect-v"></div>
+                    Rect. Vert.
+                </div>
+            </div>
+            <p style="color:#333;font-size:10px;text-align:center;padding:4px 12px 8px;line-height:1.5;">
+                Doble clic en mesa para editar
+            </p>
+        </div>
+
+        <!-- ZONA SCROLLEABLE — solo la lista de áreas/mesas crece aquí -->
+        <div class="aside-scroll-zone">
+            <div id="lista-areas" class="aside-areas-list">
+                <p style="color:#555;font-size:11px;text-align:center;margin-top:8px;">Arrastra figuras al lienzo</p>
+            </div>
+
+            <!-- Panel edición dentro del scroll para que no empuje el footer -->
+            <div id="panel-edicion" class="aside-panel-edicion"></div>
+        </div>
+
+        <!-- FOOTER FIJO — botón siempre visible abajo -->
+        <div class="aside-footer">
+            <button class="btn-guardar-main" onclick="guardarCroquis()">
+                &#9889; Guardar Todo
+            </button>
+        </div>
+
+    </aside>
+
+    <!-- ===== CANVAS ===== -->
+    <main id="canvas-area"
+          data-area-id="<%= area.id %>"
+          class="croquis-canvas">
+
+        <!-- Hint cuando está vacío -->
+        <div class="canvas-hint" id="canvas-hint">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/>
+                <rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/>
+            </svg>
+            <p>Arrastra formas para crear áreas</p>
+        </div>
+
+        <!-- Breadcrumb -->
+        <div class="fase-breadcrumb">
+            <span id="bc-areas" class="active">Áreas</span>
+            <span class="sep">›</span>
+            <span id="bc-mesas" style="color:#333;">Mesas</span>
+        </div>
+
+        <!-- Keyboard hints -->
+        <div class="keyboard-hint">
+            <span><kbd>Esc</kbd> Deseleccionar</span>
+            <span><kbd>Del</kbd> Eliminar selección</span>
+            <span><kbd>Drag</kbd> Mover | Esquinas Redimensionar</span>
+        </div>
+    </main>
+</div>
+
+<!-- Datos desde servidor para cargar mesas guardadas -->
+<script id="data-mesas-guardadas" type="application/json">
+    <%- serializeForHtmlScript(typeof mesas !== 'undefined' ? mesas : []) %>
+</script>
+
+<!-- Estado inicial de áreas si vienen del servidor -->
+<script id="data-areas-guardadas" type="application/json">
+    <%- serializeForHtmlScript(typeof areas !== 'undefined' ? areas : []) %>
+</script>
+
+<script src="/js/croquis-designer.js"></script>
+<script>
+// El diseñador debe existir ANTES de hidratar el estado proveniente de Supabase.
+(function hidratarCroquisDesdeServidor() {
+    try {
+        const areasData = JSON.parse(document.getElementById('data-areas-guardadas').textContent || '[]');
+        areasData.forEach(a => {
+            const fig = {
+                id: String(a.id),
+                tipo: a.tipo || 'rect-h',
+                x: Number(a.pos_x ?? a.x ?? 0),
+                y: Number(a.pos_y ?? a.y ?? 0),
+                w: Number(a.ancho ?? a.w ?? 200),
+                h: Number(a.alto ?? a.h ?? 140),
+                nombre: a.nombre || 'Área'
+            };
+            STATE.figuras.push(fig);
+            if (!STATE.mesasPorArea[fig.id]) STATE.mesasPorArea[fig.id] = [];
+            STATE.contadorFiguras++;
+        });
+        if (typeof window.renderizarCroquisHidratado === 'function') {
+            window.renderizarCroquisHidratado();
+        }
+    } catch (e) {
+        console.error('No se pudo hidratar el croquis:', e);
+    }
+})();
+</script>

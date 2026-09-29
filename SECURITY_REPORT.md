@@ -50,7 +50,7 @@ Si el ZIP original fue compartido fuera de un entorno de confianza, rotar:
 
 1. CSP conserva `'unsafe-inline'` por la cantidad de scripts y estilos inline heredados. Para eliminarlo completamente hace falta extraer scripts/estilos y usar nonces/hashes.
 2. El backend sigue siendo una aplicación privilegiada con `service_role`; por diseño, el aislamiento principal está en middleware, filtros tenant y RPC. Una evolución futura puede mover más autorización al nivel DB/JWT.
-3. Falta ejecutar escáner de dependencias sobre un lockfile recién generado (`npm audit` u otra herramienta) cuando exista conectividad al registro.
+3. Falta ejecutar escáner de dependencias sobre un lockfile recién generado (`pnpm audit` u otra herramienta) cuando exista conectividad al registro.
 4. Falta prueba dinámica autenticada contra una BD staging restaurada.
 5. Debe existir HTTPS real en producción y proxy configurado correctamente antes de habilitar cookies `secure`.
 

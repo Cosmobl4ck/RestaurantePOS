@@ -52,11 +52,11 @@ Se repararon regresiones funcionales que afectaban navegación y pantallas: navb
 
 ## Baseline Git
 
-El ZIP recibido ya contenía un working tree con numerosos cambios sin commit sobre `673c371`. Por ello esta recuperación tomó **el ZIP recibido** como evidencia primaria. `CHANGELOG_RECOVERY.md` describe los cambios aplicados sobre ese estado, no sobre un commit limpio histórico.
+El árbol local recibido no contenía `.git`. El remoto indicado solo conservaba un commit (`0e430b47c314acfacf2aad0fbb82305d8590dde0`) con archivos raíz; los directorios funcionales existían exclusivamente en el árbol recuperado. Se restauró la referencia remota sin reemplazar esos archivos y se creó `recovery/restaurante-pos-pnpm-hardening`.
 
 ## Gate antes de producción
 
-Estado de código: **RECOVERED / STAGING-READY**.
+Estado de código: **RECOVERED / LOCAL CHECKS PASS**.
 
 Estado producción: **BLOCKED** hasta:
 

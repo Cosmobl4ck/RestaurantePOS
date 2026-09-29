@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarrocosPOS - Historial Ventas</title>
+    <link rel="icon" href="/uploads/MarrocosPOS_ico250px.png">
+    <!-- CSS de Bootstrap y Iconos -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <%- include('partials/navbar') %>
+
+    <!-- Contenido Principal -->
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold text-dark mb-0"><i class="bi bi-receipt-cutoff me-2"></i>Historial de Ventas</h2>
+            <a href="/dashboard" class="btn btn-outline-dark btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Volver al Panel
+            </a>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Fecha y Hora</th>
+                            <th>Cliente</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% facturas.forEach(f => { %>
+                            <tr class="<%= f.estado === 'anulada' ? 'table-danger' : '' %>">
+                                <td class="fw-bold text-primary">#<%= f.id %></td>
+                                <td><%= new Date(f.fecha).toLocaleString('es-CO') %></td>
+                                <td><%= f.cliente_nombre %></td>
+                                <td class="fw-bold">$<%= Number(f.total).toLocaleString('es-CO') %></td>
+                                <td>
+                                    <% if(f.estado === 'anulada') { %>
+                                        <span class="badge bg-danger">ANULADA</span>
+                                        <br>
+                                        <small class="text-muted" style="font-size: 0.75rem;">
+                                            <i class="bi bi-person-x"></i> Por: <%= f.usuario_anulo_nombre || 'Sistemas' %><br>
+                                            <i class="bi bi-calendar-x"></i> <%= f.fecha_anulacion ? new Date(f.fecha_anulacion).toLocaleString() : '' %>
+                                        </small>
+                                    <% } else if(f.estado === 'activa') { %>
+                                        <span class="badge bg-success">PAGADO</span>
+                                    <% } else { %>
+                                        <span class="badge bg-warning text-dark">PENDIENTE</span>
+                                    <% } %>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group">
+                                        <button onclick="verDetalle(<%= f.id %>)" class="btn btn-sm btn-light border shadow-sm">
+                                            <i class="bi bi-eye text-primary"></i> Detalle
+                                        </button>
+                                        <button onclick="enviarWhatsApp(<%= f.id %>, '<%= f.cliente_nombre %>', <%= f.total %>)" class="btn btn-sm btn-light border shadow-sm">
+                                            <i class="bi bi-whatsapp text-success"></i>
+                                        </button>
+                                        <% if(f.estado !== 'anulada') { %>
+                                            <button onclick="anularFactura(<%= f.id %>)" class="btn btn-sm btn-danger ms-1">Anular</button>
+                                        <% } %>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts Esenciales al final del Body -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <script>
+    // 1. FUNCIÓN PARA ANULAR
+    async function anularFactura(id) {
+        const { value: motivo } = await Swal.fire({
+            title: '¿Anular Factura #' + id + '?',
+            text: "Esto devolverá los productos al stock y cancelará la venta.",
+            icon: 'warning',
+            input: 'text',
+            inputLabel: 'Motivo de la anulación',
+            inputPlaceholder: 'Ej: Error de cobro, cambio de pedido...',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, anular!',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (motivo) {
+            try {
+                const response = await fetch(`/facturas/anular/${id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ motivo: motivo })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    Swal.fire('¡Anulada!', 'La factura ha sido cancelada.', 'success').then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', result.error || 'No se pudo anular', 'error');
+                }
+            } catch (error) {
+                Swal.fire('Error', 'Error de conexión con el servidor', 'error');
+            }
+        }
+    }
+
+    // 2. FUNCIÓN PARA EL POP-UP DE DETALLES
+    async function verDetalle(id) {
+        try {
+            const response = await fetch(`/facturas/detalle/${id}`);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} al cargar detalle`);
+            }
+
+            const data = await response.json();
+
+            if (!data || !data.factura || !Array.isArray(data.detalles)) {
+                throw new Error('Respuesta inválida del servidor (faltan factura/detalles)');
+            }
+
+            const info = data.factura;
+            const items = data.detalles;
+
+
+            const fApertura = info.fecha_apertura ? new Date(info.fecha_apertura) : new Date(info.fecha_cierre);
+            const fCierre = new Date(info.fecha_cierre);
+
+            let htmlDetalle = `
+                <div id="captura-detalle" style="padding: 30px; background: white; font-family: 'Segoe UI', Roboto, sans-serif; width: 420px; color: #000; border: 1px solid #eee;">
+                    
+                    <div style="text-align: center; margin-bottom: 10px;">
+                        <img src="/uploads/MarrocosPOS_ico250px.png" style="max-width: 100px; height: auto; display: inline-block;" alt="Logo">
+                    </div>
+
+                    <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px dashed #eee; padding-bottom: 15px;">
+                        <h3 style="margin: 0; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; color: #1a1a1a; font-size: 20px;">MARROCOS POS</h3>
+                        <div style="margin-top: 5px; color: #666; font-size: 0.9rem;">Factura #${id}</div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 1rem;">
+                        <span style="font-weight: bold; color: #444;">Cliente:</span>
+                        <span style="text-align: right;">${info.cliente_nombre}</span>
+                    </div>
+
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #000; font-size: 0.85rem; text-transform: uppercase;">
+                                <th style="padding: 8px 0; text-align: left; width: 15%;">Cant</th>
+                                <th style="padding: 8px 0; text-align: left; width: 60%;">Producto</th>
+                                <th style="padding: 8px 0; text-align: right; width: 25%;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody style="font-size: 0.95rem;">
+                            ${items.map(item => `
+                                <tr style="border-bottom: 1px solid #f2f2f2;">
+                                    <td style="padding: 10px 0; text-align: left;">${Math.round(item.cantidad)}</td>
+                                    <td style="padding: 10px 0; text-align: left;">${item.producto_nombre}</td>
+                                    <td style="padding: 10px 0; text-align: right; font-weight: bold;">$${Number(item.subtotal).toLocaleString('es-CO')}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+
+                    <div style="display: flex; justify-content: space-between; border-top: 2px solid #000; padding-top: 15px; margin-bottom: 20px; font-size: 1.3rem; font-weight: 900;">
+                        <span>TOTAL:</span>
+                        <span>$${items.reduce((acc, item) => acc + Number(item.subtotal), 0).toLocaleString('es-CO')}</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; padding-top: 10px; border-top: 1px dashed #ccc; font-size: 0.7rem; color: #777;">
+                        <span>APERTURA: ${fApertura.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        <span>CIERRE: ${fCierre.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 15px; font-size: 0.75rem; color: #555; font-style: italic;">
+                        Sistema de Restaurantes • El Salvador<br>
+                        ¡Gracias por su preferencia!
+                    </div>
+                </div>
+            `;
+
+            Swal.fire({
+                html: htmlDetalle,
+                width: '450px',
+                showCancelButton: true,
+                confirmButtonText: '<i class="bi bi-download"></i> Descargar Imagen',
+                cancelButtonText: 'Cerrar',
+                confirmButtonColor: '#198754'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    descargarImagen(id);
+                }
+            });
+
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Error', 'No se pudo cargar el detalle. Revisa la consola del navegador.', 'error');
+        }
+    }
+
+    // 3. FUNCIÓN PARA DESCARGAR IMAGEN
+    function descargarImagen(id) {
+        const area = document.getElementById('captura-detalle');
+        html2canvas(area).then(canvas => {
+            const link = document.createElement('a');
+            link.download = `Factura_${id}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+        });
+    }
+
+    // 4. ENVÍO POR WHATSAPP
+    async function enviarWhatsApp(id, cliente, total) {
+        const { value: telefono } = await Swal.fire({
+            title: 'Enviar Factura por WhatsApp',
+            input: 'tel',
+            inputLabel: 'Número de teléfono (con código de país)',
+            inputPlaceholder: 'Ej: 50370000000',
+            showCancelButton: true,
+            confirmButtonText: 'Preparar Mensaje',
+            confirmButtonColor: '#25D366',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (telefono) {
+            const totalFormateado = Number(total).toLocaleString('es-CO');
+            const mensaje = encodeURIComponent(
+                `*¡Hola, ${cliente}!* 👋\n\n` +
+                `Adjuntamos el detalle de tu *Factura #${id}* por un valor de *$${totalFormateado}*.\n\n` +
+                `¡Gracias por tu compra! 😊`
+            );
+
+            const url = `https://wa.me/${telefono}?text=${mensaje}`;
+            descargarImagen(id); 
+            window.open(url, '_blank');
+            
+            Swal.fire({
+                icon: 'info',
+                title: 'Imagen descargada',
+                text: 'La imagen de la factura se ha descargado. Adjúntala en el chat de WhatsApp que se acaba de abrir.',
+                confirmButtonColor: '#25D366'
+            });
+        }
+    }
+    </script>
+</body>
+</html>

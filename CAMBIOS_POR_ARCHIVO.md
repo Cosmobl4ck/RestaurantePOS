@@ -476,7 +476,7 @@ ORDEN RECOMENDADO (por dependencias):
     - routes/superadmin.js (más complejo)
 
 TESTING después de cada cambio:
-- npm run dev
+- pnpm dev
 - Probar funcionalidad
 - Verificar logs
 */

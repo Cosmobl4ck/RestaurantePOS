@@ -64,4 +64,4 @@ Comparación byte-a-byte entre el ZIP recibido y el paquete recuperado. Se exclu
 - `SistemaBase/package-lock.json`
 - `package-lock.json`
 
-> Nota: `.git`, `node_modules` y `.env` se omiten intencionalmente del paquete y no se enumeran aquí. El `package-lock.json` anterior se conserva renombrado como evidencia, pero debe regenerarse con `npm install`.
+> Nota: `.git`, `node_modules` y `.env` se omiten intencionalmente del paquete y no se enumeran aquí. `package-lock.pre-recovery.json` se conserva exclusivamente como evidencia histórica y no debe usarse para instalaciones; `pnpm-lock.yaml` es el único lockfile activo.

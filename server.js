@@ -21,24 +21,20 @@ const app = express();
 const { supabase } = require('./config/supabase');
 const SupabaseSessionStore = require('./config/SupabaseSessionStore');
 const authRole = require('./middlewares/authRole');
-const { requireSuperadmin, sameOriginForMutations } = require('./middlewares/access');
+const { requirePermission, requireSuperadmin, sameOriginForMutations } = require('./middlewares/access');
+const { serializeForHtmlScript } = require('./utils/safe-json');
 
 // ==========================================
 // 1. VALIDAR CONFIGURACIÓN
 // ==========================================
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY || !process.env.SESSION_SECRET) {
+if (!process.env.SUPABASE_URL || !(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE) || !process.env.SESSION_SECRET) {
     console.error('❌ FALTA CONFIGURACIÓN');
     console.error('   Crear archivo .env con:');
     console.error('   - SUPABASE_URL');
-    console.error('   - SUPABASE_KEY');
+    console.error('   - SUPABASE_SECRET_KEY (recomendada) o SUPABASE_SERVICE_ROLE (legada)');
     console.error('   - SESSION_SECRET');
     process.exit(1);
 }
-if (process.env.NODE_ENV === 'production' && !process.env.SUPABASE_SERVICE_ROLE) {
-    console.error('❌ SUPABASE_SERVICE_ROLE es obligatoria en producción para el backend/RPC y las sesiones.');
-    process.exit(1);
-}
-
 // ==========================================
 // 2. CREAR DIRECTORIOS NECESARIOS
 // ==========================================
@@ -62,6 +58,7 @@ createRequiredDirectories();
 // ==========================================
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+app.locals.serializeForHtmlScript = serializeForHtmlScript;
 
 // ==========================================
 // 4. MIDDLEWARES DE SEGURIDAD
@@ -96,6 +93,7 @@ app.use(limiter);
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 5,  // Solo 5 intentos por 15 minutos
+    skipSuccessfulRequests: true,
     skip: (req) => req.method !== 'POST' || !req.path.includes('login')
 });
 app.use(loginLimiter);
@@ -190,7 +188,7 @@ app.use('/superadmin', requireSuperadmin, superadminRoutes);
 // ==========================================
 
 // Dashboard
-app.get('/dashboard', authRole(ROLES_OPERACION), (req, res) => {
+app.get('/dashboard', requirePermission('dashboard.view'), (req, res) => {
     res.render('dashboard');
 });
 
@@ -261,7 +259,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3005;
 
-app.listen(PORT, () => {
+if (require.main === module) app.listen(PORT, () => {
     console.log('========================================');
     console.log(`🚀 SERVIDOR INICIADO EN PUERTO: ${PORT}`);
     console.log(`📍 http://localhost:${PORT}`);

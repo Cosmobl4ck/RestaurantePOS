@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarrocosPOS - Mesas</title>
+    <link rel="icon" href="/uploads/MarrocosPOS_ico250px.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root {
+            /* Colores extraídos de tu imagen */
+            --pos-dark-bg: #1a1d20;      /* Fondo oscuro de la navbar */
+            --pos-teal: #00b49d;         /* Color acento (botones, texto activo) */
+            --pos-teal-hover: #009683;   /* Color acento al pasar el mouse */
+            --pos-teal-light: #e6f7f5;   /* Fondo claro para mesas especiales */
+        }
+
+        body { background-color: #f8f9fa; }
+        
+        /* Navbar global */
+        .navbar {
+            background-color: var(--pos-dark-bg) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+        
+        /* Clase personalizada para fondos oscuros de la marca */
+        .bg-petronas {
+            background-color: var(--pos-dark-bg) !important;
+        }
+
+        /* Clases personalizadas para el color Teal de la marca */
+        .bg-teal {
+            background-color: var(--pos-teal) !important;
+            color: white !important;
+        }
+        .text-teal {
+            color: var(--pos-teal) !important;
+        }
+        .border-teal {
+            border-color: var(--pos-teal) !important;
+        }
+        
+        /* Botón personalizado Teal */
+        .btn-teal {
+            background-color: var(--pos-teal);
+            border-color: var(--pos-teal);
+            color: white;
+        }
+        .btn-teal:hover {
+            background-color: var(--pos-teal-hover);
+            border-color: var(--pos-teal-hover);
+            color: white;
+        }
+
+        .mesa-card {
+            border: none;
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .mesa-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        }
+        .card-especial {
+            border: 2px dashed var(--pos-teal) !important;
+            background-color: var(--pos-teal-light) !important;
+        }
+        .card-especial.bg-teal {
+            border: 2px solid var(--pos-teal-hover) !important;
+        }
+        .offcanvas-body {
+            background-color: #fcfcfc;
+        }
+        .table-items td {
+            vertical-align: middle;
+        }
+        
+        /* Ajuste para el icono del header offcanvas */
+        .offcanvas-header .btn-close-white {
+            filter: invert(1) grayscale(100%) brightness(200%);
+        }
+    </style>
+</head>
+<body>
+    
+    <%- include('partials/navbar') %>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="mb-0 fw-bold text-dark">
+                <i class="bi bi-shop me-2 text-teal"></i>Punto de Venta / Entregas
+            </h4>
+        </div>
+
+        <div class="row g-4">
+            <% mesas.forEach(m => { %>
+                <% 
+                    let cardClass = 'bg-white border text-secondary'; 
+                    let icon = 'bi-plus-circle';
+                    let titleColor = 'text-dark';
+                    
+                    let nombreMesa = m.numero.toLowerCase();
+                    let esMostrador = (nombreMesa.includes('mostrador') || m.numero === '99');
+                    let esDomicilio = (nombreMesa.includes('domicilio'));
+                    let esLlevar = (nombreMesa.includes('llevar'));
+
+                    if (m.estado === 'ocupada') {
+                        cardClass = 'bg-teal shadow';
+                        icon = 'bi-person-fill';
+                        titleColor = 'text-white';
+                    } else if (esMostrador || esDomicilio || esLlevar) {
+                        cardClass += ' card-especial'; 
+                    }
+                %>
+
+                <div class="col-6 col-md-4 col-lg-3 col-xl-2"> 
+                    <div class="card h-100 text-center p-3 mesa-card <%= cardClass %>"
+                        data-mesa-id="<%= m.id %>" data-mesa-numero="<%= m.numero %>" data-mesa-estado="<%= m.estado %>">
+                        
+                        <div class="card-body p-2 d-flex flex-column justify-content-center align-items-center">
+                            <h3 class="fw-bold mb-1 <%= titleColor %>" style="font-size: 1.2rem;">
+                                <% if(esMostrador) { %>
+                                    <i class="bi bi-bag-check d-block mb-1"></i> Mostrador
+                                <% } else if(esDomicilio) { %>
+                                    <i class="bi bi-truck d-block mb-1"></i> Domicilio
+                                <% } else if(esLlevar) { %>
+                                    <i class="bi bi-box-seam d-block mb-1"></i> Para Llevar
+                                <% } else { %>
+                                    <%= m.numero %>
+                                <% } %>
+                            </h3>
+                            
+                            <small class="d-block mb-2 text-uppercase fw-bold" style="font-size: 0.7rem; opacity: 0.8;">
+                                <%= m.estado %>
+                            </small>
+                            
+                            <div class="mt-auto w-100">
+                                <% if (m.estado === 'ocupada') { %>
+                                    <div class="badge bg-white text-teal text-truncate w-100 p-2 shadow-sm rounded-pill">
+                                        <i class="bi bi-person-fill me-1"></i> <%= m.descripcion || 'Cliente' %>
+                                    </div>
+                                <% } else { %>
+                                    <i class="<%= icon %> fs-2 opacity-50"></i>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+    </div>
+
+    <!-- Offcanvas para Pedidos -->
+    <div class="offcanvas offcanvas-end shadow" tabindex="-1" id="canvasPedido" style="width: 450px;">
+        
+        <!-- HEADER ACTUALIZADO CON COLORES DE LA MARCA -->
+        <div class="offcanvas-header bg-petronas text-white border-bottom border-teal" style="border-bottom-width: 3px !important;">
+            <h5 class="offcanvas-title fw-bold">
+                <i class="bi bi-receipt me-2 text-teal"></i>Pedido: <span id="pedidoMesa" class="text-teal"></span>
+            </h5>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" id="btnMoverMesaHeader" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Mover a otra mesa">
+                    <i class="bi bi-arrow-left-right"></i>
+                </button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+            </div>
+        </div>
+        
+        <div class="offcanvas-body d-flex flex-column p-3">
+            <!-- Sección de búsqueda -->
+            <div class="mb-3" id="contenedorNombreCliente" style="display: none;">
+                <label class="form-label small fw-bold text-muted mb-1">Nombre del Cliente / Referencia:</label>
+                <input type="text" id="nombreClienteModal" class="form-control form-control-sm border-teal" placeholder="Ej. Juan Pérez">
+            </div>
+
+            <div class="mb-3 position-relative">
+                <div class="input-group shadow-sm">
+                    <span class="input-group-text bg-white border-end-0 text-teal">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input id="buscarProductoMesa" class="form-control border-start-0 ps-0 border-teal" placeholder="Buscar producto para agregar..." autocomplete="off">
+                </div>
+                <div id="resultadosProductoMesa" class="list-group position-absolute w-100 shadow" style="z-index: 1050; display: none; max-height: 200px; overflow-y: auto;"></div>
+            </div>
+            
+            <div class="d-flex justify-content-end mb-2">
+                <button id="btnLiberarMesaHeader" class="btn btn-outline-danger btn-sm rounded-pill">
+                    <i class="bi bi-trash3 me-1"></i> Cancelar / Liberar
+                </button>
+            </div>
+            
+            <div class="table-responsive flex-grow-1 border rounded bg-white shadow-sm mb-3">
+                <table class="table table-sm table-hover table-items mb-0">
+                    <thead class="table-light text-muted small">
+                        <tr>
+                            <th class="ps-3">Producto</th>
+                            <th class="text-center" style="width: 15%;">Cant</th>
+                            <th class="text-end" style="width: 25%;">Subt</th>
+                            <th style="width: 10%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyItems"></tbody>
+                </table>
+            </div>
+            
+            <div class="mt-auto bg-white p-3 border rounded shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted fw-bold text-uppercase">Total a Pagar:</span>
+                    <span id="totalPedido" class="fw-bold fs-3 text-teal">$0.00</span>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <!-- BOTÓN DE COBRO: Solo para Admin y Cajero -->
+                    <% if (usuario && ['admin', 'gerente', 'cajero'].includes(usuario.rol)) { %>
+                        <button id="btnFacturarPedido" class="btn btn-teal btn-lg fw-bold shadow-sm mb-1">
+                            <i class="bi bi-cash-coin me-2"></i>Cobrar
+                        </button>
+                    <% } else { %>
+                        <div class="alert alert-info py-2 px-3 text-center mb-2 small shadow-sm border-0">
+                            <i class="bi bi-info-circle me-1"></i> Solo los cajeros pueden procesar pagos.
+                        </div>
+                    <% } %>
+                    
+                    <!-- BOTÓN DE GUARDAR: Siempre habilitado -->
+                    <button id="btnEnviarCocina" class="btn btn-warning w-100 text-dark fw-bold btn-lg shadow-sm">
+                        <i class="bi bi-send me-1"></i> Enviar comanda
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/js/mesas.js"></script>
+
+    <script>
+    document.getElementById('btnMoverMesaHeader').addEventListener('click', async function() {
+    // 1. Extraer IDs usando los nombres exactos detectados en consola
+    const $pedidoMesa = $('#pedidoMesa');
+    
+    // data('pedido-id') coincide con como lo setea mesas.js: .data('pedido-id', ...)
+    const pedidoId = $pedidoMesa.data('pedido-id'); 
+    const mesaOrigenId = $pedidoMesa.data('id'); 
+    const numeroMesaOrigen = document.getElementById('pedidoMesa').innerText;
+
+    // Log de depuración para que confirmes en consola que ahora sí cargan
+    console.log("Detectado -> Pedido:", pedidoId, "Mesa Origen:", mesaOrigenId);
+
+    // 2. Validación inmediata
+    if (!pedidoId || !mesaOrigenId) {
+        return Swal.fire({
+            icon: 'error',
+            title: 'Error de datos',
+            text: `No se pudo obtener la información (P:${pedidoId} M:${mesaOrigenId}).`,
+            target: document.getElementById('canvasPedido')
+        });
+    }
+
+    const canvasEl = document.getElementById('canvasPedido');
+
+    try {
+        // 3. Obtener mesas libres
+        const resp = await fetch('/mesas/listar');
+        if (!resp.ok) throw new Error('Error al conectar con el servidor');
+        
+        const mesas = await resp.json();
+        
+        // Filtramos para que no aparezca la misma mesa donde ya está el pedido
+        const mesasLibres = mesas.filter(m => 
+            String(m.estado).toLowerCase() === 'libre' && m.id != mesaOrigenId
+        );
+
+        if (mesasLibres.length === 0) {
+            return Swal.fire({
+                title: 'Sin espacio',
+                text: 'No hay otras mesas libres disponibles.',
+                icon: 'warning',
+                target: canvasEl
+            });
+        }
+
+        const opciones = {};
+        mesasLibres.forEach(m => { opciones[m.id] = `${m.numero}`; });
+
+        // 4. Preguntar destino
+        const { value: mesaDestinoId } = await Swal.fire({
+            title: 'Mover pedido',
+            text: `¿A qué mesa quieres trasladar el pedido de ${numeroMesaOrigen}?`,
+            input: 'select',
+            inputOptions: opciones,
+            inputPlaceholder: 'Selecciona destino...',
+            showCancelButton: true,
+            confirmButtonText: 'Trasladar Ahora',
+            confirmButtonColor: '#00b49d', /* Cambiado a Teal */
+            target: canvasEl
+        });
+
+        if (mesaDestinoId) {
+            Swal.fire({ 
+                title: 'Procesando...', 
+                allowOutsideClick: false, 
+                target: canvasEl,
+                didOpen: () => Swal.showLoading() 
+            });
+
+            const response = await fetch('/mesas/mover-pedido', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pedido_id: pedidoId,
+                    mesa_origen_id: mesaOrigenId,
+                    mesa_destino_id: mesaDestinoId
+                })
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                await Swal.fire({
+                    icon: 'success',
+                    title: '¡Movimiento Exitoso!',
+                    text: `Pedido trasladado a la mesa ${opciones[mesaDestinoId]}`,
+                    target: canvasEl,
+                    confirmButtonColor: '#00b49d'
+                });
+                location.reload();
+            } else {
+                throw new Error(result.error || 'Error desconocido');
+            }
+        }
+    } catch (error) {
+        console.error("❌ Error en movimiento:", error);
+        Swal.fire({
+            icon: 'error',
+            title: 'No se pudo mover',
+            text: error.message,
+            target: canvasEl
+        });
+    }
+});
+
+    document.getElementById('btnLiberarMesaHeader').addEventListener('click', async function() {
+
+    const $pedidoMesa = $('#pedidoMesa');
+    const mesaId   = $pedidoMesa.data('id');
+    const pedidoId = $pedidoMesa.data('pedido-id');
+    const canvasEl = document.getElementById('canvasPedido');
+
+    if (!mesaId) {
+        return Swal.fire({ icon: 'warning', title: 'Sin mesa seleccionada', target: canvasEl });
+    }
+
+    try {
+
+        // =====================================================
+        // CASO 1: YA EXISTE PEDIDO GUARDADO 🧾
+        // =====================================================
+        if (pedidoId) {
+
+            const { isConfirmed } = await Swal.fire({
+                icon: 'warning',
+                title: 'Limpiar ticket actual',
+                text: 'Se cancelará el pedido completo, se devolverá su stock y la mesa quedará disponible si no tiene otro pedido activo.',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, cancelar pedido',
+                cancelButtonText: 'Volver',
+                confirmButtonColor: '#dc3545',
+                target: canvasEl
+            });
+
+            if (!isConfirmed) return;
+
+            Swal.fire({
+                title: 'Limpiando...',
+                allowOutsideClick: false,
+                target: canvasEl,
+                didOpen: () => Swal.showLoading()
+            });
+
+            const resp = await fetch(`/mesas/pedidos/${pedidoId}`, {
+                method: 'DELETE'
+            });
+
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || 'No se pudo limpiar el ticket');
+
+            await Swal.fire({
+                icon: 'success',
+                title: 'Pedido cancelado',
+                text: 'El stock y el estado de la mesa fueron conciliados.',
+                timer: 1500,
+                showConfirmButton: false
+            });
+
+            location.reload();
+            return;
+        }
+
+        await Swal.fire({
+            icon: 'info',
+            title: 'Sin pedido activo',
+            text: 'No existe un pedido que pueda cancelarse desde esta pantalla.',
+            target: canvasEl
+        });
+
+    } catch (err) {
+        console.error('❌ Error:', err);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: err.message,
+            target: canvasEl
+        });
+    }
+});    
+    </script>
+</body>
+</html>

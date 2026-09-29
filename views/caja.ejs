@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Corte de Caja</title>
+    <link rel="icon" href="/uploads/MarrocosPOS_ico250px">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+<body class="bg-light">
+    
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-cash-coin"></i> Gestión de Caja</h2>
+            <a href="/caja/exportar/diario" class="btn btn-success"><i class="bi bi-file-earmark-excel"></i> Reporte Diario (Ambos Turnos)</a>
+        </div>
+
+        <div class="row mb-4">
+            <% historial.forEach(c => { %>
+                <div class="col-md-6">
+                    <div class="card shadow-sm border-<%= c.diferencia < 0 ? 'danger' : 'success' %>">
+                        <div class="card-header d-flex justify-content-between">
+                            <strong>Turno <%= c.turno %> (<%= c.estado.toUpperCase() %>)</strong>
+                            <% if(c.estado === 'cerrada') { %>
+                                <a href="/caja/exportar/<%= c.id %>" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> Excel</a>
+                            <% } %>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <small class="text-muted">Inicio</small>
+                                    <h5 class="text-primary">$<%= Number(c.monto_apertura).toFixed(2) %></h5>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted">Ventas Efec.</small>
+                                    <h5>$<%= Number(c.ventas_efectivo).toFixed(2) %></h5>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted">Diferencia</small>
+                                    <h5 class="<%= c.diferencia < 0 ? 'text-danger fw-bold' : 'text-success fw-bold' %>">
+                                        <%= c.diferencia > 0 ? '+' : '' %><%= Number(c.diferencia).toFixed(2) %>
+                                    </h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+
+        <% if (!caja) { %>
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">Iniciar Caja (Apertura)</div>
+                <div class="card-body">
+                    <select id="selectTurno" class="form-select mb-3">
+                        <option value="1">Turno 1 (Mañana)</option>
+                        <option value="2">Turno 2 (Tarde/Noche)</option>
+                    </select>
+                    <div id="calculadoraContainer"></div>
+                    <button id="btnGuardarApertura" class="btn btn-primary w-100 mt-3">Abrir Caja</button>
+                </div>
+            </div>
+        <% } else { %>
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">Realizar Corte (Cierre de Turno <%= caja.turno %>)</div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>Base Inicial:</strong> $<%= Number(caja.monto_apertura).toFixed(2) %>
+                    </div>
+                    <div id="calculadoraContainer"></div>
+                    <button id="btnGuardarCierre" class="btn btn-warning w-100 mt-3" data-id="<%= caja.id %>">Realizar Corte y Cerrar</button>
+                </div>
+            </div>
+        <% } %>
+
+    </div>
+
+    <script>
+        const denominaciones = [
+            { val: 100, tipo: 'billete' }, { val: 50, tipo: 'billete' }, 
+            { val: 20, tipo: 'billete' }, { val: 10, tipo: 'billete' }, 
+            { val: 5, tipo: 'billete' }, { val: 1, tipo: 'billete' },
+            { val: 1.00, tipo: 'moneda', label: 'Moneda $1.00' }, 
+            { val: 0.25, tipo: 'moneda' }, { val: 0.10, tipo: 'moneda' }, 
+            { val: 0.05, tipo: 'moneda' }, { val: 0.01, tipo: 'moneda' }
+        ];
+    </script>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/js/caja.js"></script>
+</body>
+</html>

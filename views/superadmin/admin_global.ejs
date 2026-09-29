@@ -1,0 +1,355 @@
+<!-- views/superadmin/dashboard.ejs -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>MarrocosPOS - Master Control Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            border: none;
+            border-radius: 12px;
+            padding: 25px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-card h6 { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9; }
+        .stat-card h2 { font-size: 2.5rem; margin: 0; font-weight: 700; }
+
+        .bg-blue { background: linear-gradient(45deg, #0d6efd, #0a58ca); }
+        .bg-orange { background: linear-gradient(45deg, #f39c12, #d35400); }
+        .bg-red { background: linear-gradient(45deg, #e74c3c, #c0392b); }
+        .bg-green { background: linear-gradient(45deg, #27ae60, #1e8449); }
+
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .avatar-circle {
+            width: 38px;
+            height: 38px;
+            background-color: #e9ecef;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">👑 MarrocosPOS Master Panel</span>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        
+        <!-- Grid de Tarjetas -->
+        <div class="stats-grid">
+            <div class="stat-card bg-blue">
+                <h6>Negocios Activos</h6>
+                <h2><%= stats.activos || 0 %></h2>
+            </div>
+            <div class="stat-card bg-orange">
+                <h6>Pruebas (Trial)</h6>
+                <!-- Cambia la resta por el valor real que viene del servidor -->
+                <h2><%= stats.trials || 0 %></h2>
+            </div>
+            <div class="stat-card bg-red">
+                <h6>Suspendidos/Vencidos</h6>
+                <h2><%= stats.vencidos || 0 %></h2>
+            </div>
+            <div class="stat-card bg-green">
+                <h6>Estado del Sistema</h6>
+                <h2><i class="bi bi-shield-check"></i> Online</h2>
+            </div>
+        </div>
+
+        <!-- Filtros y Búsqueda -->
+        <div class="row mb-3 align-items-center">
+            <div class="col-md-4">
+                <div class="input-group shadow-sm">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="busquedaRestaurante" class="form-control border-start-0" placeholder="Buscar negocio o código...">
+                </div>
+            </div>
+            <div class="col text-end">
+                <button class="btn btn-primary shadow-sm px-4" data-bs-toggle="modal" data-bs-target="#modalNuevoNegocio">
+                    <i class="bi bi-plus-lg me-2"></i>Nuevo Restaurante
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabla de Negocios -->
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="tablaNegocios">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Negocio</th>
+                            <th>Código</th>
+                            <th class="text-center">Usuarios</th>
+                            <th>Plan</th>
+                            <th>Vencimiento</th>
+                            <th>Estado</th>
+
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% negocios.forEach(n => { %>
+                        <tr>
+                            <td class="ps-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-circle bg-primary text-white me-3">
+                                        <%= (n.nombre_comercial || 'M').charAt(0).toUpperCase() %>
+                                    </div>
+                                    <div>
+                                        <span class="fw-bold d-block text-dark"><%= n.nombre_comercial || '-' %></span>
+                                        <small class="text-muted">ID: #<%= n.id %></small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><code class="fw-bold text-primary text-uppercase"><%= n.codigo_negocio %></code></td>
+                            <td class="text-center">
+                                <span class="badge rounded-pill bg-light text-dark border px-3">
+                                    <%= String(n.plan || 'trial').toUpperCase().replace(/_/g,' ') %>
+                                </span>
+                            </td>
+                            <td class="text-center">
+
+                                <span class="badge rounded-pill bg-light text-dark border px-3">
+                                    <i class="bi bi-people-fill me-1"></i><%= n.total_usuarios || 0 %>
+                                </span>
+                            </td>
+                            <td>
+                                <span class="<%= new Date(n.fecha_vencimiento) < new Date() ? 'text-danger fw-bold' : '' %>">
+                                    <%= new Date(n.fecha_vencimiento).toLocaleDateString('es-ES', { 
+                                        timeZone: 'UTC', 
+                                        day: '2-digit', 
+                                        month: '2-digit', 
+                                        year: 'numeric' 
+                                    }) %>
+                                </span>
+                            </td>
+                            <td>
+                                <% 
+                                  const ahora2 = new Date();
+                                  const venc2 = n.fecha_vencimiento ? new Date(n.fecha_vencimiento) : null;
+                                  let estadoBadge2 = 'Activo';
+                                  let estadoClass2 = 'bg-success-subtle text-success border border-success px-3';
+                                  if (n.estado !== 'activo') {
+                                    estadoBadge2 = 'Suspendido';
+                                    estadoClass2 = 'bg-danger-subtle text-danger border border-danger px-3';
+                                  } else if (venc2 && ahora2 > venc2) {
+                                    const limite2 = new Date(venc2.getTime() + 48 * 60 * 60 * 1000);
+                                    if (ahora2 <= limite2) {
+                                      estadoBadge2 = 'Vencido (+48h)';
+                                      estadoClass2 = 'bg-warning-subtle text-warning border border-warning px-3';
+                                    } else {
+                                      estadoBadge2 = 'Vencido';
+                                      estadoClass2 = 'bg-danger-subtle text-danger border border-danger px-3';
+                                    }
+                                  }
+                                %>
+                                <span class="badge <%= estadoClass2 %>"><%= estadoBadge2 %></span>
+                            </td>
+
+
+                            <td class="text-center">
+                                <div class="btn-group shadow-sm bg-white rounded">
+                                    <!-- Editar -->
+                                    <button class="btn btn-sm btn-white border" onclick="abrirModalEditar('<%= n.id %>', '<%= n.nombre_comercial %>')">
+                                        <i class="bi bi-pencil-square text-warning"></i>
+                                    </button>
+
+                                    <!-- Extender -->
+                                    <form action="/superadmin/extender/<%= n.id %>" method="POST" style="display:inline;">
+                                        <button type="submit" class="btn btn-sm btn-white border" title="Extender +30d">+30d</button>
+                                    </form>
+
+                                    <!-- Activar Plan -->
+                                    <div class="dropdown dropup">
+                                        <button class="btn btn-sm btn-white border dropdown-toggle" 
+        type="button" 
+        data-bs-toggle="dropdown" 
+        data-bs-boundary="viewport"
+        data-bs-popper-config='{"strategy":"fixed"}'
+        aria-expanded="false">
+    Plan
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <form action="/superadmin/activar-plan/<%= n.id %>" method="POST">
+                                                    <input type="hidden" name="plan" value="trial">
+                                                    <button class="dropdown-item" type="submit">TRIAL</button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form action="/superadmin/activar-plan/<%= n.id %>" method="POST">
+                                                    <input type="hidden" name="plan" value="basic">
+                                                    <button class="dropdown-item" type="submit">BASIC</button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form action="/superadmin/activar-plan/<%= n.id %>" method="POST">
+                                                    <input type="hidden" name="plan" value="premium">
+                                                    <button class="dropdown-item" type="submit">PREMIUM</button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form action="/superadmin/activar-plan/<%= n.id %>" method="POST">
+                                                    <input type="hidden" name="plan" value="pro_plus">
+                                                    <button class="dropdown-item" type="submit">PRO PLUS</button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    <!-- Toggle Estado -->
+
+                                    <form action="/superadmin/toggle-estado/<%= n.id %>" method="POST" style="display:inline;">
+                                        <input type="hidden" name="estado_actual" value="<%= n.estado %>">
+                                        <button type="submit" class="btn btn-sm btn-white border">
+                                            <i class="bi bi-power <%= n.estado === 'activo' ? 'text-danger' : 'text-success' %>"></i>
+                                        </button>
+                                    </form>
+
+                                    <!-- ELIMINAR (EL NUEVO BOTÓN) -->
+                                    <button class="btn btn-sm btn-white border text-danger" onclick="prepararEliminacion('<%= n.id %>', '<%= n.nombre_comercial %>')">
+                                        <i class="bi bi-trash3-fill"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar -->
+    <div class="modal fade" id="modalEditarNegocio" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow">
+                <form action="/superadmin/editar-negocio" method="POST">
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title fw-bold">Editar Nombre Comercial</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="id_negocio" id="edit_id">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nuevo Nombre</label>
+                            <input type="text" name="nuevo_nombre" id="edit_nombre" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="submit" class="btn btn-warning px-4">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE ELIMINAR (PREMIUM) -->
+    <div class="modal fade" id="modalConfirmarEliminar" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-body text-center p-5">
+                    <div class="text-danger mb-4">
+                        <i class="bi bi-exclamation-octagon" style="font-size: 4rem;"></i>
+                    </div>
+                    <h4 class="fw-bold">¿Borrar Restaurante?</h4>
+                    <p class="text-muted">Vas a eliminar permanentemente a <strong id="nombreNegocioEliminar"></strong>. Esta acción no se puede deshacer.</p>
+                    
+                    <form id="formEliminarFinal" method="POST" class="mt-4">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger btn-lg shadow-sm">Sí, eliminar ahora</button>
+                            <button type="button" class="btn btn-light btn-lg" data-bs-dismiss="modal">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nuevo Restaurante (se mantiene) -->
+    <div class="modal fade" id="modalNuevoNegocio" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow">
+                <form action="/superadmin/registrar-negocio" method="POST">
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title fw-bold">Registrar Nuevo Cliente</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nombre del Negocio</label>
+                            <input type="text" name="nombre_comercial" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">PIN de Seguridad Inicial</label>
+                            <input type="password" name="pin_admin" class="form-control" placeholder="Ej: 1234" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="submit" class="btn btn-primary px-4">Crear Negocio</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Buscador
+        document.getElementById('busquedaRestaurante').addEventListener('keyup', function() {
+            let filtro = this.value.toLowerCase();
+            let filas = document.querySelectorAll('#tablaNegocios tbody tr');
+            filas.forEach(fila => {
+                let contenido = fila.innerText.toLowerCase();
+                fila.style.display = contenido.includes(filtro) ? '' : 'none';
+            });
+        });
+
+        // Lógica Editar
+        function abrirModalEditar(id, nombre) {
+            document.getElementById('edit_id').value = id;
+            document.getElementById('edit_nombre').value = nombre;
+            new bootstrap.Modal(document.getElementById('modalEditarNegocio')).show();
+        }
+
+        // Lógica Eliminar (NUEVO)
+        function prepararEliminacion(id, nombre) {
+            document.getElementById('nombreNegocioEliminar').innerText = nombre;
+            document.getElementById('formEliminarFinal').action = `/superadmin/eliminar-negocio/${id}`;
+            new bootstrap.Modal(document.getElementById('modalConfirmarEliminar')).show();
+        }
+    </script>
+</body>
+</html>
