@@ -1,209 +1,134 @@
 const express = require('express');
 const router = express.Router();
-const { supabase } = require('../config/supabase');
+const Joi = require('joi');
 const excel = require('exceljs');
-
-// IMPORTAR AL GUARDIA DE SEGURIDAD
+const { supabase } = require('../config/supabase');
 const { verificarSesion } = require('../middlewares/authMiddleware');
-const authRole = require('../middlewares/authRole'); // Importar el middleware de roles
+const authRole = require('../middlewares/authRole');
+const { getBusinessDate } = require('../utils/business-time');
 
-const hoyISO = () => new Date().toISOString().split('T')[0];
+const allowedRoles = ['admin', 'gerente', 'cajero'];
+const detallesSchema = Joi.object()
+    .pattern(/^\d+(?:\.\d{1,2})?$/, Joi.number().integer().min(0).max(1000000))
+    .max(30)
+    .default({});
+const aperturaSchema = Joi.object({
+    turno: Joi.string().valid('1', '2').required(),
+    monto_inicial: Joi.number().min(0).required(),
+    detalles: detallesSchema
+}).unknown(false);
+const cierreSchema = Joi.object({
+    caja_id: Joi.number().integer().positive().required(),
+    monto_final: Joi.number().min(0).required(),
+    detalles: detallesSchema
+}).unknown(false);
 
-// =======================================================
-// VISTA PRINCIPAL (Cortes de Caja)
-// =======================================================
-router.get('/', verificarSesion, authRole(['admin', 'gerente', 'cajero']), async (req, res) => {
+function serializeDetalles(detalles) {
+    const serialized = JSON.stringify(detalles || {});
+    if (Buffer.byteLength(serialized, 'utf8') > 10000) throw new Error('CASH_DETAILS_TOO_LARGE');
+    return serialized;
+}
+
+function cashErrorResponse(res, error, operation) {
+    const message = String(error?.message || '');
+    console.error(`Error al ${operation} caja:`, error);
+    if (/CASH_ALREADY_OPEN/.test(message)) return res.status(409).json({ error: 'Ya existe una caja abierta.' });
+    if (/CASH_ALREADY_CLOSED/.test(message)) return res.status(409).json({ error: 'La caja ya fue cerrada.' });
+    if (/CASH_NOT_FOUND|CASH_RESTAURANT_NOT_FOUND/.test(message)) return res.status(404).json({ error: 'Caja no encontrada.' });
+    if (/CASH_USER_NOT_AUTHORIZED/.test(message)) return res.status(403).json({ error: 'Usuario no autorizado para esta caja.' });
+    if (/CASH_INVALID_|CASH_DETAILS_TOO_LARGE/.test(message)) return res.status(400).json({ error: 'Datos de caja inválidos.' });
+    return res.status(500).json({ error: `No se pudo ${operation} la caja.` });
+}
+
+router.get('/', verificarSesion, authRole(allowedRoles), async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
-        const fecha = hoyISO();
-
-        // Buscar si hay una caja abierta HOY PARA ESTE RESTAURANTE
-        const { data: cajaAbierta, error: errAbierta } = await supabase
-            .from('cortes_caja')
-            .select('*')
-            .eq('fecha', fecha)
-            .eq('estado', 'abierta')
-            .eq('restaurante_id', restauranteId)
-            .maybeSingle();
-
+        const fecha = await getBusinessDate(supabase, restauranteId);
+        const { data: cajaAbierta, error: errAbierta } = await supabase.from('cortes_caja').select('*')
+            .eq('estado', 'abierta').eq('restaurante_id', restauranteId).maybeSingle();
         if (errAbierta) throw errAbierta;
-
-        // Historial del día PARA ESTE RESTAURANTE
-        const { data: historial, error: errHistorial } = await supabase
-            .from('cortes_caja')
-            .select('*')
-            .eq('fecha', fecha)
-            .eq('restaurante_id', restauranteId)
-            .order('turno', { ascending: true });
-
+        const { data: historial, error: errHistorial } = await supabase.from('cortes_caja').select('*')
+            .eq('fecha', fecha).eq('restaurante_id', restauranteId).order('turno', { ascending: true });
         if (errHistorial) throw errHistorial;
-
-        res.render('caja', {
-            caja: cajaAbierta || null,
-            historial: historial || [],
-            usuario: req.session.usuario
-        });
+        res.render('caja', { caja: cajaAbierta || null, historial: historial || [], usuario: req.session.usuario });
     } catch (error) {
-        console.error(error);
+        console.error('Error cargando caja:', error);
         res.status(500).send('Error en caja');
     }
 });
 
-// =======================================================
-// ABRIR CAJA (TURNO 1 o 2)
-// =======================================================
-router.post('/abrir', verificarSesion, authRole(['admin', 'gerente', 'cajero']), async (req, res) => {
-    const { turno, monto_inicial, detalles } = req.body;
+router.post('/abrir', verificarSesion, authRole(allowedRoles), async (req, res) => {
     const restauranteId = req.session.usuario.restaurante_id;
     const usuarioId = req.session.usuario.id;
-
+    const { value, error: validationError } = aperturaSchema.validate(req.body, { abortEarly: false, convert: true });
+    if (validationError) return res.status(400).json({ error: 'Datos de apertura inválidos.' });
     try {
-        const { error } = await supabase
-            .from('cortes_caja')
-            .insert({
-                restaurante_id: restauranteId,
-                fecha: hoyISO(),
-                turno,
-                usuario_id: usuarioId,
-                monto_apertura: monto_inicial,
-                detalles_dinero: detalles,
-                estado: 'abierta'
-            });
-
+        const { data, error } = await supabase.rpc('pos_open_cash', {
+            p_restaurante_id: Number(restauranteId), p_usuario_id: Number(usuarioId),
+            p_turno: value.turno, p_monto_apertura: value.monto_inicial,
+            p_detalles: serializeDetalles(value.detalles)
+        });
         if (error) throw error;
-
-        res.json({ success: true });
+        return res.status(201).json({ success: true, caja: data });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error.message });
+        return cashErrorResponse(res, error, 'abrir');
     }
 });
 
-// =======================================================
-// CERRAR CAJA (REALIZAR CORTE)
-// =======================================================
-router.post('/cerrar', verificarSesion, authRole(['admin', 'gerente', 'cajero']), async (req, res) => {
-    const { caja_id, monto_final, detalles } = req.body;
+router.post('/cerrar', verificarSesion, authRole(allowedRoles), async (req, res) => {
     const restauranteId = req.session.usuario.restaurante_id;
-
+    const usuarioId = req.session.usuario.id;
+    const { value, error: validationError } = cierreSchema.validate(req.body, { abortEarly: false, convert: true });
+    if (validationError) return res.status(400).json({ error: 'Datos de cierre inválidos.' });
     try {
-        // 1. Obtener la sesión de caja exacta antes de calcular ventas.
-        const { data: caja, error: errCaja } = await supabase
-            .from('cortes_caja')
-            .select('monto_apertura, created_at, estado')
-            .eq('id', caja_id)
-            .eq('restaurante_id', restauranteId)
-            .maybeSingle();
-
-        if (errCaja) throw errCaja;
-        if (!caja || caja.estado !== 'abierta') {
-            return res.status(409).json({ error: 'La caja no existe, no pertenece al restaurante o ya fue cerrada.' });
-        }
-
-        // 2. Solo contar efectivo vendido DESDE la apertura de esta caja, no todo el día.
-        const cierreISO = new Date().toISOString();
-        const { data: facturas, error: errFacturas } = await supabase
-            .from('facturas')
-            .select('total')
-            .eq('forma_pago', 'efectivo')
-            .eq('estado', 'activa')
-            .eq('restaurante_id', restauranteId)
-            .gte('fecha', caja.created_at)
-            .lte('fecha', cierreISO);
-
-        if (errFacturas) throw errFacturas;
-        const ventasSistema = (facturas || []).reduce((sum, f) => sum + Number(f.total || 0), 0);
-
-        const montoInicial = Number(caja.monto_apertura);
-
-        // 3. Calcular Diferencia: (Lo que conté) - (Lo que debería haber)
-        const diferencia = Number(monto_final) - (montoInicial + ventasSistema);
-
-        // 4. Actualizar
-        const { error: errUpdate } = await supabase
-            .from('cortes_caja')
-            .update({
-                monto_cierre: monto_final,
-                ventas_efectivo: ventasSistema,
-                diferencia,
-                detalles_dinero: detalles,
-                estado: 'cerrada',
-                cerrado_at: new Date().toISOString()
-            })
-            .eq('id', caja_id)
-            .eq('restaurante_id', restauranteId);
-
-        if (errUpdate) throw errUpdate;
-
-        res.json({ success: true, diferencia });
-
+        const { data, error } = await supabase.rpc('pos_close_cash', {
+            p_restaurante_id: Number(restauranteId), p_caja_id: value.caja_id,
+            p_usuario_id: Number(usuarioId), p_monto_cierre: value.monto_final,
+            p_detalles: serializeDetalles(value.detalles)
+        });
+        if (error) throw error;
+        return res.json({ success: true, ...data });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error.message });
+        return cashErrorResponse(res, error, 'cerrar');
     }
 });
 
-// =======================================================
-// EXPORTAR EXCEL INDIVIDUAL O DIARIO
-// =======================================================
-router.get('/exportar/:id?', verificarSesion, authRole(['admin', 'gerente', 'cajero']), async (req, res) => {
+router.get('/exportar/:id?', verificarSesion, authRole(allowedRoles), async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
+        const fecha = await getBusinessDate(supabase, restauranteId);
         const workbook = new excel.Workbook();
         const sheet = workbook.addWorksheet('Corte de Caja');
-
-        // SEGURIDAD: Solo trae cortes de ESTE restaurante
-        let q = supabase
-            .from('cortes_caja')
-            .select('*')
-            .eq('fecha', hoyISO())
-            .eq('restaurante_id', restauranteId);
-
-        if (req.params.id && req.params.id !== 'diario') {
-            q = q.eq('id', req.params.id);
-        }
-
-        const { data: cortes, error } = await q;
+        let query = supabase.from('cortes_caja').select('*').eq('restaurante_id', restauranteId);
+        if (req.params.id && req.params.id !== 'diario') query = query.eq('id', req.params.id);
+        else query = query.eq('fecha', fecha);
+        const { data: cortes, error } = await query;
         if (error) throw error;
-
         sheet.columns = [
-            { header: 'Turno', key: 'turno', width: 10 },
-            { header: 'Estado', key: 'estado', width: 10 },
-            { header: 'Inicial', key: 'inicial', width: 15 },
-            { header: '+ Ventas Efec.', key: 'ventas', width: 15 },
-            { header: '= Esperado', key: 'esperado', width: 15 },
-            { header: 'Real (Contado)', key: 'final', width: 15 },
-            { header: 'Diferencia', key: 'diferencia', width: 15 },
+            { header: 'Turno', key: 'turno', width: 10 }, { header: 'Estado', key: 'estado', width: 10 },
+            { header: 'Inicial', key: 'inicial', width: 15 }, { header: '+ Ventas Efec.', key: 'ventas', width: 15 },
+            { header: '= Esperado', key: 'esperado', width: 15 }, { header: 'Real (Contado)', key: 'final', width: 15 },
+            { header: 'Diferencia', key: 'diferencia', width: 15 }
         ];
-
-        (cortes || []).forEach(c => {
-            const esperado = Number(c.monto_apertura) + Number(c.ventas_efectivo || 0);
+        (cortes || []).forEach((cash) => {
+            const esperado = Number(cash.monto_apertura) + Number(cash.ventas_efectivo || 0);
             const row = sheet.addRow({
-                turno: c.turno || 'Único',
-                estado: String(c.estado).toUpperCase(),
-                inicial: c.monto_apertura,
-                ventas: c.ventas_efectivo || 0,
-                esperado: esperado,
-                final: c.monto_cierre || 0,
-                diferencia: c.diferencia || 0
+                turno: cash.turno || 'Único', estado: String(cash.estado).toUpperCase(), inicial: cash.monto_apertura,
+                ventas: cash.ventas_efectivo || 0, esperado, final: cash.monto_cierre || 0,
+                diferencia: cash.diferencia || 0
             });
-
-            const cellDif = row.getCell('diferencia');
-            if (Number(c.diferencia) < 0) {
-                cellDif.font = { color: { argb: 'FFFF0000' }, bold: true };
-                cellDif.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE0E0' } };
-            } else {
-                cellDif.font = { color: { argb: 'FF008000' }, bold: true };
-            }
+            const cell = row.getCell('diferencia');
+            if (Number(cash.diferencia) < 0) {
+                cell.font = { color: { argb: 'FFFF0000' }, bold: true };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE0E0' } };
+            } else cell.font = { color: { argb: 'FF008000' }, bold: true };
         });
-
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename=Corte_${req.params.id || 'Diario'}.xlsx`);
         await workbook.xlsx.write(res);
         res.end();
-
     } catch (error) {
-        console.error(error);
+        console.error('Error generando Excel de caja:', error);
         res.status(500).send('Error generando excel');
     }
 });

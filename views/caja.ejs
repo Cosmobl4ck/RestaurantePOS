@@ -29,7 +29,7 @@
                             <div class="row text-center">
                                 <div class="col-4">
                                     <small class="text-muted">Inicio</small>
-                                    <h5 class="text-primary">$<%= Number(c.monto_inicial).toFixed(2) %></h5>
+                                    <h5 class="text-primary">$<%= Number(c.monto_apertura).toFixed(2) %></h5>
                                 </div>
                                 <div class="col-4">
                                     <small class="text-muted">Ventas Efec.</small>
@@ -65,7 +65,7 @@
                 <div class="card-header bg-warning text-dark">Realizar Corte (Cierre de Turno <%= caja.turno %>)</div>
                 <div class="card-body">
                     <div class="alert alert-info">
-                        <strong>Base Inicial:</strong> $<%= Number(caja.monto_inicial).toFixed(2) %>
+                        <strong>Base Inicial:</strong> $<%= Number(caja.monto_apertura).toFixed(2) %>
                     </div>
                     <div id="calculadoraContainer"></div>
                     <button id="btnGuardarCierre" class="btn btn-warning w-100 mt-3" data-id="<%= caja.id %>">Realizar Corte y Cerrar</button>
