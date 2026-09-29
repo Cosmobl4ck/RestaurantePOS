@@ -22,6 +22,7 @@ const { supabase } = require('./config/supabase');
 const SupabaseSessionStore = require('./config/SupabaseSessionStore');
 const authRole = require('./middlewares/authRole');
 const { requirePermission, requireSuperadmin, sameOriginForMutations } = require('./middlewares/access');
+const { serializeForHtmlScript } = require('./utils/safe-json');
 
 // ==========================================
 // 1. VALIDAR CONFIGURACIÓN
@@ -57,6 +58,7 @@ createRequiredDirectories();
 // ==========================================
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+app.locals.serializeForHtmlScript = serializeForHtmlScript;
 
 // ==========================================
 // 4. MIDDLEWARES DE SEGURIDAD

@@ -117,9 +117,9 @@
 
 <script>
     // Recuperar datos del backend
-    const datosVentas = <%- JSON.stringify(stats.ventasSemana) %>;
-    const datosTop = <%- JSON.stringify(stats.topProductos) %>;
-    const datosAnulaciones = <%- JSON.stringify(stats.anulacionesSemana) %>;
+    const datosVentas = <%- serializeForHtmlScript(stats.ventasSemana) %>;
+    const datosTop = <%- serializeForHtmlScript(stats.topProductos) %>;
+    const datosAnulaciones = <%- serializeForHtmlScript(stats.anulacionesSemana) %>;
 
     // --- GRÁFICAS (Chart.js) ---
     new Chart(document.getElementById('chartVentas'), {

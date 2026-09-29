@@ -229,7 +229,7 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--t
 
 <!-- DATOS DEL SERVIDOR -->
 <script id="srv-areas" type="application/json">
-    <%- JSON.stringify(areas.map(a => ({
+    <%- serializeForHtmlScript(areas.map(a => ({
         id:    a.id,
         nombre:a.nombre,
         tipo:  a.tipo || 'rect-h',
@@ -240,7 +240,7 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--t
     }))) %>
 </script>
 <script id="srv-mesas" type="application/json">
-    <%- JSON.stringify(typeof mesasPorArea !== 'undefined' ? mesasPorArea : {}) %>
+    <%- serializeForHtmlScript(typeof mesasPorArea !== 'undefined' ? mesasPorArea : {}) %>
 </script>
 
 <script>

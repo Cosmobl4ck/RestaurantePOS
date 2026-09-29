@@ -490,12 +490,12 @@
 
 <!-- Datos desde servidor para cargar mesas guardadas -->
 <script id="data-mesas-guardadas" type="application/json">
-    <%- JSON.stringify(typeof mesas !== 'undefined' ? mesas : []) %>
+    <%- serializeForHtmlScript(typeof mesas !== 'undefined' ? mesas : []) %>
 </script>
 
 <!-- Estado inicial de áreas si vienen del servidor -->
 <script id="data-areas-guardadas" type="application/json">
-    <%- JSON.stringify(typeof areas !== 'undefined' ? areas : []) %>
+    <%- serializeForHtmlScript(typeof areas !== 'undefined' ? areas : []) %>
 </script>
 
 <script src="/js/croquis-designer.js"></script>
