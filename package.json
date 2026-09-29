@@ -25,6 +25,7 @@
     "check": "node scripts/verify-recovery.js",
     "test": "node --test test/*.test.js",
     "test:e2e:live": "node scripts/runtime-e2e.js",
+    "test:e2e:uploads": "node scripts/upload-e2e.js",
     "audit:deps": "pnpm audit"
   },
   "dependencies": {

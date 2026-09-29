@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const excel = require('exceljs');
 const { supabase } = require('../config/supabase');
+const { hasXlsxSignature, uploadErrorMiddleware } = require('../utils/upload-security');
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -195,12 +196,15 @@ router.get('/plantilla', async (req, res) => {
     res.end();
 });
 
-router.post('/importar', upload.single('archivo'), async (req, res) => {
+router.post('/importar', uploadErrorMiddleware(upload.single('archivo')), async (req, res) => {
     try {
         const restauranteId = getRestauranteId(req);
 
         if (!req.file) {
             return res.status(400).json({ error: 'No se recibio ningun archivo' });
+        }
+        if (!hasXlsxSignature(req.file.buffer)) {
+            return res.status(400).json({ error: 'El archivo XLSX no es valido.' });
         }
 
         const workbook = new excel.Workbook();
@@ -238,8 +242,8 @@ router.post('/importar', upload.single('archivo'), async (req, res) => {
 
         res.json({ message: 'Importacion finalizada', total: productos.length });
     } catch (error) {
-        console.error('Error al importar Excel:', error);
-        res.status(500).json({ error: 'Error al importar Excel' });
+        console.error('Error al importar Excel:', error.message);
+        res.status(400).json({ error: 'El archivo XLSX no se pudo procesar.' });
     }
 });
 

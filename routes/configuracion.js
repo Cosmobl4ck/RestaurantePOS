@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
 const multer = require('multer');
+const { detectedImageType, uploadErrorMiddleware } = require('../utils/upload-security');
 
 // IMPORTAR AL GUARDIA DE SEGURIDAD
 const { verificarSesion } = require('../middlewares/authMiddleware');
@@ -85,10 +86,10 @@ router.get('/', verificarSesion, async (req, res) => {
 // ==========================================
 // 2. POST / - GUARDAR O ACTUALIZAR
 // ==========================================
-router.post('/', verificarSesion, upload.fields([
+router.post('/', verificarSesion, uploadErrorMiddleware(upload.fields([
     { name: 'logo', maxCount: 1 },
     { name: 'qr', maxCount: 1 }
-]), async (req, res) => {
+])), async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
         const {
@@ -114,12 +115,16 @@ router.post('/', verificarSesion, upload.fields([
         };
 
         if (req.files?.logo) {
+            const logoType = detectedImageType(req.files.logo[0].buffer);
+            if (!logoType) return res.status(400).json({ error: 'La imagen de logo no es valida.' });
             registro.logo_data = bufferABytea(req.files.logo[0].buffer);
-            registro.logo_tipo = req.files.logo[0].mimetype.split('/')[1];
+            registro.logo_tipo = logoType;
         }
         if (req.files?.qr) {
+            const qrType = detectedImageType(req.files.qr[0].buffer);
+            if (!qrType) return res.status(400).json({ error: 'La imagen QR no es valida.' });
             registro.qr_data = bufferABytea(req.files.qr[0].buffer);
-            registro.qr_tipo = req.files.qr[0].mimetype.split('/')[1];
+            registro.qr_tipo = qrType;
         }
 
         // restaurante_id es UNIQUE en esta tabla, así que upsert crea o actualiza en un solo paso
