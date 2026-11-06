@@ -75,7 +75,7 @@ router.post('/abrir', verificarSesion, async (req, res) => {
     } catch (error) {
         console.error('Error al abrir pedido:', error.message);
         const status = /mesa|reservada|bloqueada/i.test(error.message || '') ? 409 : 500;
-        res.status(status).json({ error: error.message || 'Error al abrir pedido.' });
+        res.status(status).json({ error: status === 500 ? 'Error interno del servidor.' : (error.message || 'Error al abrir pedido.') });
     }
 });
 
@@ -131,7 +131,7 @@ router.post('/pedidos/:pedidoId/items', verificarSesion, async (req, res) => {
     const restauranteId = req.session.usuario.restaurante_id;
     const { producto_id, cantidad, nota, unidad } = req.body || {};
     const qty = Number(cantidad);
-    if (!producto_id || !Number.isFinite(qty) || qty <= 0) {
+    if (!producto_id || !Number.isFinite(qty) || qty <= 0 || qty > 999) {
         return res.status(400).json({ error: 'Producto/cantidad inválidos.' });
     }
     if (String(unidad || 'UND').toUpperCase() !== 'UND') {
@@ -151,7 +151,7 @@ router.post('/pedidos/:pedidoId/items', verificarSesion, async (req, res) => {
     } catch (error) {
         console.error('❌ Error al agregar item:', error.message);
         const status = /stock|cantidad|pedido|producto/i.test(error.message || '') ? 400 : 500;
-        res.status(status).json({ error: error.message || 'Error al agregar item.' });
+        res.status(status).json({ error: status === 500 ? 'Error interno del servidor.' : (error.message || 'Error al agregar item.') });
     }
 });
 
@@ -198,7 +198,7 @@ router.post('/pedidos/:pedidoId/facturar', verificarSesion, async (req, res) => 
     } catch (error) {
         console.error('❌ Error al facturar:', error.message);
         const status = /pedido|productos|pago|cancelado/i.test(error.message || '') ? 400 : 500;
-        res.status(status).json({ error: error.message || 'No se pudo facturar.' });
+        res.status(status).json({ error: status === 500 ? 'Error interno del servidor.' : (error.message || 'No se pudo facturar.') });
     }
 });
 
@@ -217,7 +217,7 @@ router.delete('/pedidos/:pedidoId', verificarSesion, async (req, res) => {
     } catch (error) {
         console.error('Error cancelando pedido:', error.message);
         const status = /pedido|facturado/i.test(error.message || '') ? 409 : 500;
-        res.status(status).json({ error: error.message || 'No se pudo cancelar el pedido.' });
+        res.status(status).json({ error: status === 500 ? 'Error interno del servidor.' : (error.message || 'No se pudo cancelar el pedido.') });
     }
 });
 
@@ -264,7 +264,7 @@ router.post('/mover-pedido', verificarSesion, async (req, res) => {
     } catch (error) {
         console.error('❌ Error al mover pedido:', error.message);
         const status = /mesa|pedido|disponible|movible/i.test(error.message || '') ? 409 : 500;
-        res.status(status).json({ success: false, error: error.message || 'No se pudo mover el pedido.' });
+        res.status(status).json({ success: false, error: status === 500 ? 'Error interno del servidor.' : (error.message || 'No se pudo mover el pedido.') });
     }
 });
 

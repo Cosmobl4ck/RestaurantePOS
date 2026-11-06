@@ -2,73 +2,81 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { verificarSesion } = require('../middlewares/authMiddleware');
+const { dateInTimeZone } = require('../utils/business-time');
 
-// reportes.js actualmente estaba usando `db.query` (MySQL) pero el proyecto corre con Supabase.
-// Se reemplaza por consultas Supabase para evitar error "db is not defined".
+const DIA_MS = 24 * 60 * 60 * 1000;
+
+// Reportes usa la zona horaria del restaurante (no la del servidor) para que
+// "hoy" y las agrupaciones por día coincidan con la caja.
 router.get('/', verificarSesion, async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
 
+        const { data: negocio } = await supabase
+            .from('restaurantes')
+            .select('timezone')
+            .eq('id', restauranteId)
+            .maybeSingle();
+        const timeZone = negocio?.timezone || 'America/El_Salvador';
+
         const ahora = new Date();
-        const fechaHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-        const fechaHoyISO = fechaHoy.toISOString();
-        const fechaManana = new Date(fechaHoy.getTime() + 24 * 60 * 60 * 1000);
-        const fechaMananaISO = fechaManana.toISOString();
+        const hoy = dateInTimeZone(timeZone, ahora);
+        const desdeSemana = new Date(ahora.getTime() - 7 * DIA_MS);
 
-        // 1) Ingresos de hoy
-        const { data: facturasHoy } = await supabase
+        // 1) Facturas de los últimos 7 días: se agrupan por día local.
+        const { data: facturasSemana, error: facturasError } = await supabase
             .from('facturas')
-            .select('total')
+            .select('fecha, total, estado')
             .eq('restaurante_id', restauranteId)
             .eq('estado', 'activa')
-            .gte('fecha', fechaHoyISO)
-            .lt('fecha', fechaMananaISO);
+            .gte('fecha', desdeSemana.toISOString());
 
-        const ingresosHoy = (facturasHoy || []).reduce((acc, f) => acc + Number(f.total || 0), 0);
+        if (facturasError) throw facturasError;
 
-        // 2) Pedidos hoy (cantidad de facturas activas)
-        const pedidosHoy = (facturasHoy || []).length;
-
-        // 3) Stock crítico
-        const { data: stockCritico } = await supabase
-            .from('productos')
-            .select('nombre, stock, stock_minimo, maneja_stock')
-            .eq('restaurante_id', restauranteId)
-            .eq('maneja_stock', true);
-
-        const stockCriticoFiltrado = (stockCritico || []).filter(p => Number(p.stock || 0) <= Number(p.stock_minimo || 0));
-
-        // 4) Ventas de la semana (últimos 7 días)
-        const fechaSemana = new Date(fechaHoy.getTime() - 6 * 24 * 60 * 60 * 1000);
-        const { data: facturasSemana } = await supabase
-            .from('facturas')
-            .select('fecha, total')
-            .eq('restaurante_id', restauranteId)
-            .eq('estado', 'activa')
-            .gte('fecha', fechaSemana.toISOString());
-
+        let ingresosHoy = 0;
+        let pedidosHoy = 0;
         const ventasSemanaMap = new Map();
+
         (facturasSemana || []).forEach(f => {
-            const d = new Date(f.fecha);
-            const key = d.toISOString().slice(0, 10);
-            ventasSemanaMap.set(key, (ventasSemanaMap.get(key) || 0) + Number(f.total || 0));
+            const dia = dateInTimeZone(timeZone, new Date(f.fecha));
+            const total = Number(f.total || 0);
+            if (dia === hoy) {
+                ingresosHoy += total;
+                pedidosHoy += 1;
+            }
+            ventasSemanaMap.set(dia, (ventasSemanaMap.get(dia) || 0) + total);
         });
 
         const ventasSemana = Array.from(ventasSemanaMap.entries())
             .sort((a, b) => a[0].localeCompare(b[0]))
             .map(([dia, total]) => ({ dia, total }));
 
-        // 5) Top 5 productos (aprox: se calcula desde pedido_items)
-        const { data: pedidoItemsTop } = await supabase
+        // 2) Stock crítico
+        const { data: stockCritico, error: stockError } = await supabase
+            .from('productos')
+            .select('nombre, stock, stock_minimo, maneja_stock')
+            .eq('restaurante_id', restauranteId)
+            .eq('maneja_stock', true);
+
+        if (stockError) throw stockError;
+
+        const stockCriticoFiltrado = (stockCritico || [])
+            .filter(p => Number(p.stock || 0) <= Number(p.stock_minimo || 0));
+
+        // 3) Top productos de la semana (ventana acotada, no todo el histórico).
+        const { data: pedidoItemsTop, error: topError } = await supabase
             .from('pedido_items')
             .select('producto_id, cantidad, productos(nombre)')
             .eq('restaurante_id', restauranteId)
-            .neq('estado', 'cancelado');
+            .neq('estado', 'cancelado')
+            .gte('created_at', desdeSemana.toISOString());
+
+        if (topError) throw topError;
 
         const topMap = new Map();
         (pedidoItemsTop || []).forEach(it => {
             const key = it.producto_id;
-            const nombre = it.productos?.nombre;
+            const nombre = it.productos?.nombre || 'Producto';
             topMap.set(key, {
                 nombre,
                 total_vendido: (topMap.get(key)?.total_vendido || 0) + Number(it.cantidad || 0)
@@ -79,19 +87,20 @@ router.get('/', verificarSesion, async (req, res) => {
             .sort((a, b) => b.total_vendido - a.total_vendido)
             .slice(0, 5);
 
-        // 6) Anulaciones de la semana
-        const { data: facturasAnuladas } = await supabase
+        // 4) Anulaciones de la semana
+        const { data: facturasAnuladas, error: anuladasError } = await supabase
             .from('facturas')
             .select('fecha')
             .eq('restaurante_id', restauranteId)
             .eq('estado', 'anulada')
-            .gte('fecha', fechaSemana.toISOString());
+            .gte('fecha', desdeSemana.toISOString());
+
+        if (anuladasError) throw anuladasError;
 
         const anulacionesMap = new Map();
         (facturasAnuladas || []).forEach(f => {
-            const d = new Date(f.fecha);
-            const key = d.toISOString().slice(0, 10);
-            anulacionesMap.set(key, (anulacionesMap.get(key) || 0) + 1);
+            const dia = dateInTimeZone(timeZone, new Date(f.fecha));
+            anulacionesMap.set(dia, (anulacionesMap.get(dia) || 0) + 1);
         });
 
         const anulacionesSemana = Array.from(anulacionesMap.entries())
@@ -111,8 +120,8 @@ router.get('/', verificarSesion, async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Error en reportes:", error);
-        res.status(500).send("Error interno: " + error.message);
+        console.error("Error en reportes:", error.message);
+        res.status(500).send("Error interno del servidor.");
     }
 });
 
@@ -121,7 +130,6 @@ router.get('/lista-compras', verificarSesion, async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
 
-        // Consulta a Supabase para obtener la lista de compras
         const { data: productos, error } = await supabase
             .from('productos')
             .select('nombre, stock, stock_minimo')
@@ -129,16 +137,13 @@ router.get('/lista-compras', verificarSesion, async (req, res) => {
             .eq('categoria', 'Bar')
             .order('nombre', { ascending: true });
 
-        if (error) {
-            throw new Error(`Error al obtener productos: ${error.message}`);
-        }
+        if (error) throw error;
 
-        // Mandamos los datos al frontend
         res.json(productos || []);
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error al obtener la lista: ' + error.message });
+        console.error('Error al obtener lista de compras:', error.message);
+        res.status(500).json({ error: 'Error al obtener la lista.' });
     }
 });
 

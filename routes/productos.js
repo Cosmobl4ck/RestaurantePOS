@@ -27,13 +27,13 @@ const normalizarProducto = (body, restauranteId, codigo) => {
 
     return {
         restaurante_id: restauranteId,
-        codigo,
-        nombre: String(body.nombre || '').trim(),
-        precio_unidad: parseFloat(body.precio_unidad) || 0,
+        codigo: String(codigo || '').trim().slice(0, 40),
+        nombre: String(body.nombre || '').trim().slice(0, 120),
+        precio_unidad: Math.max(0, parseFloat(body.precio_unidad) || 0),
         categoria,
         maneja_stock: manejaStock,
-        stock: manejaStock ? (parseFloat(body.stock) || 0) : 0,
-        stock_minimo: manejaStock ? (parseFloat(body.stock_minimo) || 0) : 0,
+        stock: manejaStock ? Math.max(0, parseFloat(body.stock) || 0) : 0,
+        stock_minimo: manejaStock ? Math.max(0, parseFloat(body.stock_minimo) || 0) : 0,
         updated_at: new Date().toISOString()
     };
 };
@@ -107,11 +107,8 @@ router.post('/', async (req, res) => {
 
         res.status(201).json({ message: 'Producto creado con exito', codigo: data.codigo, id: data.id });
     } catch (error) {
-        console.error('Error al crear producto:', error);
-        res.status(500).json({
-            error: 'Error al guardar el producto',
-            detalle: error.message
-        });
+        console.error('Error al crear producto:', error.message);
+        res.status(500).json({ error: 'Error al guardar el producto' });
     }
 });
 
@@ -210,6 +207,11 @@ router.post('/importar', uploadErrorMiddleware(upload.single('archivo')), async 
         const workbook = new excel.Workbook();
         await workbook.xlsx.load(req.file.buffer);
         const sheet = workbook.getWorksheet(1);
+        if (!sheet) return res.status(400).json({ error: 'El archivo no contiene hojas.' });
+        // Tope defensivo: evita archivos comprimidos que expanden a millones de filas.
+        if (sheet.rowCount > 2000) {
+            return res.status(400).json({ error: 'El archivo supera el máximo de 2000 filas.' });
+        }
         const productos = [];
 
         sheet.eachRow((row, rowNumber) => {
@@ -253,7 +255,8 @@ router.post('/importar', uploadErrorMiddleware(upload.single('archivo')), async 
 router.get('/buscar', async (req, res) => {
     try {
         const restauranteId = getRestauranteId(req);
-        const texto = String(req.query.q || '').trim().replace(/[,%]/g, '');
+        // Allowlist: evita inyección de operadores en el filtro PostgREST.
+        const texto = String(req.query.q || '').trim().replace(/[^\p{L}\p{N}\s_-]/gu, '').slice(0, 60);
 
         let consulta = supabase
             .from('productos')

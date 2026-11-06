@@ -4,7 +4,9 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { supabase } = require('../config/supabase');
 
-const crearCodigoNegocio = () => crypto.randomBytes(3).toString('hex').toUpperCase();
+const crearCodigoNegocio = () => crypto.randomBytes(4).toString('hex').toUpperCase();
+const ID_RE = /^\d{1,19}$/;
+const parseId = (value) => (ID_RE.test(String(value)) ? Number(value) : null);
 
 router.get('/panel', async (req, res) => {
     try {
@@ -51,39 +53,49 @@ router.get('/panel', async (req, res) => {
 });
 
 router.post('/registrar-negocio', async (req, res) => {
-    const { nombre_comercial, pin_admin } = req.body;
+    const nombreComercial = String(req.body.nombre_comercial || '').trim();
+    const pinFinal = String(req.body.pin_admin || '').trim();
 
+    if (nombreComercial.length < 2 || nombreComercial.length > 100) {
+        return res.status(400).send('El nombre comercial debe tener entre 2 y 100 caracteres.');
+    }
+    // No crear administradores con PIN conocido/default.
+    if (!/^\d{6,12}$/.test(pinFinal)) {
+        return res.status(400).send('El PIN administrador debe tener entre 6 y 12 dígitos.');
+    }
+
+    let restaurante = null;
     try {
-        const codigoNegocio = crearCodigoNegocio();
-
         // === Licensing: default TRIAL (7 días) ===
         const fechaInicio = new Date();
         const fechaVencimiento = new Date(fechaInicio);
         fechaVencimiento.setDate(fechaVencimiento.getDate() + 7);
 
-        const { data: restaurante, error: restauranteError } = await supabase
-            .from('restaurantes')
-            .insert({
-                nombre_comercial,
-                codigo_negocio: codigoNegocio,
-                plan: 'trial',
-                fecha_inicio: fechaInicio.toISOString(),
-                fecha_vencimiento: fechaVencimiento.toISOString(),
-                estado: 'activo'
-            })
-            .select('id, codigo_negocio, plan, fecha_vencimiento')
-            .single();
+        // Reintenta si el código aleatorio choca con el índice único.
+        for (let intento = 0; intento < 5 && !restaurante; intento += 1) {
+            const { data, error } = await supabase
+                .from('restaurantes')
+                .insert({
+                    nombre_comercial: nombreComercial,
+                    codigo_negocio: crearCodigoNegocio(),
+                    plan: 'trial',
+                    fecha_inicio: fechaInicio.toISOString(),
+                    fecha_vencimiento: fechaVencimiento.toISOString(),
+                    estado: 'activo'
+                })
+                .select('id, codigo_negocio, plan, fecha_vencimiento')
+                .single();
 
-
-        if (restauranteError) throw restauranteError;
-
-        const pinFinal = String(pin_admin || '').trim();
-        if (!/^\d{4,12}$/.test(pinFinal)) {
-            // No crear administradores con PIN conocido/default.
-            await supabase.from('restaurantes').delete().eq('id', restaurante.id);
-            return res.status(400).send('El PIN administrador debe tener entre 4 y 12 dígitos.');
+            if (!error) {
+                restaurante = data;
+                break;
+            }
+            if (String(error.code) !== '23505') throw error;
         }
-        const pinHasheado = await bcrypt.hash(String(pinFinal), 10);
+
+        if (!restaurante) throw new Error('No se pudo generar un código de negocio único.');
+
+        const pinHasheado = await bcrypt.hash(pinFinal, 10);
 
         const { error: usuarioError } = await supabase
             .from('usuarios')
@@ -129,21 +141,38 @@ router.post('/registrar-negocio', async (req, res) => {
         console.log(`🚀 Negocio creado: ${restaurante.codigo_negocio}`);
         res.redirect('/superadmin/panel?success=true');
     } catch (error) {
+        // Rollback: no dejar tenants a medio crear.
+        if (restaurante?.id) {
+            try {
+                await supabase.from('restaurantes').delete().eq('id', restaurante.id);
+            } catch (rollbackError) {
+                console.error('❌ No se pudo revertir el tenant parcial:', rollbackError.message);
+            }
+        }
         console.error('❌ Error en registro Pro:', error.message);
         res.status(500).send('Error al crear el negocio Pro');
     }
 });
 
 router.post('/editar-negocio', async (req, res) => {
-    const { id_negocio, nuevo_nombre } = req.body;
+    const idNegocio = parseId(req.body.id_negocio);
+    const nuevoNombre = String(req.body.nuevo_nombre || '').trim();
+
+    if (!idNegocio) return res.status(400).send('Negocio inválido.');
+    if (nuevoNombre.length < 2 || nuevoNombre.length > 100) {
+        return res.status(400).send('El nombre debe tener entre 2 y 100 caracteres.');
+    }
 
     try {
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('restaurantes')
-            .update({ nombre_comercial: nuevo_nombre })
-            .eq('id', id_negocio);
+            .update({ nombre_comercial: nuevoNombre })
+            .eq('id', idNegocio)
+            .select('id')
+            .maybeSingle();
 
         if (error) throw error;
+        if (!data) return res.status(404).send('Negocio no encontrado.');
 
         res.redirect('/superadmin/panel?edited=true');
     } catch (error) {
@@ -173,11 +202,13 @@ const calcularNuevaFechaVencimiento = (fechaVencimientoActual, plan = 'basic') =
 
 
 router.post('/extender/:id', async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).send('Negocio inválido.');
     try {
         const { data: restaurante, error: getError } = await supabase
             .from('restaurantes')
             .select('fecha_vencimiento')
-            .eq('id', req.params.id)
+            .eq('id', id)
             .single();
 
 
@@ -192,7 +223,7 @@ router.post('/extender/:id', async (req, res) => {
                 estado: 'activo'
             })
 
-            .eq('id', req.params.id);
+            .eq('id', id);
 
         if (error) throw error;
 
@@ -204,6 +235,8 @@ router.post('/extender/:id', async (req, res) => {
 });
 
 router.post('/activar-plan/:id', async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).send('Negocio inválido.');
     const { plan } = req.body;
 
     const planesValidos = new Set(['trial', 'basic', 'premium', 'pro_plus']);
@@ -224,7 +257,7 @@ router.post('/activar-plan/:id', async (req, res) => {
                 fecha_vencimiento: fechaVencimiento.toISOString(),
                 estado: 'activo'
             })
-            .eq('id', req.params.id);
+            .eq('id', id);
 
         if (error) throw error;
 
@@ -236,6 +269,8 @@ router.post('/activar-plan/:id', async (req, res) => {
 });
 
 router.post('/toggle-estado/:id', async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).send('Negocio inválido.');
     const { estado_actual } = req.body;
     const nuevoEstado = estado_actual === 'activo' ? 'suspendido' : 'activo';
 
@@ -244,7 +279,7 @@ router.post('/toggle-estado/:id', async (req, res) => {
         const { error } = await supabase
             .from('restaurantes')
             .update({ estado: nuevoEstado })
-            .eq('id', req.params.id);
+            .eq('id', id);
 
         if (error) throw error;
 

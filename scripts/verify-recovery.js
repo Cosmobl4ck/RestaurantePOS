@@ -81,7 +81,7 @@ if (pkg.packageManager !== 'pnpm@11.17.0') fail('packageManager must pin pnpm@11
 for (const script of ['start', 'dev', 'check', 'test', 'audit:deps']) {
   if (!pkg.scripts?.[script]) fail(`package.json missing script ${script}`);
 }
-if (!/^2\./.test(pkg.dependencies?.multer || '')) fail('multer must use a supported 2.x release');
+if (!/^\^?2\./.test(pkg.dependencies?.multer || '')) fail('multer must use a supported 2.x release');
 
 if (fs.existsSync(path.join(root, 'package-lock.json'))) fail('active package-lock.json is forbidden');
 if (fs.existsSync(path.join(root, 'yarn.lock'))) fail('yarn.lock is forbidden');

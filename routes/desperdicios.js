@@ -106,8 +106,11 @@ router.post('/', async (req, res) => {
 // =====================================================
 router.delete('/:id', async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = Number(req.params.id);
         const restauranteId = req.session.usuario.restaurante_id;
+        if (!Number.isInteger(id)) {
+            return res.status(400).json({ ok: false, error: 'Registro inválido.' });
+        }
 
         // 1. Verificar antigüedad (Regla de 1 hora)
         const { data: registro } = await supabase
@@ -138,7 +141,8 @@ router.delete('/:id', async (req, res) => {
 
         res.json({ ok: true, message: 'Registro eliminado' });
     } catch (error) {
-        res.status(500).json({ ok: false, error: error.message });
+        console.error('Error eliminando desperdicio:', error.message);
+        res.status(500).json({ ok: false, error: 'No se pudo eliminar el registro.' });
     }
 });
 
@@ -195,7 +199,8 @@ router.get('/reporte', async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ ok: false, error: error.message });
+        console.error('Error generando reporte de desperdicios:', error.message);
+        res.status(500).json({ ok: false, error: 'No se pudo generar el reporte.' });
     }
 });
 

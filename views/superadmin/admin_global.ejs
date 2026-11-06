@@ -179,7 +179,7 @@
                             <td class="text-center">
                                 <div class="btn-group shadow-sm bg-white rounded">
                                     <!-- Editar -->
-                                    <button class="btn btn-sm btn-white border" onclick="abrirModalEditar('<%= n.id %>', '<%= n.nombre_comercial %>')">
+                                    <button type="button" class="btn btn-sm btn-white border" data-action="editar" data-id="<%= n.id %>" data-nombre="<%= n.nombre_comercial %>">
                                         <i class="bi bi-pencil-square text-warning"></i>
                                     </button>
 
@@ -236,7 +236,7 @@
                                     </form>
 
                                     <!-- ELIMINAR (EL NUEVO BOTÓN) -->
-                                    <button class="btn btn-sm btn-white border text-danger" onclick="prepararEliminacion('<%= n.id %>', '<%= n.nombre_comercial %>')">
+                                    <button type="button" class="btn btn-sm btn-white border text-danger" data-action="eliminar" data-id="<%= n.id %>" data-nombre="<%= n.nombre_comercial %>">
                                         <i class="bi bi-trash3-fill"></i>
                                     </button>
                                 </div>
@@ -347,9 +347,18 @@
         // Lógica Eliminar (NUEVO)
         function prepararEliminacion(id, nombre) {
             document.getElementById('nombreNegocioEliminar').innerText = nombre;
-            document.getElementById('formEliminarFinal').action = `/superadmin/eliminar-negocio/${id}`;
+            document.getElementById('formEliminarFinal').action = `/superadmin/eliminar-negocio/${encodeURIComponent(id)}`;
             new bootstrap.Modal(document.getElementById('modalConfirmarEliminar')).show();
         }
+
+        // Delegación: los datos de la BD nunca se interpolan en atributos onclick.
+        document.addEventListener('click', (event) => {
+            const boton = event.target.closest('[data-action]');
+            if (!boton) return;
+            const { action, id, nombre } = boton.dataset;
+            if (action === 'editar') abrirModalEditar(id, nombre);
+            else if (action === 'eliminar') prepararEliminacion(id, nombre);
+        });
     </script>
 </body>
 </html>

@@ -97,10 +97,14 @@ router.get('/exportar/:id?', verificarSesion, authRole(allowedRoles), async (req
     try {
         const restauranteId = req.session.usuario.restaurante_id;
         const fecha = await getBusinessDate(supabase, restauranteId);
+        const corteId = req.params.id && req.params.id !== 'diario' ? Number(req.params.id) : null;
+        if (req.params.id && req.params.id !== 'diario' && !Number.isInteger(corteId)) {
+            return res.status(400).send('Corte inválido.');
+        }
         const workbook = new excel.Workbook();
         const sheet = workbook.addWorksheet('Corte de Caja');
         let query = supabase.from('cortes_caja').select('*').eq('restaurante_id', restauranteId);
-        if (req.params.id && req.params.id !== 'diario') query = query.eq('id', req.params.id);
+        if (corteId) query = query.eq('id', corteId);
         else query = query.eq('fecha', fecha);
         const { data: cortes, error } = await query;
         if (error) throw error;

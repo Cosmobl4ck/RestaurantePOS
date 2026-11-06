@@ -102,15 +102,20 @@ router.post('/', verificarSesion, uploadErrorMiddleware(upload.fields([
             font_size
         } = req.body;
 
+        const nombreLimpio = String(nombre_negocio || '').trim();
+        if (nombreLimpio.length < 2 || nombreLimpio.length > 100) {
+            return res.status(400).json({ error: 'El nombre del negocio debe tener entre 2 y 100 caracteres.' });
+        }
+
         const registro = {
             restaurante_id: restauranteId,
-            nombre_negocio,
-            direccion: direccion || null,
-            telefono: telefono || null,
-            nit: nit || null,
-            pie_pagina: pie_pagina || null,
-            ancho_papel: ancho_papel || 80,
-            font_size: font_size || 1,
+            nombre_negocio: nombreLimpio,
+            direccion: String(direccion || '').trim().slice(0, 200) || null,
+            telefono: String(telefono || '').trim().slice(0, 30) || null,
+            nit: String(nit || '').trim().slice(0, 30) || null,
+            pie_pagina: String(pie_pagina || '').trim().slice(0, 200) || null,
+            ancho_papel: Number(ancho_papel) === 58 ? 58 : 80,
+            font_size: Number(font_size) === 2 ? 2 : 1,
             updated_at: new Date().toISOString()
         };
 

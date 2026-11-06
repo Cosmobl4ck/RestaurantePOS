@@ -55,9 +55,9 @@ router.get('/', verificarSesion, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error al obtener ventas:', error);
+        console.error('Error al obtener ventas:', error.message);
         res.status(500).render('error', {
-            error: { message: 'Error al cargar el historial de ventas: ' + error.message }
+            error: { message: 'Error al cargar el historial de ventas.' }
         });
     }
 });
@@ -175,8 +175,8 @@ router.get('/export', verificarSesion, async (req, res) => {
         res.end();
 
     } catch (error) {
-        console.error('Error al exportar ventas:', error);
-        res.status(500).send('Error al exportar: ' + error.message);
+        console.error('Error al exportar ventas:', error.message);
+        res.status(500).send('Error al exportar el reporte.');
     }
 });
 

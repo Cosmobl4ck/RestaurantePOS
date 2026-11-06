@@ -1,12 +1,8 @@
 /**
- * EXAMPLE: server.js actualizado para Supabase
- * Este archivo muestra cómo debe quedar server.js después de la migración
- * 
- * CAMBIOS PRINCIPALES:
- * 1. Usar Supabase en lugar de MySQL2
- * 2. Agregar helmet para seguridad
- * 3. Agregar rate-limiting
- * 4. Mejorar configuración de sesiones
+ * RestaurantePOS — servidor Express (SSR + API JSON + SSE para KDS).
+ *
+ * Flujo de datos: navegador -> Express -> Supabase (service_role, solo servidor).
+ * El navegador nunca recibe la clave de servicio ni habla directo con Supabase.
  */
 
 require('dotenv').config();
@@ -22,6 +18,7 @@ const { supabase } = require('./config/supabase');
 const SupabaseSessionStore = require('./config/SupabaseSessionStore');
 const authRole = require('./middlewares/authRole');
 const { requirePermission, requireSuperadmin, sameOriginForMutations } = require('./middlewares/access');
+const { verificarSesion } = require('./middlewares/authMiddleware');
 const { serializeForHtmlScript } = require('./utils/safe-json');
 
 // ==========================================
@@ -35,6 +32,11 @@ if (!process.env.SUPABASE_URL || !(process.env.SUPABASE_SECRET_KEY || process.en
     console.error('   - SESSION_SECRET');
     process.exit(1);
 }
+if (String(process.env.SESSION_SECRET).length < 16) {
+    console.error('❌ SESSION_SECRET demasiado corto: usa al menos 32 caracteres aleatorios.');
+    process.exit(1);
+}
+
 // ==========================================
 // 2. CREAR DIRECTORIOS NECESARIOS
 // ==========================================
@@ -43,6 +45,7 @@ const createRequiredDirectories = () => {
         path.join(__dirname, 'public'),
         path.join(__dirname, 'public', 'css'),
         path.join(__dirname, 'public', 'js'),
+        path.join(__dirname, 'public', 'img'),
         path.join(__dirname, 'public', 'uploads')
     ];
     directories.forEach(dir => {
@@ -56,65 +59,97 @@ createRequiredDirectories();
 // ==========================================
 // 3. CONFIGURACIÓN DE VISTAS
 // ==========================================
+app.disable('x-powered-by');
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.locals.serializeForHtmlScript = serializeForHtmlScript;
+
+// Proxy: configurar explícitamente. Sin proxy real, dejarlo desactivado evita
+// que un cliente falsifique X-Forwarded-For y evada el rate limiting.
+if (process.env.TRUST_PROXY) {
+    const raw = process.env.TRUST_PROXY;
+    app.set('trust proxy', raw === 'true' ? true : Number(raw) || 1);
+}
 
 // ==========================================
 // 4. MIDDLEWARES DE SEGURIDAD
 // ==========================================
 
-// Helmet: Headers de seguridad HTTP
-
-// Configuración de Helmet para permitir CDNs y scripts inline
+// Helmet: headers de seguridad HTTP.
+// CSP sin 'unsafe-inline' requeriría extraer todos los scripts/estilos inline
+// heredados; se mantiene por compatibilidad y se compensa escapando toda
+// interpolación (ver utils/safe-json.js y las vistas).
 app.use(helmet({
     contentSecurityPolicy: {
         useDefaults: true,
         directives: {
             "script-src": ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://code.jquery.com'],
+            // La app heredada usa onclick/onchange inline en muchas vistas.
+            // Sin esto, helmet (script-src-attr 'none' por defecto) rompe la UI.
+            "script-src-attr": ["'unsafe-inline'"],
             "style-src": ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com'],
             "font-src": ["'self'", 'https://fonts.gstatic.com', 'data:'],
             "img-src": ["'self'", 'data:', 'blob:'],
-            "connect-src": ["'self'", process.env.SUPABASE_URL].filter(Boolean)
+            "connect-src": ["'self'"],
+            "object-src": ["'none'"],
+            "base-uri": ["'self'"],
+            "form-action": ["'self'"],
+            "frame-ancestors": ["'self'"],
+            // El POS opera en LAN por HTTP; forzar HTTPS rompería los assets.
+            // Actívalo descomentando esta línea solo si sirves todo por HTTPS.
+            "upgrade-insecure-requests": null
         }
     },
     crossOriginEmbedderPolicy: false
 }));
 
-// Rate Limiting: Proteger contra ataques de fuerza bruta
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,  // 15 minutos
-    max: 100,                  // 100 requests por IP
-    message: 'Demasiadas solicitudes, intenta más tarde'
-});
-app.use(limiter);
-
-// Rate limiting más estricto para login
-const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 5,  // Solo 5 intentos por 15 minutos
-    skipSuccessfulRequests: true,
-    skip: (req) => req.method !== 'POST' || !req.path.includes('login')
-});
-app.use(loginLimiter);
+// HTTPS obligatorio (opt-in). Actívalo en producción con ENFORCE_HTTPS=true
+// cuando haya un proxy TLS delante.
+if (String(process.env.ENFORCE_HTTPS).toLowerCase() === 'true') {
+    app.use((req, res, next) => {
+        if (req.secure || req.get('x-forwarded-proto') === 'https') return next();
+        return res.status(403).send('HTTPS requerido.');
+    });
+}
 
 // ==========================================
 // 5. MIDDLEWARES BASE
 // ==========================================
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '256kb' }));
+app.use(express.urlencoded({ extended: true, limit: '128kb' }));
+
+// Los estáticos van antes del rate limit: no deben consumir cuota de API.
 app.use(express.static(path.join(__dirname, 'public'), {
     dotfiles: 'deny',
     maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0
 }));
+
 app.use(sameOriginForMutations);
+
+// Rate limit general de API. Es deliberadamente alto: un POS en LAN hace
+// muchas peticiones por terminal. Los límites estrictos viven en login y
+// superadmin. Las conexiones SSE no se limitan (son una sola petición larga).
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: Number(process.env.RATE_LIMIT_MAX) || 3000,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => req.path === '/healthz' || (req.path.startsWith('/kds/') && req.path.endsWith('/events')),
+    message: { error: 'Demasiadas solicitudes, intenta más tarde.' }
+});
+app.use(apiLimiter);
 
 // ==========================================
 // 6. CONFIGURACIÓN DE SESIONES
 // ==========================================
-if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
-
 const sessionStore = new SupabaseSessionStore({ supabase });
+
+// COOKIE_SECURE vacío = automático (true en producción). Permite operar por
+// HTTP en LAN sin TLS poniendo COOKIE_SECURE=false explícitamente.
+const cookieSecureEnv = process.env.COOKIE_SECURE;
+const cookieSecure = (cookieSecureEnv === undefined || cookieSecureEnv === '')
+    ? process.env.NODE_ENV === 'production'
+    : String(cookieSecureEnv).toLowerCase() === 'true';
 
 app.use(session({
     name: 'marrocos.sid',
@@ -123,10 +158,10 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: process.env.NODE_ENV === 'production',  // HTTPS solo en prod
-        httpOnly: true,  // No accesible desde JavaScript
-        sameSite: 'strict',  // Protección contra CSRF
-        maxAge: 1000 * 60 * 60 * 24  // 24 horas
+        secure: cookieSecure,
+        httpOnly: true,
+        sameSite: 'strict',
+        maxAge: 1000 * 60 * 60 * 24 // 24 horas
     }
 }));
 
@@ -136,8 +171,8 @@ app.use(session({
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     next();
 });
 
@@ -153,15 +188,33 @@ app.use((req, res, next) => {
 });
 
 // ==========================================
-// 9. DEFINICIÓN DE ROLES
+// 9. HEALTHCHECK (sin sesión ni licencia)
 // ==========================================
-const ROLES_ADMIN = ['admin'];
-const ROLES_GESTION = ['admin', 'gerente'];
+app.get('/healthz', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ status: 'ok', uptime: process.uptime() });
+});
+
+// ==========================================
+// 10. DEFINICIÓN DE ROLES
+// ==========================================
 const ROLES_CAJA = ['admin', 'gerente', 'cajero'];
 const ROLES_OPERACION = ['admin', 'gerente', 'cajero', 'mesero'];
 
 // ==========================================
-// 10. REDIRECCIÓN DE INICIO
+// 11. GUARDIA GLOBAL DE SESIÓN + LICENCIA
+// ==========================================
+// Se aplica a todo salvo login/logout (públicos) y healthz. Así ninguna ruta
+// queda sin validar licencia ni estado del usuario.
+const PUBLIC_PATHS = new Set(['/login', '/logout', '/healthz']);
+app.use((req, res, next) => {
+    // /superadmin usa Basic Auth propia, no la sesión del POS.
+    if (PUBLIC_PATHS.has(req.path) || req.path.startsWith('/superadmin')) return next();
+    return verificarSesion(req, res, next);
+});
+
+// ==========================================
+// 12. REDIRECCIÓN DE INICIO
 // ==========================================
 app.get('/', (req, res) => {
     const rol = req.session.usuario?.rol;
@@ -172,19 +225,26 @@ app.get('/', (req, res) => {
 });
 
 // ==========================================
-// 11. RUTAS DE AUTENTICACIÓN
+// 13. RUTAS DE AUTENTICACIÓN
 // ==========================================
 const authRoutes = require('./routes/auth');
 app.use('/', authRoutes);
 
 // ==========================================
-// 12. RUTAS DE SUPERADMIN
+// 14. RUTAS DE SUPERADMIN
 // ==========================================
+const superadminLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: 'Demasiados intentos de acceso al panel de administración.'
+});
 const superadminRoutes = require('./routes/superadmin');
-app.use('/superadmin', requireSuperadmin, superadminRoutes);
+app.use('/superadmin', superadminLimiter, requireSuperadmin, superadminRoutes);
 
 // ==========================================
-// 13. RUTAS PROTEGIDAS DEL RESTAURANTE
+// 15. RUTAS PROTEGIDAS DEL RESTAURANTE
 // ==========================================
 
 // Dashboard
@@ -218,65 +278,82 @@ app.use('/clientes', authRole(ROLES_OPERACION), clientesRoutes);
 app.use('/cocina', authRole(['admin', 'gerente', 'cajero', 'cocina']), cocinaRoutes);
 app.use('/bar', authRole(['admin', 'gerente', 'cajero', 'bar']), barRoutes);
 app.use('/ventas', authRole(ROLES_CAJA), ventasRoutes);
-app.use('/configuracion', authRole(ROLES_GESTION), configuracionRoutes);
+app.use('/configuracion', authRole(['admin', 'gerente']), configuracionRoutes);
 app.use('/kds', authRole(['admin', 'gerente', 'cajero', 'cocina', 'bar']), kdsRoutes);
-app.use('/areas', authRole(ROLES_GESTION), areasRoutes);
+app.use('/areas', authRole(['admin', 'gerente']), areasRoutes);
 app.use('/registro-pedidos', authRole(ROLES_OPERACION), registroPedidosRoutes);
 app.use('/desperdicios', authRole(ROLES_CAJA), desperdiciosRoutes);
 
 // ==========================================
-// 14. MANEJO DE ERRORES
+// 16. MANEJO DE ERRORES
 // ==========================================
 
 // 404: Página no encontrada
 app.use((req, res) => {
-    res.status(404).render('404', { 
-        mensaje: 'Página no encontrada' 
-    });
+    if (req.accepts(['html', 'json']) === 'json') {
+        return res.status(404).json({ error: 'Recurso no encontrado.' });
+    }
+    res.status(404).render('404', { mensaje: 'Página no encontrada' });
 });
 
-// Error general
+// Error general: nunca exponer detalles internos en producción.
 app.use((err, req, res, next) => {
-    console.error('❌ ERROR:', err.message);
+    const requestId = require('crypto').randomUUID();
+    console.error(`❌ ERROR [${requestId}] ${req.method} ${req.originalUrl}:`, err.message);
     console.error('   Stack:', err.stack);
 
-    // En desarrollo, mostrar detalles
-    const mensaje = process.env.NODE_ENV === 'production'
-        ? 'Error en el servidor'
-        : err.message;
-
+    const esProduccion = process.env.NODE_ENV === 'production';
+    if (req.accepts(['html', 'json']) === 'json') {
+        return res.status(500).json({ error: 'Error interno del servidor.', requestId });
+    }
     res.status(500).render('error', {
         error: {
-            message: mensaje,
-            stack: process.env.NODE_ENV === 'production' ? null : err.stack
+            message: esProduccion ? 'Error en el servidor' : err.message,
+            requestId,
+            stack: esProduccion ? null : err.stack
         }
     });
 });
 
 // ==========================================
-// 15. INICIALIZACIÓN DEL SERVIDOR
+// 17. INICIALIZACIÓN Y APAGADO ORDENADO
 // ==========================================
-
 const PORT = process.env.PORT || 3005;
+let server = null;
 
-if (require.main === module) app.listen(PORT, () => {
-    console.log('========================================');
-    console.log(`🚀 SERVIDOR INICIADO EN PUERTO: ${PORT}`);
-    console.log(`📍 http://localhost:${PORT}`);
-    console.log(`🗄️  Base de datos: ${process.env.SUPABASE_URL}`);
-    console.log(`🔐 Entorno: ${process.env.NODE_ENV || 'development'}`);
-    console.log('========================================');
-});
+if (require.main === module) {
+    server = app.listen(PORT, () => {
+        console.log('========================================');
+        console.log(`🚀 SERVIDOR INICIADO EN PUERTO: ${PORT}`);
+        console.log(`📍 http://localhost:${PORT}`);
+        console.log(`🗄️  Base de datos: ${process.env.SUPABASE_URL}`);
+        console.log(`🔐 Entorno: ${process.env.NODE_ENV || 'development'}`);
+        console.log('========================================');
+    });
+}
 
-// Manejo de excepciones no capturadas
+function shutdown(reason, exitCode = 0) {
+    console.log(`⏻ Cerrando servidor (${reason})...`);
+    if (!server) return process.exit(exitCode);
+    server.close(() => {
+        console.log('✅ Servidor cerrado.');
+        process.exit(exitCode);
+    });
+    setTimeout(() => process.exit(exitCode), 10000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+// Uncaught exception: registrar y reiniciar limpio (usar un process manager
+// en producción para que el servicio vuelva a levantarse).
 process.on('uncaughtException', (err) => {
     console.error('❌ EXCEPCIÓN NO CAPTURADA:', err);
-    process.exit(1);
+    shutdown('uncaughtException', 1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason) => {
     console.error('❌ PROMESA RECHAZADA:', reason);
-    process.exit(1);
 });
 
 module.exports = app;

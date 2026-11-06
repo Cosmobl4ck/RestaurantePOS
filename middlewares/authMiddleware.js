@@ -1,56 +1,113 @@
 const { supabase } = require('../config/supabase');
+const { normalizeRole } = require('./access');
 
+// La licencia y el estado del usuario se revalidan contra la base de datos,
+// pero con una caché corta en sesión para no hacer 2 consultas por request.
+const CACHE_TTL_MS = Number(process.env.LICENSE_CACHE_TTL_MS) || 60 * 1000;
+const GRACIA_VENCIMIENTO_MS = 48 * 60 * 60 * 1000;
+
+function esperaJson(req) {
+    return req.accepts(['html', 'json']) === 'json' || req.xhr || req.path.startsWith('/api/');
+}
+
+function denegar(req, res, status, message) {
+    if (req.path.endsWith('/events')) return res.status(status).end();
+    if (esperaJson(req)) return res.status(status).json({ error: message });
+    return res.status(status).render('error', { error: { message, status } });
+}
+
+function sesionInvalida(req, res, message) {
+    if (req.path.endsWith('/events')) return res.status(401).end();
+    if (esperaJson(req)) return res.status(401).json({ error: message });
+    return res.redirect('/login');
+}
+
+/**
+ * Verifica, en este orden:
+ *  1. que exista sesión;
+ *  2. que el usuario siga existiendo y activo (rol incluido);
+ *  3. que el restaurante siga activo y con licencia vigente (+48h de gracia).
+ */
 const verificarSesion = async (req, res, next) => {
-    // 1. ¿Hay alguien logueado?
     if (!req.session || !req.session.usuario) {
-        return res.redirect('/login');
+        return sesionInvalida(req, res, 'Sesión requerida.');
+    }
+
+    const usuarioSesion = req.session.usuario;
+
+    // Caché: evita consultar la BD en cada request.
+    const cache = req.session.licenseCheck;
+    if (cache && Number.isFinite(cache.at) && Date.now() - cache.at < CACHE_TTL_MS) {
+        if (!cache.ok) {
+            if (cache.code === 'SESSION') {
+                return req.session.destroy(() => sesionInvalida(req, res, cache.message));
+            }
+            return denegar(req, res, cache.status || 403, cache.message);
+        }
+        return next();
     }
 
     try {
-        const restauranteId = req.session.usuario.restaurante_id;
+        const restauranteId = usuarioSesion.restaurante_id;
 
-        // ✅ CAMBIO CLAVE: Usamos el cliente de Supabase en lugar de pool.query
-        const { data: negocio, error } = await supabase
-            .from('restaurantes')
-            .select('estado, fecha_vencimiento, nombre_comercial')
-            .eq('id', restauranteId)
-            .single(); // Traemos solo una fila
+        const [negocioResult, usuarioResult] = await Promise.all([
+            supabase
+                .from('restaurantes')
+                .select('estado, fecha_vencimiento, nombre_comercial')
+                .eq('id', restauranteId)
+                .maybeSingle(),
+            supabase
+                .from('usuarios')
+                .select('estado, rol')
+                .eq('id', usuarioSesion.id)
+                .eq('restaurante_id', restauranteId)
+                .maybeSingle()
+        ]);
 
-        // Si hay un error de conexión o el restaurante no existe
-        if (error || !negocio) {
-            console.error("Error obteniendo restaurante:", error);
-            req.session.destroy();
-            return res.redirect('/login');
+        if (negocioResult.error) throw negocioResult.error;
+        if (usuarioResult.error) throw usuarioResult.error;
+
+        const negocio = negocioResult.data;
+        const usuario = usuarioResult.data;
+
+        if (!negocio || !usuario || Number(usuario.estado) !== 1) {
+            const message = !negocio
+                ? 'El restaurante de esta sesión ya no existe.'
+                : 'Tu usuario fue desactivado. Vuelve a iniciar sesión.';
+            req.session.licenseCheck = { at: Date.now(), ok: false, code: 'SESSION', message };
+            return req.session.destroy(() => sesionInvalida(req, res, message));
         }
 
-        const hoy = new Date();
-        
-        // 2. Validación de estado (Activo, Suspendido, etc.)
+        // Mantiene el rol de la sesión alineado con la base de datos.
+        const rolActual = normalizeRole(usuario.rol);
+        if (rolActual !== usuarioSesion.rol) {
+            req.session.usuario.rol = rolActual;
+        }
+
         if (negocio.estado !== 'activo') {
-            return res.status(403).render('error', { error: { message: 'El acceso a este restaurante está suspendido.', status: 403 } });
+            const message = 'El acceso a este restaurante está suspendido.';
+            req.session.licenseCheck = { at: Date.now(), ok: false, status: 403, message };
+            return denegar(req, res, 403, message);
         }
 
-        // 3. Lógica de bloqueo por Fecha (Vencimiento)
-        // Según tu imagen, vence el 15/06/2026, así que hoy debería entrar sin problemas.
         if (negocio.fecha_vencimiento) {
             const vencimiento = new Date(negocio.fecha_vencimiento);
-
-            if (hoy > vencimiento) {
-                // Permitir un periodo de gracia de 48 horas
-                const limiteBloqueo = new Date(vencimiento.getTime() + 48 * 60 * 60 * 1000);
-
-                if (hoy > limiteBloqueo) {
-                    return res.status(403).render('error', { error: { message: 'La licencia de este restaurante está vencida.', status: 403 } });
+            if (!Number.isNaN(vencimiento.getTime())) {
+                const limiteBloqueo = new Date(vencimiento.getTime() + GRACIA_VENCIMIENTO_MS);
+                if (Date.now() > limiteBloqueo.getTime()) {
+                    const message = 'La licencia de este restaurante está vencida.';
+                    req.session.licenseCheck = { at: Date.now(), ok: false, status: 403, message };
+                    return denegar(req, res, 403, message);
                 }
             }
         }
 
-        // Si pasó todos los filtros, ¡adelante!
-        next();
-
+        req.session.licenseCheck = { at: Date.now(), ok: true };
+        return next();
     } catch (error) {
-        console.error("Error crítico en seguridad SaaS:", error);
-        res.status(500).send("Error interno de validación de licencia. Revisa la consola del servidor.");
+        // Error transitorio de base de datos: no cerramos la sesión del usuario.
+        console.error('Error crítico validando sesión/licencia:', error.message);
+        return denegar(req, res, 503, 'No se pudo validar la licencia. Intenta de nuevo.');
     }
 };
 

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factura #<%= factura.id %> — <%= config.nombre_negocio || 'RestaurantePOS' %></title>
+    <style>
+        :root { --ancho: <%= Number(config.ancho_papel) === 58 ? '58mm' : '80mm' %>; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 12px;
+            background: #f4f5f7;
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+            font-size: <%= Number(config.font_size) === 2 ? '13px' : '12px' %>;
+            color: #111;
+        }
+        .acciones {
+            max-width: var(--ancho);
+            margin: 0 auto 12px;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+        .acciones button {
+            border: 0;
+            border-radius: 6px;
+            padding: 8px 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-imprimir { background: #00A19C; color: #fff; }
+        .btn-cerrar { background: #e5e7eb; color: #111; }
+        .ticket {
+            width: var(--ancho);
+            margin: 0 auto;
+            background: #fff;
+            padding: 14px 12px;
+            border-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.12);
+        }
+        .logo { text-align: center; margin-bottom: 6px; }
+        .logo img { max-width: 90px; max-height: 90px; object-fit: contain; }
+        .negocio { text-align: center; }
+        .negocio h1 { font-size: 15px; margin: 4px 0 2px; text-transform: uppercase; letter-spacing: .5px; }
+        .negocio p { margin: 1px 0; font-size: 10px; color: #444; }
+        .separador { border-top: 1px dashed #999; margin: 8px 0; }
+        .meta { display: flex; justify-content: space-between; font-size: 10px; color: #333; }
+        .cliente { margin: 6px 0; font-size: 11px; }
+        table { width: 100%; border-collapse: collapse; }
+        thead th { font-size: 9px; text-transform: uppercase; text-align: left; border-bottom: 1px solid #111; padding: 4px 0; }
+        tbody td { padding: 3px 0; font-size: 11px; vertical-align: top; }
+        .num { text-align: right; white-space: nowrap; }
+        .total { display: flex; justify-content: space-between; font-weight: 800; font-size: 14px; margin-top: 6px; }
+        .pie { text-align: center; font-size: 9px; color: #555; margin-top: 10px; font-style: italic; }
+        @media print {
+            body { background: #fff; padding: 0; }
+            .acciones { display: none; }
+            .ticket { box-shadow: none; width: 100%; padding: 0; }
+            @page { margin: 4mm; }
+        }
+    </style>
+</head>
+<body>
+    <%
+        const money = (value) => Number(value || 0).toFixed(2);
+        const fecha = factura.fecha ? new Date(factura.fecha) : new Date();
+        const fechaTexto = Number.isNaN(fecha.getTime()) ? '' : fecha.toLocaleString('es-SV');
+        const total = factura.total != null
+            ? Number(factura.total)
+            : (detalles || []).reduce((acc, d) => acc + Number(d.subtotal || 0), 0);
+    %>
+    <div class="acciones">
+        <button type="button" class="btn-imprimir" onclick="window.print()">Imprimir</button>
+        <button type="button" class="btn-cerrar" onclick="window.close()">Cerrar</button>
+    </div>
+
+    <div class="ticket">
+        <div class="logo">
+            <% if (config.logo_src) { %>
+                <img src="<%= config.logo_src %>" alt="Logo">
+            <% } %>
+        </div>
+
+        <div class="negocio">
+            <h1><%= config.nombre_negocio || 'RestaurantePOS' %></h1>
+            <% if (config.direccion) { %><p><%= config.direccion %></p><% } %>
+            <% if (config.telefono) { %><p>Tel: <%= config.telefono %></p><% } %>
+            <% if (config.nit) { %><p>NIT: <%= config.nit %></p><% } %>
+        </div>
+
+        <div class="separador"></div>
+
+        <div class="meta">
+            <span>Factura #<%= factura.id %></span>
+            <span><%= fechaTexto %></span>
+        </div>
+
+        <div class="cliente">
+            <strong>Cliente:</strong> <%= factura.cliente_nombre || 'Consumidor Final' %><br>
+            <strong>Pago:</strong> <%= String(factura.forma_pago || 'efectivo') %>
+        </div>
+
+        <div class="separador"></div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:14%">Cant</th>
+                    <th style="width:52%">Producto</th>
+                    <th style="width:17%" class="num">Precio</th>
+                    <th style="width:17%" class="num">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% (detalles || []).forEach((d) => { %>
+                    <tr>
+                        <td><%= Number(d.cantidad || 0) %></td>
+                        <td><%= d.producto_nombre || 'Producto' %></td>
+                        <td class="num"><%= money(d.precio_unitario) %></td>
+                        <td class="num"><%= money(d.subtotal) %></td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+
+        <div class="separador"></div>
+
+        <div class="total">
+            <span>TOTAL</span>
+            <span>$<%= money(total) %></span>
+        </div>
+
+        <div class="pie">
+            <%= config.pie_pagina || '¡Gracias por su preferencia!' %>
+        </div>
+    </div>
+</body>
+</html>

@@ -47,8 +47,8 @@ router.get('/', verificarSesion, authRole(['admin','gerente','cajero']), async (
         });
 
     } catch (error) {
-        console.error("Error al cargar historial:", error);
-        res.status(500).send("Error en el servidor: " + error.message);
+        console.error("Error al cargar historial:", error.message);
+        res.status(500).send("Error interno del servidor.");
     }
 });
 
@@ -68,7 +68,8 @@ router.post('/anular/:id', verificarSesion, authRole(['admin','gerente','cajero'
         res.json({ success: true, ...data });
     } catch (error) {
         console.error('❌ Error al anular:', error.message);
-        res.status(/no encontrada/i.test(error.message || '') ? 404 : 500).json({ success: false, error: error.message });
+        const status = /no encontrada/i.test(error.message || '') ? 404 : 500;
+        res.status(status).json({ success: false, error: status === 404 ? 'Factura no encontrada.' : 'No se pudo anular la factura.' });
     }
 });
 
@@ -77,8 +78,9 @@ router.post('/anular/:id', verificarSesion, authRole(['admin','gerente','cajero'
 // ==========================================
 router.get('/detalle/:id', verificarSesion, authRole(['admin','gerente','cajero']), async (req, res) => {
     try {
-        const facturaId = req.params.id;
+        const facturaId = Number(req.params.id);
         const restauranteId = req.session.usuario.restaurante_id;
+        if (!Number.isInteger(facturaId)) return res.status(400).json({ error: 'Factura inválida.' });
 
         // 1. Obtener encabezado — validar que pertenece al restaurante
         const { data: factura, error: facturaError } = await supabase
@@ -123,7 +125,7 @@ router.get('/detalle/:id', verificarSesion, authRole(['admin','gerente','cajero'
 
     } catch (error) {
         console.error('❌ Error al obtener detalle de factura:', error.message);
-        res.status(500).json({ error: 'Error al obtener el detalle: ' + error.message });
+        res.status(500).json({ error: 'Error al obtener el detalle.' });
     }
 });
 
@@ -132,8 +134,9 @@ router.get('/detalle/:id', verificarSesion, authRole(['admin','gerente','cajero'
 // ===================================
 router.get('/:id/imprimir', verificarSesion, authRole(['admin','gerente','cajero']), async (req, res) => {
     try {
-        const facturaId = req.params.id;
+        const facturaId = Number(req.params.id);
         const restauranteId = req.session.usuario.restaurante_id;
+        if (!Number.isInteger(facturaId)) return res.status(400).send('Factura inválida.');
 
         const { data: factura, error: facturaError } = await supabase
             .from('facturas')
@@ -163,7 +166,30 @@ router.get('/:id/imprimir', verificarSesion, authRole(['admin','gerente','cajero
             producto_nombre: d.productos?.nombre || 'Producto eliminado'
         }));
 
-        res.render('factura', { factura: facturaFormateada, detalles: detallesFormateados, config: {} });
+        const { data: config } = await supabase
+            .from('configuracion_impresion')
+            .select('*')
+            .eq('restaurante_id', restauranteId)
+            .maybeSingle();
+
+        // Convierte el logo BYTEA a data URI (mismo criterio que /configuracion).
+        const configParaVista = { ...(config || {}) };
+        if (config?.logo_data) {
+            const hex = String(config.logo_data).replace(/^\\x/, '');
+            try {
+                configParaVista.logo_src = `data:image/${config.logo_tipo || 'png'};base64,${Buffer.from(hex, 'hex').toString('base64')}`;
+            } catch (_) {
+                configParaVista.logo_src = null;
+            }
+        }
+        delete configParaVista.logo_data;
+        delete configParaVista.qr_data;
+
+        res.render('factura', {
+            factura: facturaFormateada,
+            detalles: detallesFormateados,
+            config: configParaVista
+        });
     } catch (error) {
         console.error('Error al imprimir factura:', error.message);
         res.status(500).send('Error al generar vista de impresion');

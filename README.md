@@ -33,9 +33,13 @@ Copy-Item .env.example .env
 Completa `.env` sin versionarlo:
 
 - `SUPABASE_URL`: URL del proyecto.
-- `SUPABASE_SERVICE_ROLE`: secreto exclusivo y obligatorio del backend.
-- `SESSION_SECRET`: secreto largo y aleatorio para cookies de sesión.
+- `SUPABASE_SECRET_KEY` (recomendada) o `SUPABASE_SERVICE_ROLE`: secreto exclusivo del backend.
+- `SESSION_SECRET`: secreto de al menos 32 caracteres aleatorios.
 - `SUPERADMIN_USER` y `SUPERADMIN_PASSWORD`: opcionales; `/superadmin` permanece deshabilitado si faltan.
+- `TRUST_PROXY`: solo si hay un proxy real delante (`1` para uno, `true` para confiar en todos).
+- `ENFORCE_HTTPS`: `true` obliga a HTTPS (actívalo solo con TLS real).
+- `RATE_LIMIT_MAX`: peticiones API por IP cada 15 minutos (por defecto 3000).
+- `LICENSE_CACHE_TTL_MS`: caché de revalidación de licencia/estado de usuario (por defecto 60000).
 
 Nunca expongas `SUPABASE_SERVICE_ROLE` en `public/`, vistas ni código enviado al navegador.
 
@@ -49,11 +53,23 @@ pnpm test
 pnpm audit:deps
 ```
 
+Healthcheck: `GET /healthz` (sin sesión) devuelve `{ "status": "ok" }` para monitores de proceso.
+
+En producción ejecuta el proceso bajo un gestor (PM2, NSSM o un servicio de Windows) para que se reinicie tras un fallo, y sirve la app detrás de HTTPS.
+
 ## Base de datos
 
 Revisa y respalda la instancia antes de aplicar una migración. Las migraciones normalizan los roles a `admin`, `gerente`, `cajero`, `mesero`, `cocina` y `bar`; protegen sesiones; y encapsulan operaciones críticas en RPC transaccionales restringidas a `service_role`.
 
 La aplicación usa un cliente privilegiado en el backend. RLS no sustituye los filtros por `restaurante_id`, el RBAC ni las validaciones de pertenencia del servidor.
+
+## Seguridad
+
+El detalle del hardening aplicado en la rama `fix/security-hardening` está en
+[`SECURITY_HARDENING_2026-11-06.md`](SECURITY_HARDENING_2026-11-06.md).
+Incluye XSS, IDOR cross-tenant, rate limiting, validación global de
+sesión/licencia, CSP, dependencias y la migración pendiente de aplicar.
+
 
 ## Flujo operativo esperado
 

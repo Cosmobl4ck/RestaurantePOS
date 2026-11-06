@@ -61,14 +61,14 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group">
-                                        <button onclick="verDetalle(<%= f.id %>)" class="btn btn-sm btn-light border shadow-sm">
+                                        <button type="button" data-action="detalle" data-id="<%= f.id %>" class="btn btn-sm btn-light border shadow-sm">
                                             <i class="bi bi-eye text-primary"></i> Detalle
                                         </button>
-                                        <button onclick="enviarWhatsApp(<%= f.id %>, '<%= f.cliente_nombre %>', <%= f.total %>)" class="btn btn-sm btn-light border shadow-sm">
+                                        <button type="button" data-action="whatsapp" data-id="<%= f.id %>" data-cliente="<%= f.cliente_nombre %>" data-total="<%= f.total %>" class="btn btn-sm btn-light border shadow-sm">
                                             <i class="bi bi-whatsapp text-success"></i>
                                         </button>
                                         <% if(f.estado !== 'anulada') { %>
-                                            <button onclick="anularFactura(<%= f.id %>)" class="btn btn-sm btn-danger ms-1">Anular</button>
+                                            <button type="button" data-action="anular" data-id="<%= f.id %>" class="btn btn-sm btn-danger ms-1">Anular</button>
                                         <% } %>
                                     </div>
                                 </td>
@@ -87,6 +87,11 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <script>
+    // Escapa datos de la BD antes de interpolarlos en HTML (previene XSS).
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    }
+
     // 1. FUNCIÓN PARA ANULAR
     async function anularFactura(id) {
         const { value: motivo } = await Swal.fire({
@@ -152,7 +157,7 @@
                 <div id="captura-detalle" style="padding: 30px; background: white; font-family: 'Segoe UI', Roboto, sans-serif; width: 420px; color: #000; border: 1px solid #eee;">
                     
                     <div style="text-align: center; margin-bottom: 10px;">
-                        <img src="/uploads/MarrocosPOS_ico250px.png" style="max-width: 100px; height: auto; display: inline-block;" alt="Logo">
+                        <img src="/img/logo-icon.svg" style="max-width: 100px; height: auto; display: inline-block;" alt="Logo">
                     </div>
 
                     <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px dashed #eee; padding-bottom: 15px;">
@@ -162,7 +167,7 @@
 
                     <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 1rem;">
                         <span style="font-weight: bold; color: #444;">Cliente:</span>
-                        <span style="text-align: right;">${info.cliente_nombre}</span>
+                        <span style="text-align: right;">${escapeHtml(info.cliente_nombre)}</span>
                     </div>
 
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
@@ -177,7 +182,7 @@
                             ${items.map(item => `
                                 <tr style="border-bottom: 1px solid #f2f2f2;">
                                     <td style="padding: 10px 0; text-align: left;">${Math.round(item.cantidad)}</td>
-                                    <td style="padding: 10px 0; text-align: left;">${item.producto_nombre}</td>
+                                    <td style="padding: 10px 0; text-align: left;">${escapeHtml(item.producto_nombre)}</td>
                                     <td style="padding: 10px 0; text-align: right; font-weight: bold;">$${Number(item.subtotal).toLocaleString('es-CO')}</td>
                                 </tr>
                             `).join('')}
@@ -264,6 +269,16 @@
             });
         }
     }
+
+    // 5. Delegación de eventos: evita interpolar datos en atributos onclick.
+    document.addEventListener('click', (event) => {
+        const boton = event.target.closest('[data-action]');
+        if (!boton) return;
+        const id = boton.dataset.id;
+        if (boton.dataset.action === 'detalle') verDetalle(id);
+        else if (boton.dataset.action === 'whatsapp') enviarWhatsApp(id, boton.dataset.cliente, Number(boton.dataset.total));
+        else if (boton.dataset.action === 'anular') anularFactura(id);
+    });
     </script>
 </body>
 </html>

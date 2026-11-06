@@ -115,10 +115,12 @@ async function getItemStation(itemId, restauranteId) {
 
 router.put('/:itemId/estado', verificarSesion, async (req, res) => {
     const restauranteId = req.session.usuario.restaurante_id;
+    const itemId = Number(req.params.itemId);
+    if (!Number.isInteger(itemId)) return res.status(400).json({ error: 'Item inválido.' });
     const estado = String(req.body.estado || '').toLowerCase();
     if (!['preparando', 'listo'].includes(estado)) return res.status(400).json({ error: 'Estado inválido.' });
     try {
-        const info = await getItemStation(req.params.itemId, restauranteId);
+        const info = await getItemStation(itemId, restauranteId);
         if (!info?.station) return res.status(404).json({ error: 'Item KDS no encontrado.' });
         if (!canSeeStation(req.session.usuario.rol, info.station)) return res.status(403).json({ error: 'No autorizado para esta estación.' });
 
@@ -129,7 +131,7 @@ router.put('/:itemId/estado', verificarSesion, async (req, res) => {
 
         const { data, error } = await supabase.rpc('pos_transition_kds', {
             p_restaurante_id: Number(restauranteId),
-            p_item_id: Number(req.params.itemId),
+            p_item_id: itemId,
             p_station: info.station,
             p_next_state: estado
         });
@@ -144,15 +146,17 @@ router.put('/:itemId/estado', verificarSesion, async (req, res) => {
 
 router.put('/:itemId/finalizar', verificarSesion, async (req, res) => {
     const restauranteId = req.session.usuario.restaurante_id;
+    const itemId = Number(req.params.itemId);
+    if (!Number.isInteger(itemId)) return res.status(400).json({ error: 'Item inválido.' });
     try {
-        const info = await getItemStation(req.params.itemId, restauranteId);
+        const info = await getItemStation(itemId, restauranteId);
         if (!info?.station) return res.status(404).json({ error: 'Item KDS no encontrado.' });
         if (!canSeeStation(req.session.usuario.rol, info.station)) return res.status(403).json({ error: 'No autorizado para esta estación.' });
         if (info.item.estado !== 'listo') return res.status(409).json({ error: 'La comanda debe estar lista antes de finalizar.' });
 
         const { data, error } = await supabase.rpc('pos_transition_kds', {
             p_restaurante_id: Number(restauranteId),
-            p_item_id: Number(req.params.itemId),
+            p_item_id: itemId,
             p_station: info.station,
             p_next_state: 'servido'
         });

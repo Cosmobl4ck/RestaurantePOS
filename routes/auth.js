@@ -1,12 +1,33 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { supabase } = require('../config/supabase');
 const { normalizeRole } = require('../middlewares/access');
 
+// Hash de referencia para igualar el tiempo de respuesta cuando el usuario no
+// existe (evita enumeración de usuarios por timing).
+const DUMMY_HASH = bcrypt.hashSync('restaurante-pos-dummy-pin', 10);
+
+// Límite por IP + usuario: un empleado que falla no bloquea a todo el turno.
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    keyGenerator: (req) => {
+        const usuario = String(req.body?.nombre || '').trim().toLowerCase().slice(0, 50);
+        return `${ipKeyGenerator(req.ip)}:${usuario}`;
+    },
+    message: 'Demasiados intentos de inicio de sesión. Espera 15 minutos.'
+});
+
+const ROLES_VALIDOS = ['admin', 'gerente', 'cajero', 'mesero', 'cocina', 'bar'];
+const ROLES_SOLO_ADMIN = ['admin', 'gerente'];
+const NOMBRE_RE = /^[\p{L}\p{N} ._-]{2,50}$/u;
+
 // Cada rol aterriza en la pantalla que realmente puede ver.
-// (Antes todo el mundo iba a /dashboard, que solo admite admin/cajero/mesero,
-// así que un usuario con rol 'cocina' o 'bar' quedaba bloqueado justo tras loguearse).
 const rutaInicioPorRol = (rol) => {
     rol = normalizeRole(rol);
     if (rol === 'cocina') return '/kds/cocina';
@@ -18,12 +39,11 @@ router.get('/login', (req, res) => {
     if (req.session.usuario) {
         return res.redirect(rutaInicioPorRol(req.session.usuario.rol));
     }
-
     res.render('login', { error: null });
 });
 
-router.post('/login', async (req, res) => {
-    const codigoNegocio = String(req.body.codigo_negocio || '').trim();
+router.post('/login', loginLimiter, async (req, res) => {
+    const codigoNegocio = String(req.body.codigo_negocio || '').trim().toUpperCase();
     const nombreUsuario = String(req.body.nombre || '').trim();
     const pinRecibido = String(req.body.pin || '').trim();
 
@@ -32,17 +52,22 @@ router.post('/login', async (req, res) => {
     if (!codigoNegocio || !nombreUsuario || !pinRecibido) {
         return res.status(400).render('login', { error: 'Por favor completa todos los campos.' });
     }
+    if (!/^[A-Z0-9-]{3,32}$/.test(codigoNegocio)) {
+        return res.status(400).render('login', { error: 'Código de negocio inválido.' });
+    }
 
     try {
         const { data: restaurante, error: restauranteError } = await supabase
             .from('restaurantes')
-            .select('id, codigo_negocio, nombre_comercial, estado, fecha_vencimiento')
+            .select('id, codigo_negocio, nombre_comercial, estado, fecha_vencimiento, plan')
             .eq('codigo_negocio', codigoNegocio)
             .maybeSingle();
 
         if (restauranteError) throw restauranteError;
 
         if (!restaurante) {
+            // Consume tiempo similar al caso real para no filtrar existencia.
+            await bcrypt.compare(pinRecibido, DUMMY_HASH);
             return res.status(401).render('login', { error: 'Credenciales incorrectas o negocio no existe.' });
         }
 
@@ -54,13 +79,12 @@ router.post('/login', async (req, res) => {
         const vencimiento = restaurante.fecha_vencimiento ? new Date(restaurante.fecha_vencimiento) : null;
 
         // Permitir uso hasta +48h después del vencimiento.
-        if (vencimiento && ahora > vencimiento) {
+        if (vencimiento && !Number.isNaN(vencimiento.getTime()) && ahora > vencimiento) {
             const limiteBloqueo = new Date(vencimiento.getTime() + 48 * 60 * 60 * 1000);
             if (ahora > limiteBloqueo) {
                 return res.status(403).render('login', { error: 'La licencia de este negocio esta vencida (bloqueado).' });
             }
         }
-
 
         const { data: user, error: userError } = await supabase
             .from('usuarios')
@@ -68,11 +92,13 @@ router.post('/login', async (req, res) => {
             .eq('restaurante_id', restaurante.id)
             .eq('nombre', nombreUsuario)
             .eq('estado', 1)
+            .limit(1)
             .maybeSingle();
 
         if (userError) throw userError;
 
         if (!user) {
+            await bcrypt.compare(pinRecibido, DUMMY_HASH);
             return res.status(401).render('login', { error: 'Credenciales incorrectas o usuario inactivo.' });
         }
 
@@ -92,7 +118,7 @@ router.post('/login', async (req, res) => {
             plan: restaurante.plan || 'trial'
         };
 
-        // Evita session fixation: después de autenticar se crea un ID de sesión nuevo.
+        // Evita session fixation: después de autenticar se crea un ID nuevo.
         return req.session.regenerate((sessionErr) => {
             if (sessionErr) {
                 console.error('Error regenerando sesión:', sessionErr);
@@ -113,14 +139,13 @@ function cerrarSesion(req, res) {
         res.redirect('/login');
     });
 }
+// Solo POST: cerrar sesión por GET permitía CSRF de logout.
 router.post('/logout', cerrarSesion);
-// Compatibilidad temporal con enlaces antiguos; migrar la UI a POST.
-router.get('/logout', cerrarSesion);
 
 router.get('/register', (req, res) => {
     if (!req.session.usuario) return res.redirect('/login');
 
-    if (req.session.usuario.rol !== 'admin' && req.session.usuario.rol !== 'gerente') {
+    if (!ROLES_SOLO_ADMIN.includes(req.session.usuario.rol)) {
         return res.redirect('/dashboard');
     }
 
@@ -134,9 +159,8 @@ router.get('/register', (req, res) => {
 router.post('/register', async (req, res) => {
     if (!req.session.usuario) return res.redirect('/login');
 
-    // SEGURIDAD: solo admin/gerente pueden crear usuarios (antes solo se validaba en el GET,
-    // así que cualquier usuario logueado podía crear un admin mandando el POST directo).
-    if (req.session.usuario.rol !== 'admin' && req.session.usuario.rol !== 'gerente') {
+    const rolSolicitante = req.session.usuario.rol;
+    if (!ROLES_SOLO_ADMIN.includes(rolSolicitante)) {
         return res.status(403).render('register', {
             usuario: req.session.usuario,
             error: 'No tienes permisos para crear usuarios.',
@@ -144,12 +168,11 @@ router.post('/register', async (req, res) => {
         });
     }
 
-    const { nombre, rol, pin } = req.body;
+    const nombre = String(req.body.nombre || '').trim();
+    const rol = String(req.body.rol || '').trim().toLowerCase();
+    const pin = String(req.body.pin || '').trim();
     const restauranteId = req.session.usuario.restaurante_id;
     const limiteUsuarios = 10;
-
-    // SEGURIDAD: whitelist de roles válidos, no confiar en cualquier string del formulario.
-    const ROLES_VALIDOS = ['admin', 'gerente', 'cajero', 'mesero', 'cocina', 'bar'];
 
     try {
         if (!nombre || !rol || !pin) {
@@ -160,10 +183,43 @@ router.post('/register', async (req, res) => {
             });
         }
 
+        if (!NOMBRE_RE.test(nombre)) {
+            return res.render('register', {
+                usuario: req.session.usuario,
+                error: 'El nombre debe tener entre 2 y 50 caracteres (letras, números, espacios, . _ -).',
+                success: null
+            });
+        }
+
         if (!ROLES_VALIDOS.includes(rol)) {
             return res.render('register', {
                 usuario: req.session.usuario,
                 error: 'Rol inválido.',
+                success: null
+            });
+        }
+
+        // Un gerente no puede crear administradores ni otros gerentes.
+        if (rolSolicitante === 'gerente' && ROLES_SOLO_ADMIN.includes(rol)) {
+            return res.status(403).render('register', {
+                usuario: req.session.usuario,
+                error: 'Solo un administrador puede crear administradores o gerentes.',
+                success: null
+            });
+        }
+
+        // PIN numérico; los roles con acceso administrativo exigen 6+ dígitos.
+        if (!/^\d{4,12}$/.test(pin)) {
+            return res.render('register', {
+                usuario: req.session.usuario,
+                error: 'El PIN debe tener entre 4 y 12 dígitos.',
+                success: null
+            });
+        }
+        if (ROLES_SOLO_ADMIN.includes(rol) && pin.length < 6) {
+            return res.render('register', {
+                usuario: req.session.usuario,
+                error: 'Para roles administrativos el PIN debe tener al menos 6 dígitos.',
                 success: null
             });
         }
@@ -183,7 +239,7 @@ router.post('/register', async (req, res) => {
             });
         }
 
-        const pinHash = await bcrypt.hash(String(pin), 10);
+        const pinHash = await bcrypt.hash(pin, 10);
 
         const { error: insertError } = await supabase
             .from('usuarios')
@@ -195,7 +251,16 @@ router.post('/register', async (req, res) => {
                 estado: 1
             });
 
-        if (insertError) throw insertError;
+        if (insertError) {
+            if (String(insertError.code) === '23505') {
+                return res.render('register', {
+                    usuario: req.session.usuario,
+                    error: `Ya existe un usuario con el nombre "${nombre}".`,
+                    success: null
+                });
+            }
+            throw insertError;
+        }
 
         res.render('register', {
             usuario: req.session.usuario,
@@ -203,7 +268,7 @@ router.post('/register', async (req, res) => {
             success: `El empleado ${nombre} fue creado exitosamente con el rol de ${rol}.`
         });
     } catch (error) {
-        console.error('❌ ERROR AL CREAR USUARIO:', error);
+        console.error('❌ ERROR AL CREAR USUARIO:', error.message);
         res.render('register', {
             usuario: req.session.usuario,
             error: 'Error al guardar el usuario.',

@@ -39,7 +39,8 @@ router.get('/', verificarSesion, async (req, res) => {
 router.get('/buscar', verificarSesion, async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
-        const query = req.query.q || '';
+        // Allowlist: evita inyección de operadores en el filtro PostgREST.
+        const query = String(req.query.q || '').trim().replace(/[^\p{L}\p{N}\s+_.-]/gu, '').slice(0, 60);
         const searchTerm = `%${query}%`;
 
         // SEGURIDAD: Filtramos por restaurante
@@ -66,12 +67,16 @@ router.get('/buscar', verificarSesion, async (req, res) => {
 router.get('/:id', verificarSesion, async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
+        const clienteId = Number(req.params.id);
+        if (!Number.isInteger(clienteId)) {
+            return res.status(400).json({ error: 'Cliente inválido.' });
+        }
 
         // SEGURIDAD: Valida que el ID del cliente pertenezca a este restaurante
         const { data: cliente, error } = await supabase
             .from('clientes')
             .select('*')
-            .eq('id', req.params.id)
+            .eq('id', clienteId)
             .eq('restaurante_id', restauranteId)
             .maybeSingle();
 
@@ -93,10 +98,12 @@ router.get('/:id', verificarSesion, async (req, res) => {
 router.post('/', verificarSesion, async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
-        const { nombre, direccion, telefono } = req.body;
+        const nombre = String(req.body.nombre || '').trim();
+        const direccion = String(req.body.direccion || '').trim().slice(0, 200) || null;
+        const telefono = String(req.body.telefono || '').trim().slice(0, 30) || null;
 
-        if (!nombre) {
-            return res.status(400).json({ error: 'El nombre es requerido' });
+        if (nombre.length < 2 || nombre.length > 100) {
+            return res.status(400).json({ error: 'El nombre debe tener entre 2 y 100 caracteres.' });
         }
 
         // SEGURIDAD: Inyectamos el restaurante_id al guardar
@@ -105,8 +112,8 @@ router.post('/', verificarSesion, async (req, res) => {
             .insert({
                 restaurante_id: restauranteId,
                 nombre,
-                direccion: direccion || null,
-                telefono: telefono || null
+                direccion,
+                telefono
             })
             .select('id')
             .single();
@@ -129,17 +136,23 @@ router.post('/', verificarSesion, async (req, res) => {
 router.put('/:id', verificarSesion, async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
-        const { nombre, direccion, telefono } = req.body;
+        const clienteId = Number(req.params.id);
+        if (!Number.isInteger(clienteId)) {
+            return res.status(400).json({ error: 'Cliente inválido.' });
+        }
+        const nombre = String(req.body.nombre || '').trim();
+        const direccion = String(req.body.direccion || '').trim().slice(0, 200) || null;
+        const telefono = String(req.body.telefono || '').trim().slice(0, 30) || null;
 
-        if (!nombre) {
-            return res.status(400).json({ error: 'El nombre es requerido' });
+        if (nombre.length < 2 || nombre.length > 100) {
+            return res.status(400).json({ error: 'El nombre debe tener entre 2 y 100 caracteres.' });
         }
 
         // SEGURIDAD: Solo permite actualizar si es de su restaurante
         const { data, error } = await supabase
             .from('clientes')
-            .update({ nombre, direccion: direccion || null, telefono: telefono || null })
-            .eq('id', req.params.id)
+            .update({ nombre, direccion, telefono })
+            .eq('id', clienteId)
             .eq('restaurante_id', restauranteId)
             .select('id');
 
@@ -162,12 +175,16 @@ router.put('/:id', verificarSesion, async (req, res) => {
 router.delete('/:id', verificarSesion, async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
+        const clienteId = Number(req.params.id);
+        if (!Number.isInteger(clienteId)) {
+            return res.status(400).json({ error: 'Cliente inválido.' });
+        }
 
         // SEGURIDAD: Solo permite eliminar si es de su restaurante
         const { data, error } = await supabase
             .from('clientes')
             .delete()
-            .eq('id', req.params.id)
+            .eq('id', clienteId)
             .eq('restaurante_id', restauranteId)
             .select('id');
 

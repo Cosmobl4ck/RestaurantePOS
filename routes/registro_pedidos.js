@@ -70,8 +70,8 @@ router.get('/', verificarSesion, soloAdminCajero, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error al cargar registro de pedidos:', error);
-        res.status(500).render('error', { error: { message: error.message } });
+        console.error('Error al cargar registro de pedidos:', error.message);
+        res.status(500).render('error', { error: { message: 'No se pudo cargar el registro de pedidos.' } });
     }
 });
 
@@ -112,7 +112,8 @@ router.get('/api/lista', verificarSesion, soloAdminCajero, async (req, res) => {
         res.json(data || []);
 
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error en registro de pedidos:', error.message);
+        res.status(500).json({ error: 'No se pudo completar la solicitud.' });
     }
 });
 
@@ -145,7 +146,8 @@ router.get('/detalle/:id', verificarSesion, soloAdminCajero, async (req, res) =>
         res.json(pedido);
 
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error en registro de pedidos:', error.message);
+        res.status(500).json({ error: 'No se pudo completar la solicitud.' });
     }
 });
 
@@ -219,7 +221,8 @@ router.get('/reporte', verificarSesion, soloAdminCajero, async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error en registro de pedidos:', error.message);
+        res.status(500).json({ error: 'No se pudo completar la solicitud.' });
     }
 });
 

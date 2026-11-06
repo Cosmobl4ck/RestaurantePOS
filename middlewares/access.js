@@ -90,6 +90,9 @@ function requireSuperadmin(req, res, next) {
   const expectedUser = process.env.SUPERADMIN_USER;
   const expectedPassword = process.env.SUPERADMIN_PASSWORD;
 
+  // El panel nunca debe quedar en caché de navegador/proxy.
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+
   if (!expectedUser || !expectedPassword) {
     return res.status(503).send('SuperAdmin deshabilitado: configura SUPERADMIN_USER y SUPERADMIN_PASSWORD en el servidor.');
   }
@@ -115,9 +118,23 @@ function requireSuperadmin(req, res, next) {
 
 function sameOriginForMutations(req, res, next) {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+
   const origin = req.get('origin');
-  const host = req.get('host');
-  if (!origin) return next(); // formularios tradicionales / clientes que no envían Origin
+  const secFetchSite = String(req.get('sec-fetch-site') || '').toLowerCase();
+  const host = req.get('x-forwarded-host') || req.get('host');
+
+  // Metadatos de navegador: una petición cross-site nunca es legítima aquí.
+  if (secFetchSite === 'cross-site') {
+    return res.status(403).json({ error: 'Origen no permitido.' });
+  }
+
+  if (!origin) {
+    // Sin Origin: se acepta si el navegador declara same-origin/none (prueba
+    // suficiente) o si es un cliente que no es navegador (sin metadatos).
+    if (!secFetchSite || secFetchSite === 'same-origin' || secFetchSite === 'none') return next();
+    return res.status(403).json({ error: 'Origen requerido.' });
+  }
+
   try {
     const parsed = new URL(origin);
     if (parsed.host !== host) return res.status(403).json({ error: 'Origen no permitido.' });

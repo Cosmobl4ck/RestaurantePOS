@@ -29,9 +29,8 @@ test('los roles operativos no heredan permisos administrativos', () => {
 });
 
 test('el limitador de login cuenta fallos, no autenticaciones validas', () => {
-  const server = fs.readFileSync(path.resolve(__dirname, '..', 'server.js'), 'utf8');
   const auth = fs.readFileSync(path.resolve(__dirname, '..', 'routes', 'auth.js'), 'utf8');
-  assert.match(server, /skipSuccessfulRequests:\s*true/);
+  assert.match(auth, /skipSuccessfulRequests:\s*true/);
   assert.match(auth, /status\(401\)\.render\('login'/);
   assert.match(auth, /status\(403\)\.render\('login'/);
 });

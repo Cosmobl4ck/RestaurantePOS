@@ -147,8 +147,25 @@ router.post('/guardar-croquis', async (req, res) => {
         if (!areaOwner) return res.status(404).json({ success: false, message: 'Área no encontrada.' });
 
         // ── GUARDAR SUB-ÁREAS (croquis_areas) ─────────────────
-        // id es TEXT generado en frontend — Supabase lo acepta como PK TEXT
+        // id es TEXT generado en frontend. Antes de hacer upsert por PK global
+        // verificamos que ningún id pertenezca a otro tenant: de lo contrario un
+        // upsert podría reasignar (robar) la fila de otro restaurante.
         if (areas.length > 0) {
+            const ids = areas.map(a => String(a.id));
+            const { data: existentes, error: existentesError } = await supabase
+                .from('croquis_areas')
+                .select('id, restaurante_id')
+                .in('id', ids);
+            if (existentesError) throw existentesError;
+
+            const idAjeno = (existentes || []).find(
+                (row) => Number(row.restaurante_id) !== restaurante_id
+            );
+            if (idAjeno) {
+                console.error('Intento de upsert cross-tenant en croquis_areas:', idAjeno.id);
+                return res.status(409).json({ success: false, message: 'Identificador de área no disponible.' });
+            }
+
             const areasPayload = areas.map(a => ({
                 id:             a.id,
                 area_id:        parseInt(area_id),
@@ -166,8 +183,8 @@ router.post('/guardar-croquis', async (req, res) => {
                 .upsert(areasPayload, { onConflict: 'id' });
 
             if (error) {
-                console.error('Error sub-áreas:', error);
-                return res.status(500).json({ success: false, message: error.message });
+                console.error('Error sub-áreas:', error.message);
+                return res.status(500).json({ success: false, message: 'No se pudo guardar el croquis.' });
             }
 
             // Borrar sub-áreas que ya no están en el lienzo
@@ -191,6 +208,19 @@ router.post('/guardar-croquis', async (req, res) => {
         // mesas.id es BIGSERIAL en tu schema. Usamos id_externo (TEXT)
         // para identificar la mesa del frontend sin romper la PK autoincremental.
         if (mesas.length > 0) {
+            // Solo se aceptan referencias a figuras del propio tenant.
+            const figIds = [...new Set(mesas.map(m => m.area_fig_id).filter(Boolean).map(String))];
+            let figurasValidas = new Set();
+            if (figIds.length > 0) {
+                const { data: figuras, error: figurasError } = await supabase
+                    .from('croquis_areas')
+                    .select('id')
+                    .in('id', figIds)
+                    .eq('restaurante_id', restaurante_id);
+                if (figurasError) throw figurasError;
+                figurasValidas = new Set((figuras || []).map(f => String(f.id)));
+            }
+
             for (const m of mesas) {
                 // Buscar si ya existe por id_externo
                 const { data: existente } = await supabase
@@ -211,7 +241,7 @@ router.post('/guardar-croquis', async (req, res) => {
                     pos_y:          num(m.pos_y),
                     ancho:          num(m.ancho, 100, 40, 1000),
                     alto:           num(m.alto, 80, 40, 1000),
-                    area_fig_id:    m.area_fig_id || null,
+                    area_fig_id:    (m.area_fig_id && figurasValidas.has(String(m.area_fig_id))) ? String(m.area_fig_id) : null,
                 };
 
                 if (existente) {
@@ -274,12 +304,17 @@ router.post('/mesa/estado', async (req, res) => {
         if (!usuario) return res.status(401).json({ success: false });
 
         const { mesa_id, estado, mesero_id, personas, hora_apertura, reserva_id } = req.body;
+        const mesaId = Number(mesa_id);
+        const ESTADOS_VALIDOS = ['libre', 'ocupada', 'reservada', 'bloqueada'];
+        if (!Number.isInteger(mesaId) || !ESTADOS_VALIDOS.includes(estado)) {
+            return res.status(400).json({ success: false, message: 'Mesa o estado inválido.' });
+        }
 
         const payload = { estado };
-        if (mesero_id     !== undefined) payload.mesero_id         = mesero_id;
-        if (personas      !== undefined) payload.personas_actuales = personas;
-        if (hora_apertura !== undefined) payload.hora_apertura     = hora_apertura;
-        if (reserva_id    !== undefined) payload.reserva_id        = reserva_id;
+        if (mesero_id !== undefined) payload.mesero_id = Number.isInteger(Number(mesero_id)) ? Number(mesero_id) : null;
+        if (personas !== undefined) payload.personas_actuales = Math.max(0, Math.min(100, parseInt(personas, 10) || 0));
+        if (hora_apertura !== undefined) payload.hora_apertura = hora_apertura || null;
+        if (reserva_id !== undefined) payload.reserva_id = reserva_id || null;
 
         // Al liberar mesa: limpiar todo
         if (estado === 'libre') {
@@ -293,10 +328,13 @@ router.post('/mesa/estado', async (req, res) => {
         const { error } = await supabase
             .from('mesas')
             .update(payload)
-            .eq('id', mesa_id)
+            .eq('id', mesaId)
             .eq('restaurante_id', usuario.restaurante_id);
 
-        if (error) return res.status(400).json({ success: false, message: error.message });
+        if (error) {
+            console.error('Error actualizando estado de mesa:', error.message);
+            return res.status(400).json({ success: false, message: 'No se pudo actualizar la mesa.' });
+        }
         res.json({ success: true });
 
     } catch (err) {
@@ -313,17 +351,26 @@ router.post('/mesa/reservar', async (req, res) => {
         if (!usuario) return res.status(401).json({ success: false });
 
         const { mesa_id, reserva_id, nombre_cliente, hora_reserva } = req.body;
+        const mesaId = Number(mesa_id);
+        if (!Number.isInteger(mesaId)) {
+            return res.status(400).json({ success: false, message: 'Mesa inválida.' });
+        }
 
         const { error } = await supabase
             .from('mesas')
             .update({
                 estado: 'reservada', reservada: true, bloqueada: true,
-                reserva_id, nombre_reserva: nombre_cliente, hora_reserva,
+                reserva_id: reserva_id || null,
+                nombre_reserva: String(nombre_cliente || '').trim().slice(0, 100) || null,
+                hora_reserva: hora_reserva || null,
             })
-            .eq('id', mesa_id)
+            .eq('id', mesaId)
             .eq('restaurante_id', usuario.restaurante_id);
 
-        if (error) return res.status(400).json({ success: false, message: error.message });
+        if (error) {
+            console.error('Error reservando mesa:', error.message);
+            return res.status(400).json({ success: false, message: 'No se pudo reservar la mesa.' });
+        }
         res.json({ success: true });
 
     } catch (err) {
@@ -343,17 +390,24 @@ router.post('/mesa/desbloquear', async (req, res) => {
             return res.status(403).json({ success: false, message: 'Sin permiso para desbloquear mesas.' });
         }
 
-        const { mesa_id } = req.body;
+        const mesaId = Number(req.body.mesa_id);
+        if (!Number.isInteger(mesaId)) {
+            return res.status(400).json({ success: false, message: 'Mesa inválida.' });
+        }
+
         const { error } = await supabase
             .from('mesas')
             .update({
                 estado: 'libre', reservada: false, bloqueada: false,
                 reserva_id: null, nombre_reserva: null, hora_reserva: null,
             })
-            .eq('id', mesa_id)
+            .eq('id', mesaId)
             .eq('restaurante_id', usuario.restaurante_id);
 
-        if (error) return res.status(400).json({ success: false, message: error.message });
+        if (error) {
+            console.error('Error desbloqueando mesa:', error.message);
+            return res.status(400).json({ success: false, message: 'No se pudo desbloquear la mesa.' });
+        }
         res.json({ success: true });
 
     } catch (err) {
