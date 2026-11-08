@@ -14,6 +14,17 @@ test('el navbar no contiene mojibake y conserva las etiquetas correctas', () => 
   assert.match(navbar, /Cerrar Sesión/);
 });
 
+test('el navbar incluye accesos a pedidos, facturas y ventas', () => {
+  const navbar = read('views', 'partials', 'navbar.ejs');
+  assert.match(navbar, /href="\/registro-pedidos"/);
+  assert.match(navbar, /href="\/facturas"/);
+  assert.match(navbar, /href="\/ventas"/);
+  assert.match(navbar, /bi-list-check/);
+  assert.match(navbar, /bi-receipt-cutoff/);
+  assert.match(navbar, /bi-cash-coin/);
+  assert.match(navbar, /title="Reportes"/);
+});
+
 test('reportes construye una serie de 7 días locales con hoy en cero', () => {
   const reportes = read('routes', 'reportes.js');
   assert.match(reportes, /for \(let i = 6; i >= 0; i -= 1\)/);

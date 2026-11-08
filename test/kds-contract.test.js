@@ -37,3 +37,15 @@ test('KDS interpreta timestamps sin zona como UTC y mantiene el tiempo actualiza
   assert.match(client, /classList\.toggle\('urgente'/);
   assert.match(client, /}, 30000\);/);
 });
+
+test('el KDS enlaza pedidos y facturas para administracion y caja', () => {
+  for (const file of ['views/kds_cocina.ejs', 'views/kds_bar.ejs']) {
+    const view = fs.readFileSync(file, 'utf8');
+    assert.match(view, /href="\/registro-pedidos"/);
+    assert.match(view, /href="\/facturas"/);
+    assert.match(view, /href="\/ventas"/);
+    assert.match(view, /bi-list-check/);
+    assert.match(view, /bi-receipt-cutoff/);
+    assert.match(view, /bi-cash-coin/);
+  }
+});

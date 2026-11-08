@@ -105,13 +105,22 @@
                         </a>
                     <% } %>
 
-                    <!-- CAJA Y REPORTES: Admin y Cajero -->
+                    <!-- CAJA, PEDIDOS, FACTURAS Y REPORTES: Admin y Cajero -->
                     <% if (['admin', 'gerente', 'cajero'].includes(usuario.rol)) { %>
                         <a href="/caja" class="btn btn-outline-aqua <%= locals.page === 'caja' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Movimientos de Caja">
                             <i class="bi bi-cart-check"></i>
                         </a>
-                        <a href="/reportes" class="btn btn-outline-aqua <%= locals.page === 'reportes' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Historial de Ventas">
-                            <i class="bi bi-receipt"></i>
+                        <a href="/registro-pedidos" class="btn btn-outline-aqua <%= locals.page === 'registro-pedidos' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Registro de Pedidos">
+                            <i class="bi bi-list-check"></i>
+                        </a>
+                        <a href="/facturas" class="btn btn-outline-aqua <%= locals.page === 'facturas' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Facturas">
+                            <i class="bi bi-receipt-cutoff"></i>
+                        </a>
+                        <a href="/ventas" class="btn btn-outline-aqua <%= locals.page === 'ventas' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Ventas">
+                            <i class="bi bi-cash-coin"></i>
+                        </a>
+                        <a href="/reportes" class="btn btn-outline-aqua <%= locals.page === 'reportes' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Reportes">
+                            <i class="bi bi-bar-chart-line"></i>
                         </a>
                     <% } %>
 
