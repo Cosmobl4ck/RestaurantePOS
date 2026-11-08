@@ -80,3 +80,38 @@ test('existe migración de unicidad de usuario por tenant', () => {
   assert.match(migration, /uq_usuarios_restaurante_nombre/);
   assert.match(migration, /lower\(nombre\)/);
 });
+
+test('la CSP permite la fuente de Bootstrap Icons y los estilos de cdnjs', () => {
+  const server = read('server.js');
+  assert.match(server, /"font-src": \[[^\]]*https:\/\/cdn\.jsdelivr\.net/);
+  assert.match(server, /"style-src": \[[^\]]*https:\/\/cdnjs\.cloudflare\.com/);
+});
+
+test('todas las vistas con navbar cargan Bootstrap e iconos y son documentos completos', () => {
+  const viewsDir = path.join(root, 'views');
+  const views = fs.readdirSync(viewsDir).filter((file) => file.endsWith('.ejs'));
+
+  for (const file of views) {
+    const html = read('views', file);
+    if (!html.includes("include('partials/navbar')")) continue;
+
+    assert.match(
+      html,
+      /bootstrap@[\d.]+\/dist\/css\/bootstrap\.min\.css/,
+      `${file} incluye el navbar pero no carga Bootstrap CSS`
+    );
+    assert.match(
+      html,
+      /bootstrap-icons@[\d.]+\/font\/bootstrap-icons\.css/,
+      `${file} incluye el navbar pero no carga Bootstrap Icons`
+    );
+    assert.match(html, /<!DOCTYPE html>/i, `${file} no es un documento HTML completo`);
+    assert.match(html, /<\/body>/i, `${file} no cierra body`);
+    assert.match(html, /<\/html>/i, `${file} no cierra html`);
+  }
+});
+
+test('login carga los iconos que usa', () => {
+  const login = read('views', 'login.ejs');
+  assert.match(login, /bootstrap-icons@[\d.]+\/font\/bootstrap-icons\.css/);
+});

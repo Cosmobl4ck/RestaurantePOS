@@ -83,12 +83,14 @@ app.use(helmet({
     contentSecurityPolicy: {
         useDefaults: true,
         directives: {
-            "script-src": ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://code.jquery.com'],
+            "script-src": ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://code.jquery.com', 'https://cdnjs.cloudflare.com'],
             // La app heredada usa onclick/onchange inline en muchas vistas.
             // Sin esto, helmet (script-src-attr 'none' por defecto) rompe la UI.
             "script-src-attr": ["'unsafe-inline'"],
-            "style-src": ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com'],
-            "font-src": ["'self'", 'https://fonts.gstatic.com', 'data:'],
+            "style-src": ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com'],
+            // bootstrap-icons carga su .woff2 desde cdn.jsdelivr.net; sin este
+            // dominio los iconos se ven como cuadros vacios.
+            "font-src": ["'self'", 'https://cdn.jsdelivr.net', 'https://fonts.gstatic.com', 'data:'],
             "img-src": ["'self'", 'data:', 'blob:'],
             "connect-src": ["'self'"],
             "object-src": ["'none'"],
