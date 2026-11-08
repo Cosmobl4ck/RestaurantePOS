@@ -29,3 +29,11 @@ test('station and tenant checks are server-side', () => {
   assert.match(route, /\.eq\('restaurante_id', restauranteId\)/);
   assert.match(route, /productos\(categoria\)/);
 });
+
+test('KDS interpreta timestamps sin zona como UTC y mantiene el tiempo actualizado', () => {
+  assert.match(client, /function parseDbDate/);
+  assert.ok(client.includes('${value}Z'));
+  assert.match(client, /tiempo-badge/);
+  assert.match(client, /classList\.toggle\('urgente'/);
+  assert.match(client, /}, 30000\);/);
+});

@@ -21,12 +21,21 @@ setInterval(() => {
 }, 1000);
 
 function minutosDesde(isoStr) {
-    if (!isoStr) return 0;
-    return Math.max(0, Math.floor((Date.now() - new Date(isoStr).getTime()) / 60000));
+    const fecha = parseDbDate(isoStr);
+    if (!fecha || Number.isNaN(fecha.getTime())) return 0;
+    return Math.max(0, Math.floor((Date.now() - fecha.getTime()) / 60000));
+}
+function parseDbDate(isoStr) {
+    if (!isoStr) return null;
+    const value = String(isoStr);
+    // Las columnas timestamp de la BD guardan UTC sin zona. Agregar Z evita
+    // que el navegador las interprete como hora local y desfase el KDS.
+    return new Date(/(Z|[+-]\d{2}:?\d{2})$/.test(value) ? value : `${value}Z`);
 }
 function horaCorta(isoStr) {
-    if (!isoStr) return '--:--';
-    return new Date(isoStr).toLocaleTimeString('es-SV', { hour: '2-digit', minute: '2-digit' });
+    const fecha = parseDbDate(isoStr);
+    if (!fecha || Number.isNaN(fecha.getTime())) return '--:--';
+    return fecha.toLocaleTimeString('es-SV', { hour: '2-digit', minute: '2-digit' });
 }
 function toast(msg) {
     const el = document.createElement('div');
@@ -59,7 +68,7 @@ function estadoGlobal(items) {
 function renderGrid() {
     const grid = document.getElementById('grid-comandas');
     if (!grid) return;
-    const pedidos = Object.values(comandas).sort((a,b) => new Date(a.hora)-new Date(b.hora));
+    const pedidos = Object.values(comandas).sort((a,b) => parseDbDate(a.hora)-parseDbDate(b.hora));
     if (!pedidos.length) {
         grid.innerHTML = '<div class="empty-state"><i class="bi bi-check2-circle"></i><p>Sin comandas pendientes</p></div>';
         return;
@@ -87,6 +96,21 @@ function renderGrid() {
             <div class="comanda-items">${itemsHTML}</div><div class="comanda-actions">${acciones}</div></div>`;
     }).join('');
 }
+
+// El SSE solo emite eventos cuando cambia la cola; este intervalo mantiene
+// actualizado el tiempo transcurrido de cada comanda aunque no haya cambios.
+setInterval(() => {
+    document.querySelectorAll('.comanda-card').forEach(card => {
+        const pedido = comandas[card.dataset.pedido];
+        if (!pedido) return;
+        const mins = minutosDesde(pedido.hora);
+        const badge = card.querySelector('.tiempo-badge');
+        if (!badge) return;
+        badge.textContent = `${mins} min`;
+        const urgente = TIPO_MONITOR === 'cocina' ? mins >= 15 : mins >= 10;
+        badge.classList.toggle('urgente', urgente);
+    });
+}, 30000);
 
 async function requestJson(url, options) {
     const resp = await fetch(url, options);

@@ -112,11 +112,16 @@ $(function() {
                 headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({ mesa_id: mesaId })
             });
-            const data = await resp.json();
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok) throw new Error(data.error || 'No se pudo recuperar el pedido.');
+            if (!data.pedido?.id) throw new Error('El pedido no está disponible.');
             $('#pedidoMesa').data('pedido-id', data.pedido.id);
             await cargarItemsPedido(data.pedido.id);
             canvas.show();
-        } catch(err) { console.error("Error recuperando pedido:", err); }
+        } catch(err) {
+            console.error("Error recuperando pedido:", err);
+            Swal.fire({ icon: 'error', title: 'No se pudo abrir la mesa', text: err.message });
+        }
     }
 
     function formatear(valor){ return `$${Number(valor||0).toLocaleString('es-CO')}`; }

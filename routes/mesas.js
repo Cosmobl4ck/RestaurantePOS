@@ -64,6 +64,28 @@ router.post('/abrir', verificarSesion, async (req, res) => {
     if (!mesa_id) return res.status(400).json({ error: 'Mesa requerida' });
 
     try {
+        // Si la mesa ya tiene un pedido abierto, recuperarlo (idempotente).
+        // pos_open_order rechaza mesas ocupadas antes de buscar el pedido existente,
+        // por eso la recuperación se resuelve aquí sin tocar la base.
+        const { data: pedidoExistente, error: existenteError } = await supabase
+            .from('pedidos')
+            .select('*')
+            .eq('restaurante_id', restauranteId)
+            .eq('mesa_id', Number(mesa_id))
+            .not('estado', 'in', '("cerrado","cancelado")')
+            .order('id', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (existenteError) throw existenteError;
+
+        if (pedidoExistente) {
+            return res.status(200).json({
+                success: true,
+                pedido: { ...pedidoExistente, existing: true }
+            });
+        }
+
         const { data, error } = await supabase.rpc('pos_open_order', {
             p_restaurante_id: Number(restauranteId),
             p_mesa_id: Number(mesa_id),
