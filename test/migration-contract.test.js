@@ -48,3 +48,20 @@ test('legacy functions and waste data are hardened', () => {
   assert.match(sql, /alter function public\.fn_sync_stock_temporales\(\) set search_path=public/);
   assert.match(sql, /alter function public\.descontar_stock_desde_temp\(integer\) set search_path=public/);
 });
+
+test('pos_open_order recovers an existing order before checking table availability', () => {
+  const fix = fs.readFileSync(
+    path.join(__dirname, '../supabase/migrations/20261108120000_fix_pos_open_order_existing.sql'),
+    'utf8'
+  ).toLowerCase();
+
+  const existingOrder = fix.indexOf("estado not in ('cerrado', 'cancelado')");
+  const availability = fix.indexOf("if m.estado <> 'libre'");
+
+  assert.ok(existingOrder > 0 && availability > existingOrder);
+  assert.match(fix, /order by id desc/);
+  assert.match(fix, /jsonb_build_object\('existing', true\)/);
+  assert.match(fix, /revoke execute on function public\.pos_open_order/);
+  assert.match(fix, /grant execute on function public\.pos_open_order/);
+});
+
