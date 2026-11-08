@@ -53,6 +53,8 @@ pnpm test
 pnpm audit:deps
 ```
 
+Para probar sin datos reales, `pnpm seed:demo` crea el negocio `DEMO01` con usuario `Admin` y PIN `123456` (productos, mesas y configuración incluidos). Se elimina con `node scripts/seed-demo.js --clean`.
+
 Healthcheck: `GET /healthz` (sin sesión) devuelve `{ "status": "ok" }` para monitores de proceso.
 
 En producción ejecuta el proceso bajo un gestor (PM2, NSSM o un servicio de Windows) para que se reinicie tras un fallo, y sirve la app detrás de HTTPS.

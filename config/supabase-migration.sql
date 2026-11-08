@@ -240,10 +240,10 @@ CREATE POLICY "Usuarios ven usuarios de su restaurante"
 INSERT INTO restaurantes (codigo_negocio, nombre_comercial, estado, fecha_vencimiento)
 VALUES ('MARROCOS01', 'Marrocos Restaurante', 'activo', NOW() + INTERVAL '30 days');
 
--- Usuario Admin Demo (PIN: 1234)
--- Hash generado con bcryptjs: $2b$10$vI8A7S/Yw.wWf7yYVpS7fO6f7z8f9g0h1i2j3k4l5m6n7o8p9q0r
+-- Usuario Admin Demo (PIN: 123456)
+-- Hash generado con bcryptjs (ver scripts/seed-demo.js)
 INSERT INTO usuarios (restaurante_id, nombre, rol, pin_hash, estado)
-VALUES (1, 'Admin', 'admin', '$2b$10$vI8A7S/Yw.wWf7yYVpS7fO6f7z8f9g0h1i2j3k4l5m6n7o8p9q0r', 1);
+VALUES (1, 'Admin', 'admin', '$2b$10$8XqfCBNTxrvHESsilI.h7uNAJt9MJp24kb/CwGrs9xX3bsuqhrhQ2', 1);
 
 -- Productos Demo
 INSERT INTO productos (restaurante_id, codigo, nombre, precio_unidad, categoria, maneja_stock, stock)
