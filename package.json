@@ -30,6 +30,7 @@
     "test:e2e:live": "node scripts/runtime-e2e.js",
     "test:e2e:uploads": "node scripts/upload-e2e.js",
     "seed:demo": "node scripts/seed-demo.js",
+    "seed:sales": "node scripts/seed-sales-demo.js",
     "audit:deps": "pnpm audit"
   },
   "dependencies": {

@@ -47,9 +47,15 @@ router.get('/', verificarSesion, async (req, res) => {
             ventasSemanaMap.set(dia, (ventasSemanaMap.get(dia) || 0) + total);
         });
 
-        const ventasSemana = Array.from(ventasSemanaMap.entries())
-            .sort((a, b) => a[0].localeCompare(b[0]))
-            .map(([dia, total]) => ({ dia, total }));
+        // Serie completa de los últimos 7 días locales, incluyendo hoy en cero.
+        const diasSemana = [];
+        for (let i = 6; i >= 0; i -= 1) {
+            diasSemana.push(dateInTimeZone(timeZone, new Date(ahora.getTime() - i * DIA_MS)));
+        }
+        const ventasSemana = diasSemana.map(dia => ({
+            dia,
+            total: ventasSemanaMap.get(dia) || 0
+        }));
 
         // 2) Stock crítico
         const { data: stockCritico, error: stockError } = await supabase

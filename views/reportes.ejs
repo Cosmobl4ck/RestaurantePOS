@@ -126,11 +126,20 @@
     const datosTop = <%- serializeForHtmlScript(stats.topProductos) %>;
     const datosAnulaciones = <%- serializeForHtmlScript(stats.anulacionesSemana) %>;
 
+    // Formatea YYYY-MM-DD como fecha local (evita el desfase UTC de new Date('YYYY-MM-DD')).
+    const formatearDia = (dia) => {
+        const [anio, mes, d] = String(dia).split('-').map(Number);
+        return new Date(anio, mes - 1, d).toLocaleDateString('es-SV', {
+            day: '2-digit',
+            month: '2-digit'
+        });
+    };
+
     // --- GRÁFICAS (Chart.js) ---
     new Chart(document.getElementById('chartVentas'), {
         type: 'line',
         data: {
-            labels: datosVentas.map(d => new Date(d.dia).toLocaleDateString()),
+            labels: datosVentas.map(d => formatearDia(d.dia)),
             datasets: [{
                 label: 'Ventas ($)',
                 data: datosVentas.map(d => d.total),
@@ -158,7 +167,7 @@
     new Chart(document.getElementById('chartAnulaciones'), {
         type: 'bar',
         data: {
-            labels: datosAnulaciones.map(d => new Date(d.dia).toLocaleDateString()),
+            labels: datosAnulaciones.map(d => formatearDia(d.dia)),
             datasets: [{
                 label: 'Anulaciones',
                 data: datosAnulaciones.map(d => d.cantidad),

@@ -29,7 +29,7 @@
         transition: all 0.2s ease-in-out;
     }
     .btn-outline-aqua:hover {
-        background-color: rgba(0, 161, 156, 0.15); /* Brillo acqua translÃºcido */
+        background-color: rgba(0, 161, 156, 0.15); /* Brillo acqua translúcido */
         color: #00A19C;
         border-color: #00A19C;
     }
@@ -46,7 +46,7 @@
 
     /* Estilo para el usuario logueado */
     .user-badge {
-        background-color: rgba(0, 0, 0, 0.3); /* Fondo carbÃ³n mÃ¡s oscuro */
+        background-color: rgba(0, 0, 0, 0.3); /* Fondo carbón más oscuro */
         padding: 0.4rem 0.8rem;
         border-radius: 20px;
         color: #00A19C; /* Texto y logo Acqua */
@@ -54,12 +54,12 @@
         border: 1px solid rgba(0, 161, 156, 0.4); /* Borde Acqua sutil */
     }
     
-    /* Resaltado de pÃ¡gina activa */
+    /* Resaltado de página activa */
     .nav-active {
         background-color: #00A19C !important;
-        color: #1c1f22 !important; /* Ãcono en carbono para resaltar */
+        color: #1c1f22 !important; /* Ícono en carbono para resaltar */
         border-color: #00A19C !important;
-        box-shadow: 0 0 8px rgba(0, 161, 156, 0.4); /* Resplandor neÃ³n suave */
+        box-shadow: 0 0 8px rgba(0, 161, 156, 0.4); /* Resplandor neón suave */
     }
 </style>
 
@@ -98,9 +98,9 @@
                         </a>
                     <% } %>
 
-                    <!-- INVENTARIO / MENÃš: Admin y Cajero -->
+                    <!-- INVENTARIO / MENÚ: Admin y Cajero -->
                     <% if (['admin', 'gerente', 'cajero'].includes(usuario.rol)) { %>
-                        <a href="/productos" class="btn btn-outline-aqua <%= locals.page === 'productos' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Inventario y MenÃº">
+                        <a href="/productos" class="btn btn-outline-aqua <%= locals.page === 'productos' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Inventario y Menú">
                             <i class="bi bi-box"></i>
                         </a>
                     <% } %>
@@ -138,14 +138,14 @@
 
 
                     <% if (['admin', 'gerente'].includes(usuario.rol)) { %>
-                        <a href="/areas" class="btn btn-outline-aqua <%= locals.page === 'areas' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Croquis y Ã¡reas del restaurante">
+                        <a href="/areas" class="btn btn-outline-aqua <%= locals.page === 'areas' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Croquis y áreas del restaurante">
                             <i class="bi bi-bounding-box-circles"></i>
                         </a>
                     <% } %>
 
-                    <!-- GESTIÃ“N DE PERSONAL: Solo Admin -->
+                    <!-- GESTIÓN DE PERSONAL: Solo Admin -->
                     <% if (['admin', 'gerente'].includes(usuario.rol)) { %>
-                        <a href="/register" class="btn btn-solid-aqua ms-lg-2" data-bs-toggle="tooltip" title="GestiÃ³n de Personal">
+                        <a href="/register" class="btn btn-solid-aqua ms-lg-2" data-bs-toggle="tooltip" title="Gestión de Personal">
                             <i class="bi bi-person-plus"></i> <span class="d-none d-lg-inline">Personal</span>
                         </a>
                     <% } %>
@@ -164,9 +164,9 @@
                         </span>
                     </div>
                     
-                    <!-- BOTÃ“N SALIR -->
+                    <!-- BOTÓN SALIR -->
                     <form action="/logout" method="post" class="d-inline ms-2">
-                        <button type="submit" class="btn btn-danger btn-sm" data-bs-toggle="tooltip" title="Cerrar SesiÃ³n">
+                        <button type="submit" class="btn btn-danger btn-sm" data-bs-toggle="tooltip" title="Cerrar Sesión">
                             <i class="bi bi-box-arrow-right"></i> <span class="d-none d-lg-inline">Salir</span>
                         </button>
                     </form>
