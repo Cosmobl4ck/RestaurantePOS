@@ -31,7 +31,7 @@ router.get('/', verificarSesion, async (req, res) => {
                 .lte('fecha', `${req.query.hasta}T23:59:59`);
         }
 
-        // BÃºsqueda por ID de factura
+        // Búsqueda por ID de factura
         if (req.query.q && !isNaN(req.query.q.trim())) {
             query = query.eq('id', parseInt(req.query.q.trim()));
         }

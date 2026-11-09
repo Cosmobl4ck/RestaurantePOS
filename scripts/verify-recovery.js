@@ -31,6 +31,23 @@ function walkFiles(dir, extension) {
 for (const file of walkFiles(path.join(root, 'views'), '.ejs')) {
   try { ejs.compile(fs.readFileSync(file, 'utf8'), { filename: file }); }
   catch (error) { fail(`${path.relative(root, file)} EJS syntax: ${error.message}`); }
+
+  const html = fs.readFileSync(file, 'utf8');
+  const themeLinks = (html.match(/\/css\/petronas\.css\?v=petronas1/g) || []).length;
+  if (html.includes('</head>') && themeLinks !== 1) {
+    fail(`${path.relative(root, file)} must load /css/petronas.css?v=petronas1 exactly once`);
+  }
+  if (!html.includes('</head>') && themeLinks !== 0) {
+    fail(`${path.relative(root, file)} has no <head> but loads the global theme`);
+  }
+}
+
+if (!fs.existsSync(path.join(root, 'public/css/petronas.css'))) fail('MISSING public/css/petronas.css');
+else {
+  const theme = read('public/css/petronas.css');
+  for (const token of ['--pt-bg: #08090A', '--pt-teal: #00A19C', '--pt-teal-bright: #00D2BE', '.swal2-popup', 'body.factura-print .ticket']) {
+    if (!theme.includes(token)) fail(`petronas.css missing ${token}`);
+  }
 }
 
 for (const rel of [

@@ -6,6 +6,7 @@
     <title>Croquis | MarrocosPOS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/petronas.css?v=petronas1">
 </head>
 <body>
 <%- include('partials/navbar') %>
@@ -112,7 +113,7 @@
 
     /* Sección de formas */
     .aside-section-title {
-        color: #555;
+        color: #9AA6AD;
         font-size: 9px;
         font-weight: 700;
         text-transform: uppercase;
@@ -189,7 +190,7 @@
 
     .panel-label {
         display: block;
-        color: #555;
+        color: #9AA6AD;
         font-size: 10px;
         font-weight: 600;
         text-transform: uppercase;
@@ -226,7 +227,7 @@
         letter-spacing: 0.8px;
         transition: all 0.15s;
     }
-    .btn-panel-primary:hover { background: #00C4BE; box-shadow: 0 0 12px rgba(0,161,156,0.4); }
+    .btn-panel-primary:hover { background: #00D2BE; box-shadow: 0 0 12px rgba(0,161,156,0.4); }
 
     .btn-panel-danger {
         display: block;
@@ -262,7 +263,7 @@
         transition: all 0.15s;
         font-family: 'Rajdhani', sans-serif;
     }
-    .btn-guardar-main:hover { background: #00C4BE; box-shadow: 0 0 25px rgba(0,161,156,0.5); }
+    .btn-guardar-main:hover { background: #00D2BE; box-shadow: 0 0 25px rgba(0,161,156,0.5); }
     .btn-guardar-main:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* ===== CANVAS ===== */
@@ -287,11 +288,11 @@
         justify-content: center;
         pointer-events: none;
         gap: 8px;
-        opacity: 0.25;
+        opacity: 0.65;
     }
-    .canvas-hint svg { color: #00A19C; }
+    .canvas-hint svg { color: #00D2BE; }
     .canvas-hint p {
-        color: #00A19C;
+        color: #00D2BE;
         font-family: 'Rajdhani', sans-serif;
         font-size: 14px;
         font-weight: 600;
@@ -311,7 +312,7 @@
         padding: 5px 16px;
         font-size: 11px;
         font-family: 'Rajdhani', sans-serif;
-        color: #555;
+        color: #9AA6AD;
         letter-spacing: 1px;
         font-weight: 600;
         pointer-events: none;
@@ -321,7 +322,7 @@
         align-items: center;
         gap: 6px;
     }
-    .fase-breadcrumb .sep { color: #333; }
+    .fase-breadcrumb .sep { color: #9AA6AD; }
     .fase-breadcrumb .active { color: #00A19C; }
 
     /* Atajos de teclado hint */
@@ -338,13 +339,13 @@
     }
     .keyboard-hint span {
         display: block;
-        color: #333;
+        color: #9AA6AD;
         font-size: 9px;
         letter-spacing: 0.5px;
     }
     .keyboard-hint kbd {
         background: #1A1D20;
-        color: #555;
+        color: #9AA6AD;
         border-radius: 3px;
         padding: 1px 4px;
         font-size: 9px;
@@ -444,7 +445,7 @@
                     Rect. Vert.
                 </div>
             </div>
-            <p style="color:#333;font-size:10px;text-align:center;padding:4px 12px 8px;line-height:1.5;">
+            <p style="color:#9AA6AD;font-size:10px;text-align:center;padding:4px 12px 8px;line-height:1.5;">
                 Doble clic en mesa para editar
             </p>
         </div>
@@ -452,7 +453,7 @@
         <!-- ZONA SCROLLEABLE — solo la lista de áreas/mesas crece aquí -->
         <div class="aside-scroll-zone">
             <div id="lista-areas" class="aside-areas-list">
-                <p style="color:#555;font-size:11px;text-align:center;margin-top:8px;">Arrastra figuras al lienzo</p>
+                <p style="color:#9AA6AD;font-size:11px;text-align:center;margin-top:8px;">Arrastra figuras al lienzo</p>
             </div>
 
             <!-- Panel edición dentro del scroll para que no empuje el footer -->
@@ -486,7 +487,7 @@
         <div class="fase-breadcrumb">
             <span id="bc-areas" class="active">Áreas</span>
             <span class="sep">›</span>
-            <span id="bc-mesas" style="color:#333;">Mesas</span>
+            <span id="bc-mesas" style="color:#9AA6AD;">Mesas</span>
         </div>
 
         <!-- Keyboard hints -->

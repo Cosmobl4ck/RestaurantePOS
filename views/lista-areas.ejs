@@ -6,6 +6,7 @@
     <title>Áreas | MarrocosPOS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/petronas.css?v=petronas1">
 </head>
 <body>
 <%- include('partials/navbar') %>
@@ -22,15 +23,15 @@
     --teal-border: rgba(0,161,156,0.45);
     --bg:          #08090A;
     --surface:     #0D0E10;
-    --surface2:    #101214;
+    --surface2:    #121518;
     --border:      #1A1D20;
-    --border2:     #222528;
-    --text:        #E5E4E2;
-    --muted:       #55595E;
-    --green:       #10B981;
+    --border2:     #22262A;
+    --text:        #E8EAED;
+    --muted:       #9AA6AD;
+    --green:       #00D2BE;
     --amber:       #F59E0B;
     --red:         #EF4444;
-    --blue:        #3B82F6;
+    --blue:        #00A19C;
 }
 
 body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); overflow: hidden; }
@@ -64,7 +65,7 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--t
     cursor:pointer; transition:all 0.15s; flex-shrink:0;
     box-shadow:0 0 14px var(--teal-glow); white-space:nowrap;
 }
-.btn-add:hover { background:#00C4BE; transform:translateY(-1px); }
+.btn-add:hover { background:#00D2BE; transform:translateY(-1px); }
 
 /* ─── CANVAS ─── */
 .areas-canvas {
@@ -80,8 +81,8 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--t
     pointer-events:none; opacity:0; transition:opacity 0.3s;
 }
 .empty-state.visible { opacity:1; }
-.empty-state svg { color:var(--teal); opacity:0.15; }
-.empty-state p { color:var(--teal); font-family:'Rajdhani',sans-serif; font-size:13px; font-weight:600; letter-spacing:2px; text-transform:uppercase; opacity:0.25; }
+.empty-state svg { color:#00D2BE; opacity:0.30; }
+.empty-state p { color:var(--muted); font-family:'Rajdhani',sans-serif; font-size:13px; font-weight:600; letter-spacing:2px; text-transform:uppercase; opacity:0.90; }
 
 .canvas-tip {
     position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
@@ -137,10 +138,10 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--t
 
 .chips-wrap { display:flex; flex-wrap:wrap; gap:2px; margin-top:2px; }
 .chip { width:13px; height:13px; border-radius:2px; border:1px solid var(--border2); flex-shrink:0; }
-.chip.libre     { background:rgba(16,185,129,0.15); border-color:rgba(16,185,129,0.35); }
+.chip.libre     { background:rgba(0,210,190,0.15);  border-color:rgba(0,210,190,0.35); }
 .chip.ocupada   { background:rgba(239,68,68,0.2);   border-color:rgba(239,68,68,0.45); }
 .chip.reservada { background:rgba(245,158,11,0.15); border-color:rgba(245,158,11,0.4); }
-.chip.limpieza  { background:rgba(59,130,246,0.15); border-color:rgba(59,130,246,0.4); }
+.chip.limpieza  { background:rgba(0,161,156,0.15);  border-color:rgba(0,161,156,0.4); }
 
 /* Resize handles */
 .rh { position:absolute; width:10px; height:10px; background:var(--teal); border:2px solid var(--bg); border-radius:2px; opacity:0; transition:opacity 0.15s; z-index:30; }
@@ -170,7 +171,7 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--t
 .btn-cancel { flex:1; background:transparent; border:1px solid var(--border2); color:var(--muted); border-radius:6px; font-size:11px; font-weight:600; padding:10px; cursor:pointer; text-transform:uppercase; letter-spacing:0.8px; font-family:'Rajdhani',sans-serif; transition:all 0.15s; }
 .btn-cancel:hover { border-color:var(--muted); color:var(--text); }
 .btn-crear { flex:2; background:var(--teal); border:none; color:#08090A; border-radius:6px; font-size:12px; font-weight:800; padding:10px; cursor:pointer; text-transform:uppercase; letter-spacing:0.8px; font-family:'Rajdhani',sans-serif; transition:all 0.15s; box-shadow:0 0 14px var(--teal-glow); }
-.btn-crear:hover { background:#00C4BE; }
+.btn-crear:hover { background:#00D2BE; }
 .btn-crear:disabled { opacity:0.5; cursor:not-allowed; }
 </style>
 

@@ -9,26 +9,27 @@
     <style>
         * { box-sizing: border-box; }
         body {
-            background: #1a1a2e;
-            color: #eee;
+            background: #08090A;
+            color: #E8EAED;
             font-family: 'Segoe UI', sans-serif;
             min-height: 100vh;
             margin: 0;
         }
         .kds-header {
-            background: #16213e;
+            background: #0D0E10;
             padding: .75rem 1.5rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
             gap: .5rem;
-            border-bottom: 3px solid #e2711d;
+            border-bottom: 3px solid #00A19C;
+            box-shadow: 0 8px 26px rgba(0,0,0,.50);
         }
         .kds-header h1 {
             font-size: 1.5rem;
             font-weight: 700;
-            color: #e2711d;
+            color: #00A19C;
             margin: 0;
             letter-spacing: 2px;
             text-transform: uppercase;
@@ -47,19 +48,18 @@
             height: 38px;
             padding: 0;
             border-radius: 10px;
-            color: #fff;
-            background: rgba(255,255,255,.08);
-            border: 1px solid rgba(255,255,255,.18);
+            color: #E8EAED;
+            background: rgba(0,161,156,.10);
+            border: 1px solid rgba(0,161,156,.30);
             text-decoration: none;
             transition: all .2s ease;
         }
-        .kds-nav-btn:hover { background: rgba(255,255,255,.18); color: #fff; transform: translateY(-1px); }
-        .kds-nav-btn:hover { background: rgba(255,255,255,.18); color: #fff; transform: translateY(-1px); }
+        .kds-nav-btn:hover { background: rgba(0,161,156,.22); color: #00D2BE; transform: translateY(-1px); }
         .kds-nav-btn i { font-size: 1.1rem; }
         .kds-clock {
             font-size: 1.6rem;
             font-weight: 700;
-            color: #fff;
+            color: #E8EAED;
             font-variant-numeric: tabular-nums;
         }
         .kds-status {
@@ -68,8 +68,8 @@
             border-radius: 99px;
             font-weight: 600;
         }
-        .status-live { background: #1d9e75; color: #fff; }
-        .status-offline { background: #e24b4a; color: #fff; }
+        .status-live { background: #00A19C; color: #06110F; }
+        .status-offline { background: #EF4444; color: #FFFFFF; }
 
         #grid-comandas {
             display: grid;
@@ -81,37 +81,38 @@
         }
 
         .comanda-card {
-            background: #16213e;
-            border: 3px solid #0f3460;
+            background: #0D0E10;
+            border: 3px solid #1A1D20;
             border-radius: 12px;
             overflow: hidden;
             display: flex;
             flex-direction: column;
             animation: slideIn .3s ease;
-            transition: transform .2s;
+            transition: transform .2s, box-shadow .2s;
+            box-shadow: 0 12px 28px rgba(0,0,0,.35);
         }
-        .comanda-card:hover { transform: translateY(-4px); }
-        .comanda-card.cocina.preparando { border-color: #e2711d; }
-        .comanda-card.cocina.listo { border-color: #1d9e75; }
+        .comanda-card:hover { transform: translateY(-4px); box-shadow: 0 16px 34px rgba(0,0,0,.50), 0 0 0 1px rgba(0,161,156,.25); }
+        .comanda-card.cocina.preparando { border-color: #00A19C; }
+        .comanda-card.cocina.listo { border-color: #00D2BE; }
 
         .comanda-header {
             padding: .8rem 1rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: #0f3460;
+            background: #121518;
         }
-        .comanda-card.cocina.preparando .comanda-header { background: #6b3208; }
-        .comanda-card.cocina.listo .comanda-header { background: #0c4a35; }
+        .comanda-card.cocina.preparando .comanda-header { background: rgba(0,161,156,.18); }
+        .comanda-card.cocina.listo .comanda-header { background: rgba(0,210,190,.18); }
 
         .comanda-mesa {
             font-size: 1.3rem;
             font-weight: 700;
-            color: #fff;
+            color: #FFFFFF;
         }
         .comanda-hora {
             font-size: .8rem;
-            color: #adb5bd;
+            color: #9AA6AD;
             font-variant-numeric: tabular-nums;
         }
         .tiempo-badge {
@@ -119,10 +120,10 @@
             padding: 3px 10px;
             border-radius: 99px;
             font-weight: 600;
-            background: rgba(255,255,255,.12);
-            color: #fff;
+            background: rgba(0,161,156,.16);
+            color: #00D2BE;
         }
-        .tiempo-badge.urgente { background: #e24b4a; animation: pulse 1s infinite; }
+        .tiempo-badge.urgente { background: #EF4444; color: #FFFFFF; animation: pulse 1s infinite; }
 
         .comanda-items {
             padding: 1rem;
@@ -139,8 +140,8 @@
         .comanda-item:last-child { border-bottom: none; }
         
         .item-qty {
-            background: #e2711d;
-            color: #fff;
+            background: #00A19C;
+            color: #06110F;
             font-weight: 700;
             font-size: 1rem;
             min-width: 32px;
@@ -154,12 +155,12 @@
         .item-nombre { 
             font-size: 1rem; 
             font-weight: 600; 
-            color: #f0f0f0;
+            color: #E8EAED;
             word-break: break-word;
         }
         .item-nota { 
             font-size: .8rem; 
-            color: #ffc107; 
+            color: #F59E0B;
             margin-top: 3px;
             font-style: italic;
         }
@@ -178,18 +179,18 @@
             font-weight: 700;
             cursor: pointer;
             transition: opacity .15s, transform .15s;
-            color: #fff;
+            color: #06110F;
         }
         .btn-kds:active { opacity: .75; transform: scale(0.98); }
-        .btn-preparar { background: #e2711d; }
-        .btn-listo { background: #1d9e75; }
-        .btn-finalizar { background: #185FA5; }
+        .btn-preparar { background: #00A19C; color: #06110F; }
+        .btn-listo { background: #00D2BE; color: #06110F; }
+        .btn-finalizar { background: #121518; border: 1px solid rgba(0,161,156,.45); color: #00D2BE; }
 
         .empty-state {
             grid-column: 1 / -1;
             text-align: center;
             padding: 6rem 2rem;
-            color: #495057;
+            color: #9AA6AD;
         }
         .empty-state i { font-size: 5rem; display: block; margin-bottom: 1.5rem; }
 
@@ -203,13 +204,14 @@
             gap: 10px;
         }
         .kds-toast {
-            background: #16213e;
-            border: 2px solid #1d9e75;
-            color: #fff;
+            background: #0D0E10;
+            border: 2px solid #00A19C;
+            color: #E8EAED;
             border-radius: 10px;
             padding: .8rem 1.2rem;
             font-size: .9rem;
             animation: slideIn .3s ease;
+            box-shadow: 0 12px 28px rgba(0,0,0,.45);
         }
 
         @keyframes slideIn {
@@ -228,6 +230,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="/css/petronas.css?v=petronas1">
 </head>
 <body>
 

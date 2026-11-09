@@ -60,8 +60,9 @@
             @page { margin: 4mm; }
         }
     </style>
+    <link rel="stylesheet" href="/css/petronas.css?v=petronas1">
 </head>
-<body>
+<body class="factura-print">
     <%
         const money = (value) => Number(value || 0).toFixed(2);
         const fecha = factura.fecha ? new Date(factura.fecha) : new Date();

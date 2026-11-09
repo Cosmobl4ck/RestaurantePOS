@@ -1,9 +1,9 @@
 // ================================================================
-// MÃ“DULO DE DESPERDICIOS - JavaScript Frontend
+// MÓDULO DE DESPERDICIOS - JavaScript Frontend
 // ================================================================
 
 /**
- * NOTAS DE IMPLEMENTACIÃ“N:
+ * NOTAS DE IMPLEMENTACIÓN:
  * - Este archivo maneja toda la interactividad del panel de desperdicios
  * - NO afecta el inventario (tabla productos.stock)
  * - Solo registra y genera reportes
@@ -31,7 +31,7 @@ async function cargarDesperdicios(filtros = {}) {
         
         if (!tbody) return; 
 
-        // 1. Si no hay registros, mostrar mensaje de vacÃ­o
+        // 1. Si no hay registros, mostrar mensaje de vacío
         if (desperdicios.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Sin registros encontrados</td></tr>';
             return;
@@ -65,7 +65,7 @@ async function cargarDesperdicios(filtros = {}) {
         // 3. Inyectar el HTML en la tabla
         tbody.innerHTML = htmlRows;
 
-        // 4. Â¡IMPORTANTE! Re-vincular los eventos de los botones eliminar
+        // 4. ¡IMPORTANTE! Re-vincular los eventos de los botones eliminar
         // Como el HTML es nuevo, los listeners viejos desaparecieron.
         document.querySelectorAll('.btn-eliminar').forEach(btn => {
             btn.onclick = () => eliminarDesperdicio(btn.dataset.id);
@@ -125,13 +125,13 @@ async function registrarDesperdicio(datos) {
 
 async function eliminarDesperdicio(id) {
     const { isConfirmed } = await Swal.fire({
-        title: 'Â¿Eliminar registro?',
-        text: 'Solo se pueden eliminar registros con menos de 1 hora de antigÃ¼edad',
+        title: '¿Eliminar registro?',
+        text: 'Solo se pueden eliminar registros con menos de 1 hora de antigüedad',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'SÃ­, eliminar',
+        confirmButtonText: 'Sí, eliminar',
         cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#dc3545'
+        confirmButtonColor: '#EF4444'
     });
 
     if (!isConfirmed) return;
@@ -160,7 +160,7 @@ async function eliminarDesperdicio(id) {
 }
 
 // ================================================================
-// 4. GENERAR REPORTE DE PERÃODO
+// 4. GENERAR REPORTE DE PERÍODO
 // ================================================================
 
 async function generarReporte(desde, hasta) {
@@ -176,9 +176,9 @@ async function generarReporte(desde, hasta) {
 
         // Construir HTML del reporte
         let htmlReporte = `
-            <div style="text-align: left; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-                <h4>ðŸ“Š Reporte de Desperdicios</h4>
-                <p><strong>PerÃ­odo:</strong> ${data.periodo.desde} a ${data.periodo.hasta}</p>
+            <div style="text-align: left; padding: 20px; background: #0D0E10; color: #E8EAED; border: 1px solid #1A1D20; border-radius: 8px;">
+                <h4>📊 Reporte de Desperdicios</h4>
+                <p><strong>Período:</strong> ${data.periodo.desde} a ${data.periodo.hasta}</p>
                 
                 <hr>
                 
@@ -193,13 +193,13 @@ async function generarReporte(desde, hasta) {
                 
                 <h5>Desperdicio por Producto</h5>
                 <table style="width: 100%; border-collapse: collapse;">
-                    <tr style="background: #e9ecef; border-bottom: 1px solid #dee2e6;">
+                    <tr style="background: #121518; border-bottom: 1px solid #1A1D20; color: #00D2BE;">
                         <th style="padding: 8px; text-align: left;">Producto</th>
                         <th style="padding: 8px; text-align: center;">Cantidad</th>
                         <th style="padding: 8px; text-align: center;">Registros</th>
                     </tr>
                     ${data.por_producto.map(p => `
-                        <tr style="border-bottom: 1px solid #dee2e6;">
+                        <tr style="border-bottom: 1px solid #1A1D20;">
                             <td style="padding: 8px;">${p.nombre}</td>
                             <td style="padding: 8px; text-align: center;"><strong>${p.cantidad} ${p.unidad}</strong></td>
                             <td style="padding: 8px; text-align: center;">${p.movimientos}</td>
@@ -261,7 +261,7 @@ function descargarReportePDF(data) {
 }
 
 // ================================================================
-// 6. GRÃFICAS DE DESPERDICIOS (Con Chart.js si estÃ¡ disponible)
+// 6. GRÁFICAS DE DESPERDICIOS (Con Chart.js si está disponible)
 // ================================================================
 
 async function generarGrafica(tipo = 'producto') {
@@ -281,6 +281,8 @@ async function generarGrafica(tipo = 'producto') {
 
         // Si hay Chart.js disponible
         if (typeof Chart !== 'undefined') {
+            Chart.defaults.color = '#9AA6AD';
+            Chart.defaults.borderColor = 'rgba(255,255,255,.08)';
             const ctx = document.getElementById('chartDesperdicios');
             if (ctx) {
                 new Chart(ctx, {
@@ -290,21 +292,24 @@ async function generarGrafica(tipo = 'producto') {
                         datasets: [{
                             label: 'Desperdicios',
                             data: valores,
-                            backgroundColor: 'rgba(226, 75, 74, 0.5)',
-                            borderColor: 'rgba(226, 75, 74, 1)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.65)',
+                            borderColor: '#EF4444',
                             borderWidth: 1
                         }]
                     },
                     options: {
                         responsive: true,
-                        plugins: { legend: { position: 'top' } },
-                        scales: { y: { beginAtZero: true } }
+                        plugins: { legend: { position: 'top', labels: { color: '#E8EAED' } } },
+                        scales: {
+                            x: { ticks: { color: '#9AA6AD' }, grid: { color: 'rgba(255,255,255,.06)' } },
+                            y: { beginAtZero: true, ticks: { color: '#9AA6AD' }, grid: { color: 'rgba(255,255,255,.06)' } }
+                        }
                     }
                 });
             }
         }
     } catch (err) {
-        console.error('Error al generar grÃ¡fica:', err);
+        console.error('Error al generar gráfica:', err);
     }
 }
 
@@ -326,7 +331,7 @@ function validarFormularioDesperdicio(datos) {
 }
 
 // ================================================================
-// 8. EVENT LISTENERS (InicializaciÃ³n)
+// 8. EVENT LISTENERS (Inicialización)
 // ================================================================
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -347,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const datos = {
                 producto_id: this.querySelector('[name="producto_id"]').value,
                 cantidad: this.querySelector('[name="cantidad"]').value,
-                unidad_medida: unidadValor, // <-- AquÃ­ estaba el error
+                unidad_medida: unidadValor, // <-- Aquí estaba el error
                 motivo: this.querySelector('[name="motivo"]').value,
                 notas: this.querySelector('[name="notas"]').value
             };
@@ -373,7 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // BotÃ³n de reporte
+    // Botón de reporte
     const btnReporte = document.getElementById('btnReporte');
     if (btnReporte) {
         btnReporte.addEventListener('click', function() {
@@ -390,20 +395,20 @@ document.addEventListener('DOMContentLoaded', function() {
 // ================================================================
 
 /**
- * Este mÃ³dulo de desperdicios:
+ * Este módulo de desperdicios:
  * 
- * âœ“ Registra pÃ©rdidas sin afectar el stock
- * âœ“ Permite filtrar por fecha, producto, motivo
- * âœ“ Genera reportes por perÃ­odo
- * âœ“ Solo permite eliminar registros recientes (< 1 hora)
- * âœ“ Usa RLS de Supabase para seguridad
- * âœ“ Rastrea quiÃ©n registrÃ³ cada desperdicio
+ * ✓ Registra pérdidas sin afectar el stock
+ * ✓ Permite filtrar por fecha, producto, motivo
+ * ✓ Genera reportes por período
+ * ✓ Solo permite eliminar registros recientes (< 1 hora)
+ * ✓ Usa RLS de Supabase para seguridad
+ * ✓ Rastrea quién registró cada desperdicio
  * 
  * Casos de uso:
- * - Vencimientos detectados en almacÃ©n
- * - Productos daÃ±ados en transporte
+ * - Vencimientos detectados en almacén
+ * - Productos dañados en transporte
  * - Merma normal en cocina
- * - Accidentes (caÃ­das, derrames, etc.)
+ * - Accidentes (caídas, derrames, etc.)
  * - Otros problemas
  */
 

@@ -571,7 +571,7 @@ function actualizarPanelLateral() {
     lista.innerHTML = '';
 
     if (STATE.figuras.length === 0) {
-        lista.innerHTML = '<p style="color:#555;font-size:11px;text-align:center;margin-top:8px;">Arrastra figuras al lienzo</p>';
+        lista.innerHTML = '<p style="color:#9AA6AD;font-size:11px;text-align:center;margin-top:8px;">Arrastra figuras al lienzo</p>';
         return;
     }
 
@@ -583,7 +583,7 @@ function actualizarPanelLateral() {
         item.innerHTML = `
             <div style="display:flex;flex-direction:column;">
                 <span style="color:#E5E4E2;font-size:12px;font-weight:600;">${escapeHtml(fig.nombre)}</span>
-                <span style="color:#555;font-size:10px;">${mCount} mesa${mCount !== 1 ? 's' : ''}</span>
+                <span style="color:#9AA6AD;font-size:10px;">${mCount} mesa${mCount !== 1 ? 's' : ''}</span>
             </div>
             <button onclick="event.stopPropagation();entrarFaseMesasById('${fig.id}')" style="background:#00A19C22;color:#00A19C;border:1px solid #00A19C44;border-radius:4px;font-size:9px;padding:3px 7px;cursor:pointer;font-weight:700;">MESAS</button>
         `;
