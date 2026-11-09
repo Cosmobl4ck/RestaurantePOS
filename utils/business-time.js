@@ -9,6 +9,25 @@ function dateInTimeZone(timeZone, date = new Date()) {
   return `${value.year}-${value.month}-${value.day}`;
 }
 
+function parseDbDate(value) {
+  if (!value) return null;
+  const text = String(value);
+  // Supabase guarda timestamp sin zona en UTC. Agregar Z evita que el
+  // servidor o el navegador lo interpreten como hora local.
+  return new Date(/(Z|[+-]\d{2}:?\d{2})$/i.test(text) ? text : `${text}Z`);
+}
+
+function formatTimeInTimeZone(timeZone, value, options = {}) {
+  const date = value instanceof Date ? value : parseDbDate(value);
+  if (!date || Number.isNaN(date.getTime())) return '-';
+  return new Intl.DateTimeFormat('es-SV', {
+    timeZone: timeZone || 'America/El_Salvador',
+    hour: '2-digit',
+    minute: '2-digit',
+    ...(options.seconds ? { second: '2-digit' } : {})
+  }).format(date);
+}
+
 async function getBusinessDate(supabase, restauranteId, date = new Date()) {
   const { data, error } = await supabase
     .from('restaurantes')
@@ -20,4 +39,4 @@ async function getBusinessDate(supabase, restauranteId, date = new Date()) {
   return dateInTimeZone(data.timezone, date);
 }
 
-module.exports = { dateInTimeZone, getBusinessDate };
+module.exports = { dateInTimeZone, getBusinessDate, parseDbDate, formatTimeInTimeZone };

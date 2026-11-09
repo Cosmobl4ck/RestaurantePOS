@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { verificarSesion } = require('../middlewares/authMiddleware');
+const { formatTimeInTimeZone } = require('../utils/business-time');
+
+const TIMEZONE_DEFAULT = 'America/El_Salvador';
 
 // ================================================================
 // Middleware: Solo admin y cajero
@@ -15,6 +18,52 @@ const soloAdminCajero = (req, res, next) => {
     next();
 };
 
+async function getTimeZone(restauranteId) {
+    const { data } = await supabase
+        .from('restaurantes')
+        .select('timezone')
+        .eq('id', restauranteId)
+        .maybeSingle();
+    return data?.timezone || TIMEZONE_DEFAULT;
+}
+
+function formatearPedido(pedido, timeZone) {
+    return {
+        ...pedido,
+        hora_local: formatTimeInTimeZone(timeZone, pedido.created_at, { seconds: true }),
+        cliente_nombre: pedido.clientes?.nombre || pedido.mesas?.descripcion || null
+    };
+}
+
+async function obtenerDetallePedido(restauranteId, pedidoId, conUsuario = true) {
+    const itemsSelect = conUsuario
+        ? `id, cantidad, precio_unitario, subtotal, estado, nota, created_at, enviado_at, usuario_id,
+           productos:producto_id(nombre, categoria),
+           usuarios:usuario_id(nombre)`
+        : `id, cantidad, precio_unitario, subtotal, estado, nota, created_at, enviado_at,
+           productos:producto_id(nombre, categoria)`;
+
+    const { data, error } = await supabase
+        .from('pedidos')
+        .select(`
+            id, estado, total, notas, created_at, updated_at,
+            mesas:mesa_id(numero, descripcion),
+            clientes:cliente_id(nombre, telefono),
+            pedido_items(${itemsSelect})
+        `)
+        .eq('id', pedidoId)
+        .eq('restaurante_id', restauranteId)
+        .maybeSingle();
+
+    // La columna usuario_id puede no existir todavía si la migración de
+    // autoría no se aplicó. En ese caso el detalle sigue funcionando.
+    if (error && conUsuario && (error.code === '42703' || /usuario_id/i.test(error.message || ''))) {
+        return obtenerDetallePedido(restauranteId, pedidoId, false);
+    }
+    if (error) throw error;
+    return data;
+}
+
 // ================================================================
 // GET /registro-pedidos - Panel principal
 // ================================================================
@@ -27,12 +76,13 @@ router.get('/', verificarSesion, soloAdminCajero, async (req, res) => {
         const hoy = new Date().toISOString().split('T')[0];
         const fechaDesde = desde || hoy;
         const fechaHasta = hasta || hoy;
+        const timeZone = await getTimeZone(restauranteId);
 
         let query = supabase
             .from('pedidos')
             .select(`
                 id, estado, total, created_at, updated_at,
-                mesas:mesa_id(numero),
+                mesas:mesa_id(numero, descripcion),
                 clientes:cliente_id(nombre),
                 pedido_items(
                     id, cantidad, precio_unitario, subtotal, estado,
@@ -64,7 +114,7 @@ router.get('/', verificarSesion, soloAdminCajero, async (req, res) => {
 
         res.render('registro_pedidos', {
             usuario: req.session.usuario,
-            pedidos: pedidos || [],
+            pedidos: (pedidos || []).map(p => formatearPedido(p, timeZone)),
             mesas: mesas || [],
             filtros: { desde: fechaDesde, hasta: fechaHasta, mesa_id: mesa_id || '', estado: estado || '' }
         });
@@ -86,12 +136,13 @@ router.get('/api/lista', verificarSesion, soloAdminCajero, async (req, res) => {
         const hoy = new Date().toISOString().split('T')[0];
         const fechaDesde = desde || hoy;
         const fechaHasta = hasta || hoy;
+        const timeZone = await getTimeZone(restauranteId);
 
         let query = supabase
             .from('pedidos')
             .select(`
                 id, estado, total, created_at,
-                mesas:mesa_id(numero),
+                mesas:mesa_id(numero, descripcion),
                 clientes:cliente_id(nombre),
                 pedido_items(
                     id, cantidad, precio_unitario,
@@ -109,7 +160,7 @@ router.get('/api/lista', verificarSesion, soloAdminCajero, async (req, res) => {
         const { data, error } = await query;
         if (error) throw error;
 
-        res.json(data || []);
+        res.json((data || []).map(p => formatearPedido(p, timeZone)));
 
     } catch (error) {
         console.error('Error en registro de pedidos:', error.message);
@@ -125,25 +176,28 @@ router.get('/detalle/:id', verificarSesion, soloAdminCajero, async (req, res) =>
         const restauranteId = req.session.usuario.restaurante_id;
         const pedidoId = req.params.id;
 
-        const { data: pedido, error } = await supabase
-            .from('pedidos')
-            .select(`
-                id, estado, total, notas, created_at, updated_at,
-                mesas:mesa_id(numero),
-                clientes:cliente_id(nombre, telefono),
-                pedido_items(
-                    id, cantidad, precio_unitario, subtotal, estado, nota, created_at,
-                    productos:producto_id(nombre, categoria)
-                )
-            `)
-            .eq('id', pedidoId)
-            .eq('restaurante_id', restauranteId)
-            .maybeSingle();
-
-        if (error) throw error;
+        const pedido = await obtenerDetallePedido(restauranteId, pedidoId);
         if (!pedido) return res.status(404).json({ error: 'Pedido no encontrado' });
 
-        res.json(pedido);
+        const timeZone = await getTimeZone(restauranteId);
+        const respuesta = {
+            ...pedido,
+            comanda_numero: pedido.id,
+            hora_local: formatTimeInTimeZone(timeZone, pedido.created_at, { seconds: true }),
+            cliente_nombre: pedido.clientes?.nombre || pedido.mesas?.descripcion || null,
+            pedido_items: [...(pedido.pedido_items || [])]
+                .sort((a, b) => Number(a.id) - Number(b.id))
+                .map(item => ({
+                    ...item,
+                    usuario_nombre: item.usuarios?.nombre || null,
+                    hora_local: formatTimeInTimeZone(timeZone, item.created_at, { seconds: true }),
+                    enviado_local: item.enviado_at
+                        ? formatTimeInTimeZone(timeZone, item.enviado_at, { seconds: true })
+                        : null
+                }))
+        };
+
+        res.json(respuesta);
 
     } catch (error) {
         console.error('Error en registro de pedidos:', error.message);

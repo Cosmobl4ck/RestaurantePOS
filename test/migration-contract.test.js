@@ -65,3 +65,19 @@ test('pos_open_order recovers an existing order before checking table availabili
   assert.match(fix, /grant execute on function public\.pos_open_order/);
 });
 
+test('order items record the user who entered them', () => {
+  const actor = fs.readFileSync(
+    path.join(__dirname, '../supabase/migrations/20261108130000_add_order_item_actor.sql'),
+    'utf8'
+  ).toLowerCase();
+
+  assert.match(actor, /alter table public\.pedido_items\s+add column if not exists usuario_id bigint/);
+  assert.match(actor, /create or replace function public\.pos_add_order_item\(/);
+  assert.match(actor, /p_usuario_id bigint/);
+  assert.match(actor, /insert into public\.pedido_items\([^)]*usuario_id/s);
+  assert.match(actor, /perform 1\s+from public\.usuarios/);
+  assert.match(actor, /revoke execute on function public\.pos_add_order_item\([^)]*bigint\)\s+from public, anon, authenticated/s);
+  assert.match(actor, /grant execute on function public\.pos_add_order_item\([^)]*bigint\)\s+to service_role/s);
+  assert.match(actor, /notify pgrst, 'reload schema'/);
+});
+

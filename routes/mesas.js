@@ -159,20 +159,36 @@ router.post('/pedidos/:pedidoId/items', verificarSesion, async (req, res) => {
     if (String(unidad || 'UND').toUpperCase() !== 'UND') {
         return res.status(400).json({ error: 'La comanda solo admite unidades UND.' });
     }
+    const usuarioId = Number(req.session.usuario.id);
+    if (!Number.isFinite(usuarioId)) {
+        return res.status(401).json({ error: 'Sesión inválida.' });
+    }
     try {
-        const { data, error } = await supabase.rpc('pos_add_order_item', {
+        const rpcArgs = {
             p_restaurante_id: Number(restauranteId),
             p_pedido_id: Number(req.params.pedidoId),
             p_producto_id: Number(producto_id),
             p_cantidad: qty,
             p_nota: String(nota || '').slice(0, 500) || null,
             p_unidad: 'UND'
+        };
+
+        let { data, error } = await supabase.rpc('pos_add_order_item', {
+            ...rpcArgs,
+            p_usuario_id: usuarioId
         });
+
+        // Compatibilidad mientras la migración de autoría no esté aplicada:
+        // la app sigue pudiendo agregar ítems, aunque sin usuario asociado.
+        if (error && (error.code === 'PGRST202' || /could not find the function|schema cache/i.test(error.message || ''))) {
+            ({ data, error } = await supabase.rpc('pos_add_order_item', rpcArgs));
+        }
+
         if (error) throw error;
         res.status(201).json({ success: true, item: data });
     } catch (error) {
         console.error('❌ Error al agregar item:', error.message);
-        const status = /stock|cantidad|pedido|producto/i.test(error.message || '') ? 400 : 500;
+        const status = /stock|cantidad|pedido|producto|usuario/i.test(error.message || '') ? 400 : 500;
         res.status(status).json({ error: status === 500 ? 'Error interno del servidor.' : (error.message || 'Error al agregar item.') });
     }
 });

@@ -127,22 +127,20 @@
                                     <% pedidos.forEach(p => { %>
                                         <tr>
                                             <td>
-                                                <small class="text-muted">
-                                                    <%= new Date(p.created_at).toLocaleTimeString('es-SV', {hour: '2-digit', minute: '2-digit'}) %>
-                                                </small>
+                                                <small class="text-muted"><%= p.hora_local || '-' %></small>
                                             </td>
                                             <td>
-                                                <strong>
-                                                    <% if (p.mesas) { %>
-                                                        <%= p.mesas.numero %>
-                                                    <% } else { %>
-                                                        #<%= p.id %>
-                                                    <% } %>
-                                                </strong>
+                                                <% if (p.mesas) { %>
+                                                    <strong><%= p.mesas.numero %></strong>
+                                                    <br><small class="text-muted">Comanda #<%= p.id %></small>
+                                                <% } else { %>
+                                                    <strong>#<%= p.id %></strong>
+                                                <% } %>
                                             </td>
                                             <td>
-                                                <% if (p.clientes) { %>
-                                                    <%= p.clientes.nombre %>
+                                                <% const clienteMostrado = p.cliente_nombre || (p.clientes && p.clientes.nombre) || (p.mesas && p.mesas.descripcion); %>
+                                                <% if (clienteMostrado) { %>
+                                                    <%= clienteMostrado %>
                                                 <% } else { %>
                                                     <span class="text-muted">-</span>
                                                 <% } %>
@@ -202,10 +200,10 @@
 
 <!-- MODAL DETALLE -->
 <div class="modal fade" id="modalDetalle" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Detalle del Pedido</h5>
+                <h5 class="modal-title" id="modalDetalleTitulo">Detalle del Pedido</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="modalDetalleBody">
@@ -232,55 +230,70 @@ document.querySelectorAll('.btn-detalle').forEach(btn => {
             if (!resp.ok) throw new Error('Error al cargar');
             const pedido = await resp.json();
 
+            const comanda = pedido.comanda_numero || pedido.id;
+            const cliente = pedido.cliente_nombre || pedido.clientes?.nombre || pedido.mesas?.descripcion || '-';
+            document.getElementById('modalDetalleTitulo').textContent = `Comanda #${comanda}`;
+
             let html = `
                 <div class="row mb-3">
                     <div class="col-md-6">
+                        <p><strong>Comanda:</strong> #${escapeHtml(comanda)}</p>
                         <p><strong>Mesa:</strong> ${escapeHtml(pedido.mesas?.numero || 'N/A')}</p>
-                        <p><strong>Cliente:</strong> ${escapeHtml(pedido.clientes?.nombre || '-')}</p>
+                        <p><strong>Cliente:</strong> ${escapeHtml(cliente)}</p>
                     </div>
                     <div class="col-md-6">
-                        <p><strong>Hora:</strong> ${new Date(pedido.created_at).toLocaleTimeString('es-SV')}</p>
+                        <p><strong>Hora de apertura:</strong> ${escapeHtml(pedido.hora_local || '-')}</p>
                         <p><strong>Estado:</strong> <span class="badge bg-primary">${escapeHtml(pedido.estado)}</span></p>
                     </div>
                 </div>
                 <hr>
                 <h6>Items del Pedido</h6>
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Producto</th>
-                            <th class="text-center">Cantidad</th>
-                            <th class="text-end">Precio Unit.</th>
-                            <th class="text-end">Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-center">Cantidad</th>
+                                <th class="text-end">Precio Unit.</th>
+                                <th>Ingresado por</th>
+                                <th>Hora de ingreso</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
             `;
 
             (pedido.pedido_items || []).forEach(it => {
+                const enviado = it.enviado_at
+                    ? `<br><small class="text-muted">Enviado: ${escapeHtml(it.enviado_local || '-')}</small>`
+                    : '';
                 html += `
-                    <tr>
-                        <td>${escapeHtml(it.productos?.nombre || 'Producto')}</td>
-                        <td class="text-center">${it.cantidad}</td>
-                        <td class="text-end">$${Number(it.precio_unitario).toLocaleString('es-CO')}</td>
-                        <td class="text-end"><strong>$${Number(it.subtotal).toLocaleString('es-CO')}</strong></td>
-                    </tr>
+                            <tr>
+                                <td>${escapeHtml(it.productos?.nombre || 'Producto')}</td>
+                                <td class="text-center">${it.cantidad}</td>
+                                <td class="text-end">$${Number(it.precio_unitario).toLocaleString('es-CO')}</td>
+                                <td>${escapeHtml(it.usuario_nombre || 'No registrado')}</td>
+                                <td>${escapeHtml(it.hora_local || '-')}${enviado}</td>
+                                <td class="text-end"><strong>$${Number(it.subtotal).toLocaleString('es-CO')}</strong></td>
+                            </tr>
                 `;
             });
 
             html += `
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <th colspan="3" class="text-end">TOTAL:</th>
-                            <th class="text-end"><strong>$${Number(pedido.total).toLocaleString('es-CO')}</strong></th>
-                        </tr>
-                    </tfoot>
-                </table>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="5" class="text-end">TOTAL:</th>
+                                <th class="text-end"><strong>$${Number(pedido.total).toLocaleString('es-CO')}</strong></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             `;
 
             document.getElementById('modalDetalleBody').innerHTML = html;
         } catch (err) {
+            document.getElementById('modalDetalleTitulo').textContent = 'Detalle del Pedido';
             document.getElementById('modalDetalleBody').innerHTML = `
                 <div class="alert alert-danger">Error: ${escapeHtml(err.message)}</div>
             `;
