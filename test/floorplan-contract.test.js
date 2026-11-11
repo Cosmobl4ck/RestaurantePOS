@@ -21,6 +21,15 @@ test('save and delete endpoints exist with occupied-table protection', () => {
   assert.match(route, /mesas ocupadas\/reservadas/);
 });
 
+test('area cards persist position and size and receive their tables', () => {
+  assert.match(route, /pos_x/);
+  assert.match(route, /pos_y/);
+  assert.match(route, /ancho_tarjeta/);
+  assert.match(route, /alto_tarjeta/);
+  assert.match(route, /mesasPorArea/);
+  assert.match(fs.readFileSync('views/lista-areas.ejs', 'utf8'), /ancho_tarjeta/);
+});
+
 test('PostgREST retention filters keep current croquis identifiers', () => {
   assert.match(route, /`\(\$\{idsActuales\.join\(','\)\}\)`/);
   assert.match(route, /`\(\$\{idsExternos\.join\(','\)\}\)`/);

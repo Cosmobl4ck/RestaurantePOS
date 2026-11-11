@@ -754,6 +754,10 @@ function cargarMesasGuardadas() {
             });
             STATE.contadorMesas++;
         });
+
+        // Las figuras se renderizan antes de hidratar las mesas; refrescar el
+        // contador evita que el canvas muestre "Sin mesas" hasta cambiar de fase.
+        STATE.figuras.forEach(fig => actualizarContadorMesas(fig));
     } catch (e) { console.warn('No se pudieron cargar mesas guardadas', e); }
 }
 

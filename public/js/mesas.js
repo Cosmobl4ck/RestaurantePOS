@@ -248,7 +248,7 @@ $(function() {
             const resp = await fetch(`/mesas/pedidos/${pedidoId}/facturar`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ forma_pago: formaPago, cliente_id: 1 })
+                body: JSON.stringify({ forma_pago: formaPago })
             });
 
             const dataRespuesta = await resp.json(); 

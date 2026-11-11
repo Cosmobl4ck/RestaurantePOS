@@ -55,8 +55,10 @@ CREATE TABLE IF NOT EXISTS areas_restaurante (
   id BIGSERIAL PRIMARY KEY,
   restaurante_id BIGINT NOT NULL REFERENCES restaurantes(id) ON DELETE CASCADE,
   nombre VARCHAR(100) NOT NULL,
-  pos_x NUMERIC(10,2) DEFAULT 0,
-  pos_y NUMERIC(10,2) DEFAULT 0,
+  pos_x NUMERIC(10,2),
+  pos_y NUMERIC(10,2),
+  ancho_tarjeta INTEGER,
+  alto_tarjeta INTEGER,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(restaurante_id, nombre)

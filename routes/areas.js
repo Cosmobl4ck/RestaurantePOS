@@ -30,11 +30,28 @@ router.get('/', async (req, res) => {
 
         if (error) throw error;
 
+        // Mesas del tenant agrupadas por área para alimentar el plano operativo.
+        const { data: mesas, error: mesasError } = await supabase
+            .from('mesas')
+            .select('id, numero, estado, area_id, personas_actuales')
+            .eq('restaurante_id', usuario.restaurante_id);
+
+        if (mesasError) throw mesasError;
+
+        const mesasPorArea = {};
+        (mesas || []).forEach((mesa) => {
+            if (mesa.area_id == null) return;
+            const key = String(mesa.area_id);
+            if (!mesasPorArea[key]) mesasPorArea[key] = [];
+            mesasPorArea[key].push(mesa);
+        });
+
         res.render('lista-areas', { 
             usuario, 
             currentPath: req.originalUrl,
             title: 'Gestión de Áreas',
-            areas: areas || [] // Pasamos el array de áreas a la vista EJS
+            areas: areas || [], // Pasamos el array de áreas a la vista EJS
+            mesasPorArea
         });
     } catch (err) {
         console.error('Error GET /areas:', err);
@@ -426,12 +443,16 @@ router.post('/guardar-posiciones', async (req, res) => {
     try {
         for (const p of posiciones.slice(0, 200)) {
             const id = Number(p.id);
-            const pos_x = Number(p.x ?? p.pos_x ?? 0);
-            const pos_y = Number(p.y ?? p.pos_y ?? 0);
-            if (!Number.isInteger(id) || !Number.isFinite(pos_x) || !Number.isFinite(pos_y)) continue;
+            if (!Number.isInteger(id)) continue;
+
+            const pos_x = num(p.x ?? p.pos_x, 0, 0, 10000);
+            const pos_y = num(p.y ?? p.pos_y, 0, 0, 10000);
+            const ancho_tarjeta = num(p.ancho ?? p.ancho_tarjeta, 260, 160, 2000);
+            const alto_tarjeta = num(p.alto ?? p.alto_tarjeta, 180, 130, 2000);
+
             const { error } = await supabase
                 .from('areas_restaurante')
-                .update({ pos_x, pos_y, updated_at: new Date().toISOString() })
+                .update({ pos_x, pos_y, ancho_tarjeta, alto_tarjeta })
                 .eq('id', id)
                 .eq('restaurante_id', usuario.restaurante_id);
             if (error) throw error;

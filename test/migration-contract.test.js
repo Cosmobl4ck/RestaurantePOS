@@ -81,3 +81,22 @@ test('order items record the user who entered them', () => {
   assert.match(actor, /notify pgrst, 'reload schema'/);
 });
 
+test('invoice keeps the order client, cleans the table and preserves line order', () => {
+  const fix = fs.readFileSync(
+    path.join(__dirname, '../supabase/migrations/20261110120000_fix_invoice_client_and_area_layout.sql'),
+    'utf8'
+  ).toLowerCase();
+
+  assert.match(fix, /add column if not exists pos_x integer/);
+  assert.match(fix, /add column if not exists ancho_tarjeta integer/);
+  assert.match(fix, /p\.cliente_id/);
+  assert.match(fix, /m\.descripcion/);
+  assert.match(fix, /mesero_id=null/);
+  assert.match(fix, /personas_actuales=0/);
+  assert.match(fix, /hora_apertura=null/);
+  assert.match(fix, /reservada=false/);
+  assert.match(fix, /order by id/);
+  assert.match(fix, /revoke execute on function public\.pos_invoice_order/);
+  assert.match(fix, /grant execute on function public\.pos_invoice_order/);
+});
+
