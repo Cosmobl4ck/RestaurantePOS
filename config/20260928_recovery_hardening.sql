@@ -28,6 +28,59 @@ REVOKE ALL ON TABLE app_sessions FROM anon, authenticated;
 ALTER TABLE restaurantes ADD COLUMN IF NOT EXISTS plan VARCHAR(30) NOT NULL DEFAULT 'trial';
 ALTER TABLE restaurantes ADD COLUMN IF NOT EXISTS fecha_inicio TIMESTAMPTZ DEFAULT now();
 
+-- Ficha de producto y catálogo de alérgenos.
+ALTER TABLE productos
+  ADD COLUMN IF NOT EXISTS descripcion_corta TEXT,
+  ADD COLUMN IF NOT EXISTS ingredientes TEXT,
+  ADD COLUMN IF NOT EXISTS tiempo_preparacion_minutos INTEGER;
+
+ALTER TABLE productos DROP CONSTRAINT IF EXISTS productos_tiempo_preparacion_check;
+ALTER TABLE productos
+  ADD CONSTRAINT productos_tiempo_preparacion_check
+  CHECK (tiempo_preparacion_minutos IS NULL OR tiempo_preparacion_minutos BETWEEN 1 AND 240);
+
+CREATE TABLE IF NOT EXISTS alergenos (
+  id SMALLSERIAL PRIMARY KEY,
+  nombre VARCHAR(60) NOT NULL UNIQUE,
+  icono VARCHAR(60) NOT NULL DEFAULT 'bi-exclamation-triangle-fill',
+  activo BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+INSERT INTO alergenos (nombre, icono) VALUES
+  ('Gluten', 'bi-basket-fill'),
+  ('Lactosa', 'bi-cup-straw'),
+  ('Huevo', 'bi-egg-fried'),
+  ('Maní', 'bi-flower1'),
+  ('Frutos secos', 'bi-tree-fill'),
+  ('Mariscos', 'bi-water'),
+  ('Pescado', 'bi-fish-fill'),
+  ('Soya', 'bi-seedling'),
+  ('Sésamo', 'bi-circle-fill'),
+  ('Sulfitos', 'bi-droplet-fill')
+ON CONFLICT (nombre) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS producto_alergenos (
+  restaurante_id BIGINT NOT NULL REFERENCES restaurantes(id) ON DELETE CASCADE,
+  producto_id BIGINT NOT NULL REFERENCES productos(id) ON DELETE CASCADE,
+  alergeno_id SMALLINT NOT NULL REFERENCES alergenos(id) ON DELETE RESTRICT,
+  PRIMARY KEY (producto_id, alergeno_id)
+);
+CREATE INDEX IF NOT EXISTS idx_producto_alergenos_tenant_producto
+  ON producto_alergenos(restaurante_id, producto_id);
+
+ALTER TABLE alergenos ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE alergenos FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON TABLE alergenos TO service_role;
+
+ALTER TABLE producto_alergenos ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE producto_alergenos FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE producto_alergenos TO service_role;
+
+ALTER TABLE pedido_items
+  ADD COLUMN IF NOT EXISTS tiempo_preparacion_minutos INTEGER,
+  ADD COLUMN IF NOT EXISTS alergenos TEXT[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS alergia_aviso TEXT;
+
 ALTER TABLE cortes_caja ADD COLUMN IF NOT EXISTS turno INTEGER DEFAULT 1;
 ALTER TABLE cortes_caja ADD COLUMN IF NOT EXISTS detalles_dinero JSONB;
 ALTER TABLE cortes_caja ADD COLUMN IF NOT EXISTS ventas_efectivo NUMERIC(12,2) NOT NULL DEFAULT 0;
@@ -198,6 +251,38 @@ BEGIN
 END;
 $$;
 
+-- 5b) Reemplaza los alérgenos de un producto de forma atómica.
+CREATE OR REPLACE FUNCTION public.pos_sync_product_allergens(
+  p_restaurante_id BIGINT,
+  p_producto_id BIGINT,
+  p_alergeno_ids BIGINT[]
+) RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_count INTEGER;
+BEGIN
+  PERFORM 1 FROM productos
+   WHERE id=p_producto_id AND restaurante_id=p_restaurante_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Producto no encontrado'; END IF;
+
+  DELETE FROM producto_alergenos
+   WHERE producto_id=p_producto_id AND restaurante_id=p_restaurante_id;
+
+  INSERT INTO producto_alergenos(restaurante_id, producto_id, alergeno_id)
+  SELECT p_restaurante_id, p_producto_id, a.id
+    FROM alergenos a
+   WHERE a.id::BIGINT = ANY(COALESCE(p_alergeno_ids, '{}'::BIGINT[]))
+     AND a.activo
+  ON CONFLICT DO NOTHING;
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN jsonb_build_object('producto_id',p_producto_id,'alergenos',v_count);
+END;
+$$;
+
 -- 6) Operación atómica: agregar item. El precio SIEMPRE sale de productos.
 CREATE OR REPLACE FUNCTION public.pos_add_order_item(
   p_restaurante_id BIGINT,
@@ -205,7 +290,9 @@ CREATE OR REPLACE FUNCTION public.pos_add_order_item(
   p_producto_id BIGINT,
   p_cantidad NUMERIC,
   p_nota TEXT DEFAULT NULL,
-  p_unidad TEXT DEFAULT 'UND'
+  p_unidad TEXT DEFAULT 'UND',
+  p_usuario_id BIGINT DEFAULT NULL,
+  p_alergia_aviso TEXT DEFAULT NULL
 ) RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -216,6 +303,7 @@ DECLARE
   v_pedido pedidos%ROWTYPE;
   v_item pedido_items%ROWTYPE;
   v_precio NUMERIC(10,2);
+  v_alergenos TEXT[];
 BEGIN
   IF p_cantidad IS NULL OR p_cantidad <= 0 THEN
     RAISE EXCEPTION 'Cantidad inválida';
@@ -240,8 +328,25 @@ BEGIN
      WHERE id=v_producto.id AND restaurante_id=p_restaurante_id;
   END IF;
 
-  INSERT INTO pedido_items(restaurante_id,pedido_id,producto_id,cantidad,unidad_medida,precio_unitario,subtotal,estado,nota)
-  VALUES(p_restaurante_id,p_pedido_id,p_producto_id,p_cantidad,COALESCE(NULLIF(p_unidad,''),'UND'),v_precio,p_cantidad*v_precio,'pendiente',NULLIF(trim(COALESCE(p_nota,'')),''))
+  SELECT COALESCE(array_agg(a.nombre ORDER BY a.nombre), '{}'::TEXT[])
+    INTO v_alergenos
+    FROM producto_alergenos pa
+    JOIN alergenos a ON a.id=pa.alergeno_id
+   WHERE pa.producto_id=v_producto.id
+     AND pa.restaurante_id=p_restaurante_id
+     AND a.activo;
+
+  INSERT INTO pedido_items(
+    restaurante_id,pedido_id,producto_id,cantidad,unidad_medida,
+    precio_unitario,subtotal,estado,nota,usuario_id,
+    tiempo_preparacion_minutos,alergenos,alergia_aviso
+  )
+  VALUES(
+    p_restaurante_id,p_pedido_id,p_producto_id,p_cantidad,COALESCE(NULLIF(p_unidad,''),'UND'),
+    v_precio,p_cantidad*v_precio,'pendiente',NULLIF(trim(COALESCE(p_nota,'')),''),p_usuario_id,
+    v_producto.tiempo_preparacion_minutos,COALESCE(v_alergenos,'{}'::TEXT[]),
+    LEFT(NULLIF(trim(COALESCE(p_alergia_aviso,'')),''),200)
+  )
   RETURNING * INTO v_item;
 
   UPDATE pedidos
@@ -407,13 +512,15 @@ $$;
 -- 9) Las RPC críticas solo deben invocarse desde el backend con service_role.
 REVOKE EXECUTE ON FUNCTION public.pos_open_order(BIGINT,BIGINT,TEXT,TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.pos_move_order(BIGINT,BIGINT,BIGINT,BIGINT) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.pos_add_order_item(BIGINT,BIGINT,BIGINT,NUMERIC,TEXT,TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.pos_add_order_item(BIGINT,BIGINT,BIGINT,NUMERIC,TEXT,TEXT,BIGINT,TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.pos_sync_product_allergens(BIGINT,BIGINT,BIGINT[]) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.pos_invoice_order(BIGINT,BIGINT,TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.pos_cancel_order(BIGINT,BIGINT) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.pos_void_invoice(BIGINT,BIGINT,BIGINT,TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.pos_open_order(BIGINT,BIGINT,TEXT,TEXT) TO service_role;
 GRANT EXECUTE ON FUNCTION public.pos_move_order(BIGINT,BIGINT,BIGINT,BIGINT) TO service_role;
-GRANT EXECUTE ON FUNCTION public.pos_add_order_item(BIGINT,BIGINT,BIGINT,NUMERIC,TEXT,TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.pos_add_order_item(BIGINT,BIGINT,BIGINT,NUMERIC,TEXT,TEXT,BIGINT,TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.pos_sync_product_allergens(BIGINT,BIGINT,BIGINT[]) TO service_role;
 GRANT EXECUTE ON FUNCTION public.pos_invoice_order(BIGINT,BIGINT,TEXT) TO service_role;
 GRANT EXECUTE ON FUNCTION public.pos_cancel_order(BIGINT,BIGINT) TO service_role;
 GRANT EXECUTE ON FUNCTION public.pos_void_invoice(BIGINT,BIGINT,BIGINT,TEXT) TO service_role;

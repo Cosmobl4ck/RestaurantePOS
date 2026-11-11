@@ -151,7 +151,7 @@ router.get('/pedidos/:pedidoId', verificarSesion, async (req, res) => {
 // =========================================================================
 router.post('/pedidos/:pedidoId/items', verificarSesion, async (req, res) => {
     const restauranteId = req.session.usuario.restaurante_id;
-    const { producto_id, cantidad, nota, unidad } = req.body || {};
+    const { producto_id, cantidad, nota, unidad, alergia_aviso } = req.body || {};
     const qty = Number(cantidad);
     if (!producto_id || !Number.isFinite(qty) || qty <= 0 || qty > 999) {
         return res.status(400).json({ error: 'Producto/cantidad inválidos.' });
@@ -170,18 +170,30 @@ router.post('/pedidos/:pedidoId/items', verificarSesion, async (req, res) => {
             p_producto_id: Number(producto_id),
             p_cantidad: qty,
             p_nota: String(nota || '').slice(0, 500) || null,
-            p_unidad: 'UND'
+            p_unidad: 'UND',
+            p_alergia_aviso: String(alergia_aviso || '').trim().slice(0, 200) || null
         };
+        const funcionNoDisponible = (err) => err
+            && (err.code === 'PGRST202' || /could not find the function|schema cache/i.test(err.message || ''));
 
         let { data, error } = await supabase.rpc('pos_add_order_item', {
             ...rpcArgs,
             p_usuario_id: usuarioId
         });
 
-        // Compatibilidad mientras la migración de autoría no esté aplicada:
-        // la app sigue pudiendo agregar ítems, aunque sin usuario asociado.
-        if (error && (error.code === 'PGRST202' || /could not find the function|schema cache/i.test(error.message || ''))) {
-            ({ data, error } = await supabase.rpc('pos_add_order_item', rpcArgs));
+        // Compatibilidad escalonada: primero sin el aviso de alergia, luego
+        // sin autoría, para que el POS siga operando antes de aplicar migraciones.
+        if (funcionNoDisponible(error)) {
+            const { p_alergia_aviso, ...sinAviso } = rpcArgs;
+            ({ data, error } = await supabase.rpc('pos_add_order_item', {
+                ...sinAviso,
+                p_usuario_id: usuarioId
+            }));
+        }
+
+        if (funcionNoDisponible(error)) {
+            const { p_alergia_aviso, ...sinAviso } = rpcArgs;
+            ({ data, error } = await supabase.rpc('pos_add_order_item', sinAviso));
         }
 
         if (error) throw error;

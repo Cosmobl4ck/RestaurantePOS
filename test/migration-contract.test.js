@@ -81,6 +81,25 @@ test('order items record the user who entered them', () => {
   assert.match(actor, /notify pgrst, 'reload schema'/);
 });
 
+test('product info, allergens and prep time are snapshotted for KDS', () => {
+  const fix = fs.readFileSync(
+    path.join(__dirname, '../supabase/migrations/20261110130000_add_product_info_allergens_and_prep_time.sql'),
+    'utf8'
+  ).toLowerCase();
+
+  assert.match(fix, /add column if not exists descripcion_corta text/);
+  assert.match(fix, /add column if not exists ingredientes text/);
+  assert.match(fix, /add column if not exists tiempo_preparacion_minutos integer/);
+  assert.match(fix, /create table if not exists public\.alergenos/);
+  assert.match(fix, /create table if not exists public\.producto_alergenos/);
+  assert.match(fix, /create or replace function public\.pos_sync_product_allergens/);
+  assert.match(fix, /add column if not exists alergenos text\[\] not null default '\{\}'/);
+  assert.match(fix, /add column if not exists alergia_aviso text/);
+  assert.match(fix, /tiempo_preparacion_minutos, alergenos, alergia_aviso/);
+  assert.match(fix, /revoke execute on function public\.pos_add_order_item\(/);
+  assert.match(fix, /grant execute on function public\.pos_add_order_item\(/);
+});
+
 test('invoice keeps the order client, cleans the table and preserves line order', () => {
   const fix = fs.readFileSync(
     path.join(__dirname, '../supabase/migrations/20261110120000_fix_invoice_client_and_area_layout.sql'),

@@ -3,6 +3,8 @@ const TIPO_MONITOR = window.tipoMonitor;
 let comandas = {};
 let eventSource = null;
 let fallbackTimer = null;
+const ALERTA_MINUTOS = 2;
+const PREP_POR_DEFECTO = { cocina: 15, bar: 10 };
 
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -53,8 +55,19 @@ function itemsToComandas(items) {
         const mesa = it.pedidos.mesas?.numero || `#${pedidoId}`;
         if (!mapa[pedidoId]) mapa[pedidoId] = { pedidoId, mesa, hora: it.enviado_at || it.created_at, items: [] };
         mapa[pedidoId].items.push({
-            id: Number(it.id), nombre: it.productos?.nombre || 'Producto', cantidad: it.cantidad,
-            nota: it.nota, estado: it.estado
+            id: Number(it.id),
+            nombre: it.productos?.nombre || 'Producto',
+            cantidad: it.cantidad,
+            nota: it.nota,
+            estado: it.estado,
+            tiempoPreparacion: Number(it.tiempo_preparacion_minutos) > 0
+                ? Number(it.tiempo_preparacion_minutos)
+                : null,
+            alergenos: Array.isArray(it.alergenos)
+                ? it.alergenos.map((alergeno) => String(alergeno)).filter(Boolean)
+                : [],
+            alergiaAviso: String(it.alergia_aviso || '').trim(),
+            enviadoAt: it.enviado_at || it.created_at
         });
     });
     return mapa;
@@ -63,6 +76,50 @@ function estadoGlobal(items) {
     if (items.length && items.every(i => i.estado === 'listo')) return 'listo';
     if (items.some(i => i.estado === 'preparando' || i.estado === 'listo')) return 'preparando';
     return 'enviado';
+}
+
+function minutosPreparacion(item) {
+    return item.tiempoPreparacion || PREP_POR_DEFECTO[TIPO_MONITOR] || 15;
+}
+
+// La tarjeta usa el ítem activo con la menor holgura. Así, si un pedido
+// mezcla un plato de 8 min con uno de 20 min, avisa por el más urgente.
+function estadoTiempo(pedido) {
+    const activos = pedido.items.filter(item => item.estado === 'enviado' || item.estado === 'preparando');
+    const mins = minutosDesde(pedido.hora);
+
+    if (!activos.length) {
+        return { critico: false, mins, restante: null };
+    }
+
+    let restante = null;
+    activos.forEach((item) => {
+        const base = parseDbDate(item.enviadoAt || pedido.hora);
+        if (!base || Number.isNaN(base.getTime())) return;
+        const preparacion = minutosPreparacion(item);
+        const faltan = Math.ceil((base.getTime() + preparacion * 60000 - Date.now()) / 60000);
+        if (restante === null || faltan < restante) restante = faltan;
+    });
+
+    return {
+        critico: restante !== null && restante <= ALERTA_MINUTOS,
+        mins,
+        restante
+    };
+}
+
+function textoBadge(tiempo) {
+    if (tiempo.restante === null) return `⏱ ${tiempo.mins} min`;
+    if (tiempo.critico) {
+        return tiempo.restante > 0
+            ? `⚠ ${tiempo.restante} min`
+            : `⚠ ${Math.abs(tiempo.restante)} min tarde`;
+    }
+    return `⏱ ${tiempo.mins} min`;
+}
+
+function tieneAlertaAlergenos(pedido) {
+    return pedido.items.some(item => item.alergiaAviso || item.alergenos.length > 0);
 }
 
 function renderGrid() {
@@ -77,40 +134,60 @@ function renderGrid() {
     const tipoLabel = TIPO_MONITOR === 'cocina' ? 'Comida' : 'Bebida';
     grid.innerHTML = pedidos.map(p => {
         const estado = estadoGlobal(p.items);
-        const mins = minutosDesde(p.hora);
-        const urgente = TIPO_MONITOR === 'cocina' ? mins >= 15 : mins >= 10;
-        const itemsHTML = p.items.map(it => `
+        const tiempo = estadoTiempo(p);
+        const alertaAlergenos = tieneAlertaAlergenos(p);
+        const clases = [
+            colorClass,
+            estado,
+            alertaAlergenos ? 'alerta-alergenos' : '',
+            tiempo.critico ? 'tiempo-critico' : ''
+        ].filter(Boolean).join(' ');
+        const itemsHTML = p.items.map(it => {
+            const nota = String(it.nota || '').trim();
+            const aviso = it.alergiaAviso;
+            const notaAlergia = /alergia/i.test(nota);
+            return `
             <div class="comanda-item">
                 <span class="item-qty">${escapeHtml(it.cantidad)}</span>
-                <div><div class="item-nombre">${escapeHtml(it.nombre)}</div>
-                ${it.nota ? `<div class="item-nota">📝 ${escapeHtml(it.nota)}</div>` : ''}</div>
-            </div>`).join('');
+                <div class="item-contenido">
+                    <div class="item-nombre">${escapeHtml(it.nombre)}</div>
+                    ${it.alergenos.length ? `<div class="item-alergenos"><i class="bi bi-exclamation-triangle-fill"></i> Contiene: ${it.alergenos.map(escapeHtml).join(', ')}</div>` : ''}
+                    ${aviso ? `<div class="item-alergia-aviso"><i class="bi bi-exclamation-octagon-fill"></i> ALERGIA: ${escapeHtml(aviso)}</div>` : ''}
+                    ${nota && (!aviso || !nota.includes(aviso)) ? `<div class="item-nota ${notaAlergia ? 'alerta' : ''}">📝 ${escapeHtml(nota)}</div>` : ''}
+                    ${it.tiempoPreparacion ? `<div class="item-tiempo"><i class="bi bi-clock"></i> ≈ ${it.tiempoPreparacion} min</div>` : ''}
+                </div>
+            </div>`;
+        }).join('');
         const acciones = estado === 'enviado'
             ? `<button class="btn-kds btn-preparar" onclick="avanzarPedido(${p.pedidoId},'preparando')"><i class="bi bi-play-fill"></i> Preparando</button>`
             : estado === 'preparando'
             ? `<button class="btn-kds btn-listo" onclick="avanzarPedido(${p.pedidoId},'listo')"><i class="bi bi-check-lg"></i> Listo</button>`
             : `<button class="btn-kds btn-finalizar" onclick="finalizarPedido(${p.pedidoId})"><i class="bi bi-bell"></i> ${tipoLabel} lista</button>`;
-        return `<div class="comanda-card ${colorClass} ${estado}" data-pedido="${p.pedidoId}">
+        const alergiaBadge = alertaAlergenos
+            ? '<span class="alergia-badge"><i class="bi bi-exclamation-octagon-fill"></i> Alérgenos</span>'
+            : '';
+        return `<div class="comanda-card ${clases}" data-pedido="${p.pedidoId}">
             <div class="comanda-header"><div><div class="comanda-mesa">${escapeHtml(p.mesa)}</div><div class="comanda-hora">${horaCorta(p.hora)}</div></div>
-            <span class="tiempo-badge ${urgente ? 'urgente' : ''}">${mins} min</span></div>
+            <div class="comanda-badges">${alergiaBadge}<span class="tiempo-badge ${tiempo.critico ? 'urgente' : ''}">${textoBadge(tiempo)}</span></div></div>
             <div class="comanda-items">${itemsHTML}</div><div class="comanda-actions">${acciones}</div></div>`;
     }).join('');
 }
 
 // El SSE solo emite eventos cuando cambia la cola; este intervalo mantiene
-// actualizado el tiempo transcurrido de cada comanda aunque no haya cambios.
+// actualizado el tiempo restante y dispara el aviso a los 2 minutos.
 setInterval(() => {
     document.querySelectorAll('.comanda-card').forEach(card => {
         const pedido = comandas[card.dataset.pedido];
         if (!pedido) return;
-        const mins = minutosDesde(pedido.hora);
+        const tiempo = estadoTiempo(pedido);
         const badge = card.querySelector('.tiempo-badge');
-        if (!badge) return;
-        badge.textContent = `${mins} min`;
-        const urgente = TIPO_MONITOR === 'cocina' ? mins >= 15 : mins >= 10;
-        badge.classList.toggle('urgente', urgente);
+        if (badge) {
+            badge.textContent = textoBadge(tiempo);
+            badge.classList.toggle('urgente', tiempo.critico);
+        }
+        card.classList.toggle('tiempo-critico', tiempo.critico);
     });
-}, 30000);
+}, 1000);
 
 async function requestJson(url, options) {
     const resp = await fetch(url, options);

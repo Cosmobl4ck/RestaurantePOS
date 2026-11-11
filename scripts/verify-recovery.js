@@ -53,6 +53,7 @@ else {
 for (const rel of [
   'supabase/migrations/20260928214312_reconcile_restaurant_pos_live.sql',
   'supabase/migrations/20261110120000_fix_invoice_client_and_area_layout.sql',
+  'supabase/migrations/20261110130000_add_product_info_allergens_and_prep_time.sql',
   'config/SupabaseSessionStore.js',
   'routes/kds.js',
   'routes/areas.js',

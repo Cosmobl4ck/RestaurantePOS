@@ -124,6 +124,70 @@
             color: #00D2BE;
         }
         .tiempo-badge.urgente { background: #EF4444; color: #FFFFFF; animation: pulse 1s infinite; }
+        .comanda-badges {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .alergia-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: .68rem;
+            padding: 3px 8px;
+            border-radius: 99px;
+            font-weight: 700;
+            color: #FFD1D6;
+            background: rgba(239,68,68,.22);
+            border: 1px solid rgba(239,68,68,.55);
+        }
+        .comanda-card.alerta-alergenos {
+            background: rgba(239,68,68,.10);
+            border-color: rgba(239,68,68,.55);
+        }
+        .comanda-card.alerta-alergenos .comanda-header {
+            background: rgba(239,68,68,.16);
+        }
+        .comanda-card.tiempo-critico {
+            background: rgba(239,68,68,.18);
+            border-color: #EF4444;
+            animation: criticalBlink 1s infinite;
+        }
+        .comanda-card.tiempo-critico .comanda-header {
+            background: rgba(239,68,68,.28);
+        }
+        .comanda-card.tiempo-critico .tiempo-badge {
+            background: #EF4444;
+            color: #FFFFFF;
+        }
+        .item-contenido { min-width: 0; flex: 1; }
+        .item-alergenos {
+            font-size: .78rem;
+            color: #FF8A95;
+            font-weight: 600;
+            margin-top: 3px;
+        }
+        .item-alergia-aviso {
+            margin-top: 4px;
+            padding: 4px 8px;
+            border-left: 3px solid #EF4444;
+            border-radius: 4px;
+            background: rgba(239,68,68,.20);
+            color: #FFD1D6;
+            font-size: .8rem;
+            font-weight: 700;
+        }
+        .item-tiempo {
+            margin-top: 3px;
+            font-size: .75rem;
+            color: #9AA6AD;
+        }
+        .item-nota.alerta {
+            color: #FF8A95;
+            font-weight: 700;
+        }
 
         .comanda-items {
             padding: 1rem;
@@ -222,6 +286,18 @@
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
+        }
+
+        @keyframes criticalBlink {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.55), 0 12px 28px rgba(0,0,0,.35); }
+            50% { box-shadow: 0 0 0 7px rgba(239,68,68,0), 0 12px 28px rgba(0,0,0,.35); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .comanda-card.tiempo-critico,
+            .tiempo-badge.urgente {
+                animation: none;
+            }
         }
 
         @media (max-width: 768px) {

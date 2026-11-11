@@ -35,7 +35,27 @@ test('KDS interpreta timestamps sin zona como UTC y mantiene el tiempo actualiza
   assert.ok(client.includes('${value}Z'));
   assert.match(client, /tiempo-badge/);
   assert.match(client, /classList\.toggle\('urgente'/);
-  assert.match(client, /}, 30000\);/);
+  assert.match(client, /}, 1000\);/);
+});
+
+test('KDS usa tiempo por producto y alerta 2 minutos antes', () => {
+  assert.match(client, /const ALERTA_MINUTOS = 2/);
+  assert.match(client, /tiempo_preparacion_minutos/);
+  assert.match(client, /tiempo-critico/);
+  assert.match(client, /Math\.ceil/);
+  assert.match(route, /\*,\s*\n\s*pedidos/);
+});
+
+test('KDS muestra alérgenos y aviso de alergia en la tarjeta', () => {
+  assert.match(client, /alergia_aviso/);
+  assert.match(client, /alerta-alergenos/);
+  assert.match(client, /ALERGIA:/);
+  for (const file of ['views/kds_cocina.ejs', 'views/kds_bar.ejs']) {
+    const view = fs.readFileSync(file, 'utf8');
+    assert.match(view, /\.comanda-card\.alerta-alergenos/);
+    assert.match(view, /\.comanda-card\.tiempo-critico/);
+    assert.match(view, /criticalBlink/);
+  }
 });
 
 test('el KDS enlaza pedidos y facturas para administracion y caja', () => {

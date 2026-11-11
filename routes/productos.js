@@ -21,6 +21,43 @@ const normalizarCategoria = (categoria) => {
     return String(categoria || '').toLowerCase() === 'bar' ? 'Bar' : 'Cocina';
 };
 
+const esFaltaEsquema = (error) => {
+    return ['42P01', '42703', 'PGRST200', 'PGRST204', 'PGRST205'].includes(error?.code)
+        || /column|relation|schema cache/i.test(error?.message || '');
+};
+
+const normalizarTiempoPreparacion = (valor) => {
+    const minutos = Number(valor);
+    return Number.isInteger(minutos) && minutos >= 1 && minutos <= 240 ? minutos : null;
+};
+
+const normalizarAlergenos = (valor) => {
+    if (!Array.isArray(valor)) return [];
+    return [...new Set(
+        valor
+            .map((id) => Number(id))
+            .filter((id) => Number.isInteger(id) && id > 0)
+    )];
+};
+
+const mapearAlergenos = (producto) => {
+    const relaciones = Array.isArray(producto.producto_alergenos) ? producto.producto_alergenos : [];
+    const alergenos = relaciones
+        .map((relacion) => relacion.alergenos)
+        .filter(Boolean)
+        .map((alergeno) => ({
+            id: Number(alergeno.id),
+            nombre: String(alergeno.nombre || '')
+        }))
+        .filter((alergeno) => alergeno.id && alergeno.nombre);
+
+    return {
+        ...producto,
+        alergenos,
+        alergeno_ids: alergenos.map((alergeno) => alergeno.id)
+    };
+};
+
 const normalizarProducto = (body, restauranteId, codigo) => {
     const categoria = normalizarCategoria(body.categoria);
     const manejaStock = categoria === 'Bar';
@@ -34,8 +71,118 @@ const normalizarProducto = (body, restauranteId, codigo) => {
         maneja_stock: manejaStock,
         stock: manejaStock ? Math.max(0, parseFloat(body.stock) || 0) : 0,
         stock_minimo: manejaStock ? Math.max(0, parseFloat(body.stock_minimo) || 0) : 0,
+        descripcion_corta: String(body.descripcion_corta || '').trim().slice(0, 500) || null,
+        ingredientes: String(body.ingredientes || '').trim().slice(0, 2000) || null,
+        tiempo_preparacion_minutos: normalizarTiempoPreparacion(body.tiempo_preparacion_minutos),
         updated_at: new Date().toISOString()
     };
+};
+
+const listarAlergenos = async () => {
+    const { data, error } = await supabase
+        .from('alergenos')
+        .select('id, nombre, icono')
+        .eq('activo', true)
+        .order('nombre', { ascending: true });
+
+    if (error) {
+        if (esFaltaEsquema(error)) return [];
+        throw error;
+    }
+
+    return data || [];
+};
+
+const cargarProductos = async (restauranteId) => {
+    const consultaCompleta = supabase
+        .from('productos')
+        .select('*, producto_alergenos(alergenos(id,nombre))')
+        .eq('restaurante_id', restauranteId)
+        .order('nombre', { ascending: true });
+
+    let { data, error } = await consultaCompleta;
+
+    // Permite arrancar el POS antes de aplicar la migración de alérgenos.
+    if (error && esFaltaEsquema(error)) {
+        ({ data, error } = await supabase
+            .from('productos')
+            .select('*')
+            .eq('restaurante_id', restauranteId)
+            .order('nombre', { ascending: true }));
+
+        if (error) throw error;
+        return (data || []).map((producto) => ({ ...producto, alergenos: [], alergeno_ids: [] }));
+    }
+
+    if (error) throw error;
+    return (data || []).map(mapearAlergenos);
+};
+
+const sincronizarAlergenos = async (restauranteId, productoId, alergenos) => {
+    const { error } = await supabase.rpc('pos_sync_product_allergens', {
+        p_restaurante_id: Number(restauranteId),
+        p_producto_id: Number(productoId),
+        p_alergeno_ids: normalizarAlergenos(alergenos)
+    });
+
+    if (error) throw error;
+};
+
+const buscarProductos = async (restauranteId, texto) => {
+    const consultaCompleta = supabase
+        .from('productos')
+        .select('id, codigo, nombre, precio_unidad, descripcion_corta, ingredientes, tiempo_preparacion_minutos, producto_alergenos(alergenos(id,nombre))')
+        .eq('restaurante_id', restauranteId)
+        .limit(10);
+
+    if (texto) {
+        consultaCompleta.or(`nombre.ilike.%${texto}%,codigo.ilike.%${texto}%`);
+    }
+
+    let { data, error } = await consultaCompleta.order('nombre', { ascending: true });
+
+    if (error && esFaltaEsquema(error)) {
+        const consultaBase = supabase
+            .from('productos')
+            .select('id, codigo, nombre, precio_unidad')
+            .eq('restaurante_id', restauranteId)
+            .limit(10);
+
+        if (texto) {
+            consultaBase.or(`nombre.ilike.%${texto}%,codigo.ilike.%${texto}%`);
+        }
+
+        ({ data, error } = await consultaBase.order('nombre', { ascending: true }));
+        if (error) throw error;
+
+        return (data || []).map((producto) => ({
+            ...producto,
+            descripcion_corta: null,
+            ingredientes: null,
+            tiempo_preparacion_minutos: null,
+            alergenos: []
+        }));
+    }
+
+    if (error) throw error;
+
+    return (data || []).map((producto) => {
+        const relaciones = Array.isArray(producto.producto_alergenos) ? producto.producto_alergenos : [];
+        const alergenos = relaciones
+            .map((relacion) => relacion.alergenos?.nombre)
+            .filter(Boolean);
+
+        return {
+            id: producto.id,
+            codigo: producto.codigo,
+            nombre: producto.nombre,
+            precio_unidad: producto.precio_unidad,
+            descripcion_corta: producto.descripcion_corta || null,
+            ingredientes: producto.ingredientes || null,
+            tiempo_preparacion_minutos: producto.tiempo_preparacion_minutos ?? null,
+            alergenos
+        };
+    });
 };
 
 const generarCodigo = async (restauranteId, categoria) => {
@@ -66,19 +213,24 @@ const generarCodigo = async (restauranteId, categoria) => {
 router.get('/', async (req, res) => {
     try {
         const restauranteId = getRestauranteId(req);
+        const [productos, alergenos] = await Promise.all([
+            cargarProductos(restauranteId),
+            listarAlergenos()
+        ]);
 
-        const { data: productos, error } = await supabase
-            .from('productos')
-            .select('*')
-            .eq('restaurante_id', restauranteId)
-            .order('nombre', { ascending: true });
-
-        if (error) throw error;
-
-        res.render('productos', { productos: productos || [] });
+        res.render('productos', { productos, alergenos });
     } catch (error) {
         console.error('Error al cargar inventario:', error);
         res.status(500).render('error', { error: { message: 'Error al cargar inventario' } });
+    }
+});
+
+router.get('/alergenos', async (req, res) => {
+    try {
+        res.json(await listarAlergenos());
+    } catch (error) {
+        console.error('Error al cargar alérgenos:', error);
+        res.status(500).json({ error: 'Error al cargar alérgenos' });
     }
 });
 
@@ -100,10 +252,14 @@ router.post('/', async (req, res) => {
         const { data, error } = await supabase
             .from('productos')
             .insert(producto)
-            .select()
+            .select('id, codigo')
             .single();
 
         if (error) throw error;
+
+        if (req.body.alergenos !== undefined) {
+            await sincronizarAlergenos(restauranteId, data.id, req.body.alergenos);
+        }
 
         res.status(201).json({ message: 'Producto creado con exito', codigo: data.codigo, id: data.id });
     } catch (error) {
@@ -133,6 +289,10 @@ router.put('/:id', async (req, res) => {
         if (error) throw error;
         if (!data || data.length === 0) {
             return res.status(404).json({ error: 'Producto no encontrado' });
+        }
+
+        if (req.body.alergenos !== undefined) {
+            await sincronizarAlergenos(restauranteId, data[0].id, req.body.alergenos);
         }
 
         res.json({ message: 'Producto actualizado con exito' });
@@ -258,21 +418,7 @@ router.get('/buscar', async (req, res) => {
         // Allowlist: evita inyección de operadores en el filtro PostgREST.
         const texto = String(req.query.q || '').trim().replace(/[^\p{L}\p{N}\s_-]/gu, '').slice(0, 60);
 
-        let consulta = supabase
-            .from('productos')
-            .select('id, codigo, nombre, precio_unidad')
-            .eq('restaurante_id', restauranteId)
-            .limit(10);
-
-        if (texto) {
-            consulta = consulta.or(`nombre.ilike.%${texto}%,codigo.ilike.%${texto}%`);
-        }
-
-        const { data: productos, error } = await consulta.order('nombre', { ascending: true });
-
-        if (error) throw error;
-
-        res.json(productos || []);
+        res.json(await buscarProductos(restauranteId, texto));
     } catch (error) {
         console.error('Error en buscador:', error);
         res.status(500).json({ error: 'Error interno del servidor' });

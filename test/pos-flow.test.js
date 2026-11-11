@@ -36,5 +36,6 @@ test('agregar un item registra el usuario autenticado', () => {
 
   assert.match(addRoute, /const usuarioId = Number\(req\.session\.usuario\.id\)/);
   assert.match(addRoute, /p_usuario_id:\s*usuarioId/);
+  assert.match(addRoute, /p_alergia_aviso/);
   assert.match(addRoute, /rpc\('pos_add_order_item'/);
 });

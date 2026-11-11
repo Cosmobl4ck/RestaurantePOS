@@ -93,7 +93,11 @@
                                             <button class="btn btn-sm btn-outline-primary me-1" 
                                                 data-id="<%= producto.id %>" 
                                                 data-action="editar"
-                                                data-stock-minimo="<%= producto.stock_minimo %>">
+                                                data-stock-minimo="<%= producto.stock_minimo %>"
+                                                data-descripcion="<%= producto.descripcion_corta || '' %>"
+                                                data-ingredientes="<%= producto.ingredientes || '' %>"
+                                                data-tiempo="<%= producto.tiempo_preparacion_minutos || '' %>"
+                                                data-alergenos="<%= (producto.alergeno_ids || []).join(',') %>">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-danger" data-id="<%= producto.id %>" data-action="eliminar">
@@ -153,6 +157,34 @@
                                 <input type="number" class="form-control" id="precioUnidad" step="0.01" min="0" required disabled>
                             </div>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label">6. Descripción corta</label>
+                            <textarea class="form-control" id="descripcion_corta" rows="2" maxlength="500" placeholder="Ej. Carne a la parrilla con arroz y ensalada"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">7. Ingredientes</label>
+                            <textarea class="form-control" id="ingredientes" rows="3" maxlength="2000" placeholder="Ej. Carne de res, arroz, ensalada, chimichurri"></textarea>
+                            <div class="form-text">Se muestra al mesero en la ficha del platillo.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">8. Tiempo aproximado de preparación</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="tiempo_preparacion_minutos" min="1" max="240" placeholder="15">
+                                <span class="input-group-text">min</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">9. Alérgenos</label>
+                            <div class="d-flex flex-wrap gap-3">
+                                <% (alergenos || []).forEach(function(alergeno) { %>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="alergenos" value="<%= alergeno.id %>" id="alergeno_<%= alergeno.id %>">
+                                        <label class="form-check-label" for="alergeno_<%= alergeno.id %>"><%= alergeno.nombre %></label>
+                                    </div>
+                                <% }); %>
+                            </div>
+                            <div class="form-text">Marca los alérgenos que contiene este producto.</div>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -184,6 +216,10 @@
         const stockContainer = document.getElementById('stockContainer');
         const stockMinimoContainer = document.getElementById('stockMinimoContainer'); // Ref Nueva
         const inputCodigo = document.getElementById('codigo');
+        const inputDescripcion = document.getElementById('descripcion_corta');
+        const inputIngredientes = document.getElementById('ingredientes');
+        const inputTiempo = document.getElementById('tiempo_preparacion_minutos');
+        const checkboxesAlergenos = Array.from(document.querySelectorAll('input[name="alergenos"]'));
 
         // BUSCADOR EN TIEMPO REAL
         inputBusqueda.addEventListener('keyup', function() {
@@ -229,6 +265,10 @@
             inputStockMinimo.disabled = true;
             stockContainer.classList.add('d-none');
             stockMinimoContainer.classList.add('d-none');
+            inputDescripcion.value = '';
+            inputIngredientes.value = '';
+            inputTiempo.value = '';
+            checkboxesAlergenos.forEach((checkbox) => { checkbox.checked = false; });
             myModal.show();
         });
 
@@ -250,6 +290,14 @@
                 inputCodigo.value = fila.cells[0].innerText.trim();
                 inputNombre.value = fila.cells[1].innerText.trim();
                 inputPrecio.value = parseFloat(fila.cells[4].innerText.replace('$', ''));
+                inputDescripcion.value = button.dataset.descripcion || '';
+                inputIngredientes.value = button.dataset.ingredientes || '';
+                inputTiempo.value = button.dataset.tiempo || '';
+
+                const seleccionados = new Set(String(button.dataset.alergenos || '').split(',').filter(Boolean));
+                checkboxesAlergenos.forEach((checkbox) => {
+                    checkbox.checked = seleccionados.has(checkbox.value);
+                });
                 
                 const cat = fila.cells[2].innerText.trim().toLowerCase();
                 selectCategoria.value = cat;
@@ -292,7 +340,13 @@
                 categoria: selectCategoria.value,
                 stock: inputStock.value,
                 stock_minimo: inputStockMinimo.value, // Enviamos el minimo
-                precio_unidad: inputPrecio.value
+                precio_unidad: inputPrecio.value,
+                descripcion_corta: inputDescripcion.value,
+                ingredientes: inputIngredientes.value,
+                tiempo_preparacion_minutos: inputTiempo.value,
+                alergenos: checkboxesAlergenos
+                    .filter((checkbox) => checkbox.checked)
+                    .map((checkbox) => Number(checkbox.value))
             };
             const url = isEditing ? `/productos/${editId}` : '/productos';
             const response = await fetch(url, {

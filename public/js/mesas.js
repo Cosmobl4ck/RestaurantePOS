@@ -5,7 +5,7 @@ function cerrarMenuLateral() {
     if (bsOffcanvas) bsOffcanvas.hide();
 }
 
-window.seleccionarProducto = async function(p) {
+window.seleccionarProducto = async function(p, opciones = {}) {
     // Solución para focus de Modales sobre Offcanvas
     if ($.fn.modal) $.fn.modal.Constructor.prototype._enforceFocus = function() {}; 
     const canvasEl = document.getElementById('canvasPedido');
@@ -43,7 +43,8 @@ window.seleccionarProducto = async function(p) {
                 cantidad: Number(cantidadRes),
                 precio: Number(p.precio_unidad || p.precio_unitario),
                 nota: notaRes || '',
-                unidad: 'UND'
+                unidad: 'UND',
+                alergia_aviso: String(opciones.alergiaAviso || '').trim().slice(0, 200)
             })
         });
 
@@ -126,6 +127,78 @@ $(function() {
 
     function formatear(valor){ return `$${Number(valor||0).toLocaleString('es-CO')}`; }
 
+    const modalInfoProducto = new bootstrap.Modal(document.getElementById('modalInfoProducto'));
+    let productoInfoActual = null;
+
+    window.abrirInfoProducto = function(producto) {
+        productoInfoActual = producto;
+        const alergenos = Array.isArray(producto.alergenos) ? producto.alergenos : [];
+        const contenedorAlergenos = document.getElementById('infoProductoAlergenos');
+
+        document.getElementById('infoProductoNombre').textContent = producto.nombre || 'Producto';
+        document.getElementById('infoProductoCodigo').textContent = producto.codigo || '';
+        document.getElementById('infoProductoPrecio').textContent = formatear(producto.precio_unidad);
+        document.getElementById('infoProductoDescripcion').textContent = producto.descripcion_corta || 'Sin descripción adicional.';
+        document.getElementById('infoProductoIngredientes').textContent = producto.ingredientes || 'Ingredientes no especificados.';
+        document.getElementById('infoProductoTiempo').textContent = producto.tiempo_preparacion_minutos
+            ? `≈ ${producto.tiempo_preparacion_minutos} min`
+            : 'No definido';
+
+        contenedorAlergenos.replaceChildren();
+        if (!alergenos.length) {
+            const sinAlergenos = document.createElement('span');
+            sinAlergenos.className = 'info-sin-alergenos';
+            sinAlergenos.textContent = 'Sin alérgenos declarados';
+            contenedorAlergenos.append(sinAlergenos);
+        } else {
+            alergenos.forEach((nombre) => {
+                const chip = document.createElement('span');
+                chip.className = 'alergeno-chip';
+                const icono = document.createElement('i');
+                icono.className = 'bi bi-exclamation-triangle-fill';
+                chip.append(icono, document.createTextNode(String(nombre)));
+                contenedorAlergenos.append(chip);
+            });
+        }
+
+        const check = document.getElementById('infoProductoAlergiaCheck');
+        const detalle = document.getElementById('infoProductoAlergiaDetalle');
+        check.checked = false;
+        detalle.value = '';
+        detalle.disabled = true;
+
+        modalInfoProducto.show();
+    };
+
+    document.getElementById('infoProductoAlergiaCheck').addEventListener('change', function() {
+        const detalle = document.getElementById('infoProductoAlergiaDetalle');
+        detalle.disabled = !this.checked;
+        if (this.checked) detalle.focus();
+    });
+
+    document.getElementById('btnAgregarDesdeInfo').addEventListener('click', function() {
+        const producto = productoInfoActual;
+        if (!producto) return;
+
+        const check = document.getElementById('infoProductoAlergiaCheck');
+        const detalle = document.getElementById('infoProductoAlergiaDetalle');
+        const aviso = check.checked ? detalle.value.trim() : '';
+
+        if (check.checked && !aviso) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Falta la alergia',
+                text: 'Escribe a qué ingrediente es alérgico el cliente.',
+                target: document.getElementById('modalInfoProducto')
+            });
+            detalle.focus();
+            return;
+        }
+
+        modalInfoProducto.hide();
+        setTimeout(() => window.seleccionarProducto(producto, { alergiaAviso: aviso }), 200);
+    });
+
     function renderItems(){
         const tbody = $('#tbodyItems').empty();
         let total = 0;
@@ -135,6 +208,17 @@ $(function() {
             const row = document.createElement('tr');
             const productCell = document.createElement('td');
             productCell.append(document.createTextNode(it.producto_nombre || it.nombre || 'Producto'));
+            if (it.alergia_aviso) {
+                const alerta = document.createElement('small');
+                alerta.className = 'text-danger fw-bold d-block';
+                alerta.textContent = `⚠ ALERGIA: ${it.alergia_aviso}`;
+                productCell.append(alerta);
+            } else if (Array.isArray(it.alergenos) && it.alergenos.length) {
+                const contiene = document.createElement('small');
+                contiene.className = 'text-danger d-block';
+                contiene.textContent = `Contiene: ${it.alergenos.join(', ')}`;
+                productCell.append(contiene);
+            }
             if (it.nota) {
                 productCell.append(document.createElement('br'));
                 const note = document.createElement('small');
@@ -179,28 +263,61 @@ $(function() {
                 $list.empty().show();
 
                 productos.forEach(p => {
-                    const button = document.createElement('button');
-                    button.type = 'button';
-                    button.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                    const row = document.createElement('div');
+                    row.className = 'list-group-item producto-resultado';
+
+                    const addButton = document.createElement('button');
+                    addButton.type = 'button';
+                    addButton.className = 'producto-resultado-main';
+                    addButton.setAttribute('aria-label', `Agregar ${p.nombre} al pedido`);
+
                     const description = document.createElement('div');
                     const name = document.createElement('span');
                     name.className = 'fw-bold';
                     name.textContent = p.nombre;
                     const code = document.createElement('small');
-                    code.className = 'text-muted';
+                    code.className = 'text-muted ms-2';
                     code.textContent = p.codigo || '';
-                    description.append(name, document.createElement('br'), code);
+                    description.append(name, code);
+
+                    const meta = document.createElement('div');
+                    meta.className = 'producto-meta text-muted';
+                    if (p.tiempo_preparacion_minutos) {
+                        const tiempo = document.createElement('span');
+                        tiempo.innerHTML = `<i class="bi bi-clock"></i> ≈ ${Number(p.tiempo_preparacion_minutos)} min`;
+                        meta.append(tiempo);
+                    }
+                    if (Array.isArray(p.alergenos) && p.alergenos.length) {
+                        const alergia = document.createElement('span');
+                        alergia.className = 'text-danger fw-bold';
+                        alergia.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> Alérgenos';
+                        meta.append(alergia);
+                    }
+                    if (meta.childElementCount) description.append(meta);
+
                     const price = document.createElement('span');
-                    price.className = 'badge bg-primary rounded-pill';
+                    price.className = 'badge bg-teal rounded-pill ms-2';
                     price.textContent = formatear(p.precio_unidad);
-                    button.append(description, price);
-                    const $item = $(button);
-                    $item.on('click', () => {
+
+                    const infoButton = document.createElement('button');
+                    infoButton.type = 'button';
+                    infoButton.className = 'producto-info-btn';
+                    infoButton.setAttribute('aria-label', `Ver información de ${p.nombre}`);
+                    infoButton.innerHTML = '<i class="bi bi-info-circle"></i>';
+                    infoButton.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        window.abrirInfoProducto(p);
+                    });
+
+                    addButton.append(description, price);
+                    addButton.addEventListener('click', () => {
                         window.seleccionarProducto(p);
                         $list.hide();
                         $('#buscarProductoMesa').val('');
                     });
-                    $list.append($item);
+
+                    row.append(addButton, infoButton);
+                    $list.append(row);
                 });
             } catch(err) { console.error(err); }
         }, 300);

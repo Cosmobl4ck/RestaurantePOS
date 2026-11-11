@@ -84,6 +84,88 @@
         .offcanvas-header .btn-close-white {
             filter: invert(1) grayscale(100%) brightness(200%);
         }
+
+        /* Resultados del buscador de productos */
+        .producto-resultado {
+            display: flex;
+            align-items: stretch;
+            padding: 0 !important;
+            overflow: hidden;
+        }
+        .producto-resultado-main {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .5rem;
+            border: 0;
+            background: transparent;
+            color: #212529;
+            text-align: left;
+            padding: .65rem .8rem;
+        }
+        .producto-resultado-main:hover { background: rgba(0,161,156,.08); }
+        .producto-resultado-main .producto-meta {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            flex-wrap: wrap;
+            margin-top: 2px;
+            font-size: .72rem;
+        }
+        .producto-info-btn {
+            width: 48px;
+            flex-shrink: 0;
+            border: 0;
+            border-left: 1px solid rgba(0,161,156,.25);
+            background: rgba(0,161,156,.08);
+            color: var(--pos-teal);
+            font-size: 1.1rem;
+        }
+        .producto-info-btn:hover {
+            background: rgba(0,161,156,.2);
+            color: var(--pos-teal-hover);
+        }
+
+        /* Ficha de producto */
+        #modalInfoProducto .modal-content {
+            background: #0D0E10;
+            color: #E8EAED;
+            border: 1px solid rgba(0,161,156,.45);
+        }
+        #modalInfoProducto .modal-header,
+        #modalInfoProducto .modal-footer {
+            border-color: rgba(255,255,255,.12);
+        }
+        #modalInfoProducto .modal-body {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .info-label {
+            color: var(--pos-teal);
+            font-size: .72rem;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+        }
+        .alergeno-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .28rem .6rem;
+            border-radius: 99px;
+            background: rgba(220,53,69,.18);
+            border: 1px solid rgba(220,53,69,.55);
+            color: #FF9AA5;
+            font-size: .78rem;
+            font-weight: 700;
+        }
+        .info-sin-alergenos {
+            color: #5EE0B5;
+            font-size: .85rem;
+            font-weight: 600;
+        }
     </style>
     <link rel="stylesheet" href="/css/petronas.css?v=petronas1">
 </head>
@@ -230,6 +312,67 @@
                     <!-- BOTÓN DE GUARDAR: Siempre habilitado -->
                     <button id="btnEnviarCocina" class="btn btn-teal w-100 fw-bold btn-lg shadow-sm">
                         <i class="bi bi-send me-1"></i> Enviar comanda
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ficha informativa del producto -->
+    <div class="modal fade" id="modalInfoProducto" tabindex="-1" aria-labelledby="modalInfoProductoTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalInfoProductoTitle">
+                        <i class="bi bi-info-circle me-2 text-teal"></i>Información del platillo
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                        <div>
+                            <h4 class="fw-bold mb-1" id="infoProductoNombre"></h4>
+                            <div class="small text-secondary" id="infoProductoCodigo"></div>
+                        </div>
+                        <span class="badge bg-teal fs-6" id="infoProductoPrecio"></span>
+                    </div>
+
+                    <p class="text-secondary mb-3" id="infoProductoDescripcion"></p>
+
+                    <div class="mb-3">
+                        <div class="info-label mb-1">Ingredientes</div>
+                        <p class="mb-0" id="infoProductoIngredientes"></p>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="info-label mb-2">Alérgenos</div>
+                        <div class="d-flex flex-wrap gap-2" id="infoProductoAlergenos"></div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-clock-history text-teal"></i>
+                        <span>Tiempo aproximado: <strong id="infoProductoTiempo"></strong></span>
+                    </div>
+
+                    <div class="alert alert-danger py-2 px-3 small mb-3">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        La información de alérgenos es declarada por el restaurante. Si el cliente tiene una alergia grave, confirma con cocina.
+                    </div>
+
+                    <div class="border-top border-secondary pt-3">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="infoProductoAlergiaCheck">
+                            <label class="form-check-label fw-semibold" for="infoProductoAlergiaCheck">
+                                El cliente tiene una alergia que debo avisar
+                            </label>
+                        </div>
+                        <input type="text" id="infoProductoAlergiaDetalle" class="form-control bg-dark text-white border-secondary" maxlength="200" placeholder="Ej. maní, lactosa, mariscos..." disabled>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-teal fw-bold" id="btnAgregarDesdeInfo">
+                        <i class="bi bi-plus-lg me-1"></i>Agregar al pedido
                     </button>
                 </div>
             </div>

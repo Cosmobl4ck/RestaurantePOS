@@ -19,7 +19,7 @@ async function getQueue(restauranteId, station) {
     const { data, error } = await supabase
         .from('pedido_items')
         .select(`
-            id, pedido_id, cantidad, nota, estado, enviado_at, preparado_at, listo_at, created_at,
+            *,
             pedidos ( id, mesa_id, estado, mesas ( numero ) ),
             productos ( id, nombre, categoria )
         `)
