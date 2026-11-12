@@ -23,9 +23,11 @@
             <a href="/facturas" class="btn btn-primary">
                 <i class="bi bi-receipt me-1"></i> Ver Historial de Ventas
             </a>
+            <% if (locals.puedeStock) { %>
             <button onclick="generarListaCompras()" class="btn btn-dark">
                 <i class="bi bi-printer me-1"></i> Lista de Compras
             </button>
+            <% } %>
         </div>
     </div>
 
@@ -71,6 +73,7 @@
                 </div>
             </div>
         </div>
+        <% if (locals.puedeAvanzado) { %>
         <div class="col-md-4">
             <div class="card border-0 shadow-sm bg-danger text-white p-4 h-100">
                 <div class="d-flex align-items-center">
@@ -84,8 +87,22 @@
                 </div>
             </div>
         </div>
+        <% } %>
     </div>
 
+    <% if (!locals.puedeAvanzado) { %>
+        <div class="card border-0 shadow-sm p-4 mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-gem me-2"></i>Reportes avanzados</h5>
+                    <p class="text-muted mb-0">El plan Básico incluye los totales del día. La semana, el top de productos y las anulaciones están disponibles en Premium.</p>
+                </div>
+                <a href="/mi-plan" class="btn btn-solid-aqua px-4">Ver planes</a>
+            </div>
+        </div>
+    <% } %>
+
+    <% if (locals.puedeAvanzado) { %>
     <div class="row g-4 mb-4">
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm p-4 h-100">
@@ -115,6 +132,7 @@
             </div>
         </div>
     </div>
+    <% } %>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -137,6 +155,7 @@
     };
 
     // --- GRÁFICAS (Chart.js) ---
+    <% if (locals.puedeAvanzado) { %>
     Chart.defaults.color = '#9AA6AD';
     Chart.defaults.borderColor = 'rgba(255,255,255,.08)';
     Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
@@ -205,6 +224,7 @@
             }
         }
     });
+    <% } %>
 
     // --- LÓGICA DE LISTA DE COMPRAS (SweetAlert + PDF) ---
     async function generarListaCompras() {

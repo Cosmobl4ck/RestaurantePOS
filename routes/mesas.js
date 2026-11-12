@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { verificarSesion } = require('../middlewares/authMiddleware');
+const { requireFeature } = require('../middlewares/planAccess');
 
 // =========================================================================
 // GET /mesas - Renderizar vista principal
@@ -296,7 +297,7 @@ router.get('/listar', verificarSesion, async (req, res) => {
 // =========================================================================
 // POST /mesas/mover-pedido - Mover un pedido de una mesa a otra
 // =========================================================================
-router.post('/mover-pedido', verificarSesion, async (req, res) => {
+router.post('/mover-pedido', verificarSesion, requireFeature('pos.mover_pedido'), async (req, res) => {
     const { pedido_id, mesa_origen_id, mesa_destino_id } = req.body || {};
     const restauranteId = req.session.usuario.restaurante_id;
     if (!pedido_id || !mesa_origen_id || !mesa_destino_id) {

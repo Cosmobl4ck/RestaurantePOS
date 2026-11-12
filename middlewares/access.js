@@ -113,6 +113,7 @@ function requireSuperadmin(req, res, next) {
     res.setHeader('WWW-Authenticate', 'Basic realm="MarrocosPOS SuperAdmin", charset="UTF-8"');
     return res.status(401).send('Credenciales inválidas.');
   }
+  req.superadminUser = user;
   next();
 }
 

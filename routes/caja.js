@@ -6,6 +6,7 @@ const { supabase } = require('../config/supabase');
 const { verificarSesion } = require('../middlewares/authMiddleware');
 const authRole = require('../middlewares/authRole');
 const { getBusinessDate } = require('../utils/business-time');
+const { requireFeature } = require('../middlewares/planAccess');
 
 const allowedRoles = ['admin', 'gerente', 'cajero'];
 const detallesSchema = Joi.object()
@@ -93,7 +94,7 @@ router.post('/cerrar', verificarSesion, authRole(allowedRoles), async (req, res)
     }
 });
 
-router.get('/exportar/:id?', verificarSesion, authRole(allowedRoles), async (req, res) => {
+router.get('/exportar/:id?', verificarSesion, authRole(allowedRoles), requireFeature('caja.exportar'), async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
         const fecha = await getBusinessDate(supabase, restauranteId);

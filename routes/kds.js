@@ -3,8 +3,32 @@ const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { verificarSesion } = require('../middlewares/authMiddleware');
 const { normalizeRole } = require('../middlewares/access');
+const { hasFeatureSync } = require('../services/planService');
+const { enforcementEnabled, denyFeature } = require('../middlewares/planAccess');
 
 const ADMIN_KDS = new Set(['admin', 'gerente', 'cajero']);
+
+function stationFeature(station) {
+    return station === 'bar' ? 'kds.bar' : 'kds.cocina';
+}
+
+function stationFeatureAllowed(req, res, station, json = false) {
+    if (!enforcementEnabled()) return true;
+    const planCode = res.locals.plan?.codigo || req.session?.usuario?.plan || 'trial';
+    if (hasFeatureSync(planCode, stationFeature(station))) return true;
+
+    if (json) {
+        res.status(403).json({
+            error: `El monitor de ${station} no está incluido en tu plan actual.`,
+            code: 'PLAN_REQUIRED',
+            feature: stationFeature(station),
+            upgrade_url: '/mi-plan'
+        });
+    } else {
+        denyFeature(req, res, stationFeature(station));
+    }
+    return false;
+}
 
 function canSeeStation(role, station) {
     role = normalizeRole(role);
@@ -36,6 +60,7 @@ async function renderStation(req, res, station) {
     if (!canSeeStation(role, station)) {
         return res.status(403).render('error', { error: { message: `No tienes permiso para acceder al monitor de ${station}.` } });
     }
+    if (!stationFeatureAllowed(req, res, station)) return;
     try {
         const items = await getQueue(req.session.usuario.restaurante_id, station);
         res.render(station === 'cocina' ? 'kds_cocina' : 'kds_bar', {
@@ -57,6 +82,7 @@ router.get('/bar', verificarSesion, (req, res) => renderStation(req, res, 'bar')
 router.get('/:station(cocina|bar)/events', verificarSesion, async (req, res) => {
     const station = req.params.station;
     if (!canSeeStation(req.session.usuario.rol, station)) return res.status(403).end();
+    if (!stationFeatureAllowed(req, res, station, true)) return;
     const restauranteId = req.session.usuario.restaurante_id;
 
     res.setHeader('Content-Type', 'text/event-stream');
@@ -92,6 +118,7 @@ router.get('/:station(cocina|bar)/events', verificarSesion, async (req, res) => 
 router.get('/:station(cocina|bar)/cola', verificarSesion, async (req, res) => {
     const station = req.params.station;
     if (!canSeeStation(req.session.usuario.rol, station)) return res.status(403).json({ error: 'No autorizado.' });
+    if (!stationFeatureAllowed(req, res, station, true)) return;
     try {
         res.json(await getQueue(req.session.usuario.restaurante_id, station));
     } catch (error) {
@@ -123,6 +150,7 @@ router.put('/:itemId/estado', verificarSesion, async (req, res) => {
         const info = await getItemStation(itemId, restauranteId);
         if (!info?.station) return res.status(404).json({ error: 'Item KDS no encontrado.' });
         if (!canSeeStation(req.session.usuario.rol, info.station)) return res.status(403).json({ error: 'No autorizado para esta estación.' });
+        if (!stationFeatureAllowed(req, res, info.station, true)) return;
 
         const transitions = { enviado: ['preparando'], preparando: ['listo'], listo: [] };
         if (!(transitions[info.item.estado] || []).includes(estado)) {
@@ -152,6 +180,7 @@ router.put('/:itemId/finalizar', verificarSesion, async (req, res) => {
         const info = await getItemStation(itemId, restauranteId);
         if (!info?.station) return res.status(404).json({ error: 'Item KDS no encontrado.' });
         if (!canSeeStation(req.session.usuario.rol, info.station)) return res.status(403).json({ error: 'No autorizado para esta estación.' });
+        if (!stationFeatureAllowed(req, res, info.station, true)) return;
         if (info.item.estado !== 'listo') return res.status(409).json({ error: 'La comanda debe estar lista antes de finalizar.' });
 
         const { data, error } = await supabase.rpc('pos_transition_kds', {

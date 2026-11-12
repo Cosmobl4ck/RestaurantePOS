@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { verificarSesion } = require('../middlewares/authMiddleware');
+const { requireFeature } = require('../middlewares/planAccess');
 
 // =========================================================
 // 1. RUTA PRINCIPAL DE VENTAS (Historial)
@@ -65,7 +66,7 @@ router.get('/', verificarSesion, async (req, res) => {
 // =========================================================
 // 2. EXPORTAR A EXCEL
 // =========================================================
-router.get('/export', verificarSesion, async (req, res) => {
+router.get('/export', verificarSesion, requireFeature('ventas.exportar'), async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
 

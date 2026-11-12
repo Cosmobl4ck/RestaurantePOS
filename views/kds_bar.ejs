@@ -340,6 +340,7 @@
 
 <script>
     window.tipoMonitor = 'bar';
+    window.KDS_TIEMPOS_HABILITADOS = <%= locals.planPuede && locals.planPuede('kds.tiempos') ? 'true' : 'false' %>;
 </script>
 <script src="/js/kds.js"></script>
 

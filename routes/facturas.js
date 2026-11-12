@@ -172,9 +172,13 @@ router.get('/:id/imprimir', verificarSesion, authRole(['admin','gerente','cajero
             .eq('restaurante_id', restauranteId)
             .maybeSingle();
 
+        const puedeMarca = typeof res.locals.planPuede === 'function'
+            ? res.locals.planPuede('facturas.marca')
+            : true;
+
         // Convierte el logo BYTEA a data URI (mismo criterio que /configuracion).
         const configParaVista = { ...(config || {}) };
-        if (config?.logo_data) {
+        if (puedeMarca && config?.logo_data) {
             const hex = String(config.logo_data).replace(/^\\x/, '');
             try {
                 configParaVista.logo_src = `data:image/${config.logo_tipo || 'png'};base64,${Buffer.from(hex, 'hex').toString('base64')}`;
@@ -184,6 +188,13 @@ router.get('/:id/imprimir', verificarSesion, authRole(['admin','gerente','cajero
         }
         delete configParaVista.logo_data;
         delete configParaVista.qr_data;
+        if (!puedeMarca) {
+            configParaVista.logo_src = null;
+            configParaVista.qr_src = null;
+            configParaVista.pie_pagina = null;
+            configParaVista.ancho_papel = 80;
+            configParaVista.font_size = 1;
+        }
 
         res.render('factura', {
             factura: facturaFormateada,

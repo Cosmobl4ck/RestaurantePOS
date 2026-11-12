@@ -1,5 +1,6 @@
 const { supabase } = require('../config/supabase');
 const { normalizeRole } = require('./access');
+const planService = require('../services/planService');
 
 // La licencia y el estado del usuario se revalidan contra la base de datos,
 // pero con una caché corta en sesión para no hacer 2 consultas por request.
@@ -20,6 +21,18 @@ function sesionInvalida(req, res, message) {
     if (req.path.endsWith('/events')) return res.status(401).end();
     if (esperaJson(req)) return res.status(401).json({ error: message });
     return res.redirect('/login');
+}
+
+async function attachPlanContext(req, res) {
+    await planService.loadCatalog();
+    const plan = planService.getPlanSync(req.session?.usuario?.plan || 'trial');
+    if (req.session?.usuario && req.session.usuario.plan !== plan.codigo) {
+        req.session.usuario.plan = plan.codigo;
+    }
+    res.locals.plan = plan;
+    res.locals.planLabel = plan.nombre;
+    res.locals.planLimits = plan.limits;
+    res.locals.planPuede = (featureKey) => planService.hasFeatureSync(plan.codigo, featureKey);
 }
 
 /**
@@ -44,6 +57,7 @@ const verificarSesion = async (req, res, next) => {
             }
             return denegar(req, res, cache.status || 403, cache.message);
         }
+        await attachPlanContext(req, res);
         return next();
     }
 
@@ -53,7 +67,7 @@ const verificarSesion = async (req, res, next) => {
         const [negocioResult, usuarioResult] = await Promise.all([
             supabase
                 .from('restaurantes')
-                .select('estado, fecha_vencimiento, nombre_comercial')
+                .select('estado, fecha_vencimiento, nombre_comercial, plan')
                 .eq('id', restauranteId)
                 .maybeSingle(),
             supabase
@@ -102,7 +116,13 @@ const verificarSesion = async (req, res, next) => {
             }
         }
 
+        const planActual = planService.getPlanSync(negocio.plan || 'trial').codigo;
+        if (usuarioSesion.plan !== planActual) {
+            req.session.usuario.plan = planActual;
+        }
+
         req.session.licenseCheck = { at: Date.now(), ok: true };
+        await attachPlanContext(req, res);
         return next();
     } catch (error) {
         // Error transitorio de base de datos: no cerramos la sesión del usuario.

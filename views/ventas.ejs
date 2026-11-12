@@ -112,7 +112,9 @@
                     </div>
                     <div class="col-md-3 d-flex justify-content-end gap-2">
                         <button class="btn btn-primary" id="filtrarVentas"><i class="bi bi-funnel"></i> Filtrar</button>
+                        <% if (typeof locals.planPuede !== 'function' || locals.planPuede('ventas.exportar')) { %>
                         <button class="btn btn-success" id="exportarVentas"><i class="bi bi-file-earmark-excel"></i> Exportar</button>
+                        <% } %>
                     </div>
                 </div>
             </div>
@@ -343,7 +345,7 @@
             window.location.href = `/ventas?${new URLSearchParams({ desde, hasta, q }).toString()}`;
         });
 
-        document.getElementById('exportarVentas').addEventListener('click', () => {
+        document.getElementById('exportarVentas')?.addEventListener('click', () => {
             const desde = document.getElementById('fechaDesde').value;
             const hasta = document.getElementById('fechaHasta').value;
             const q = document.getElementById('buscarVentas').value || '';

@@ -4,6 +4,8 @@ const bcrypt = require('bcryptjs');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { supabase } = require('../config/supabase');
 const { normalizeRole } = require('../middlewares/access');
+const { getPlanSync, getLimitSync, getUsage } = require('../services/planService');
+const { enforcementEnabled } = require('../middlewares/planAccess');
 
 // Hash de referencia para igualar el tiempo de respuesta cuando el usuario no
 // existe (evita enumeración de usuarios por timing).
@@ -142,15 +144,26 @@ function cerrarSesion(req, res) {
 // Solo POST: cerrar sesión por GET permitía CSRF de logout.
 router.post('/logout', cerrarSesion);
 
-router.get('/register', (req, res) => {
+router.get('/register', async (req, res) => {
     if (!req.session.usuario) return res.redirect('/login');
 
     if (!ROLES_SOLO_ADMIN.includes(req.session.usuario.rol)) {
         return res.redirect('/dashboard');
     }
 
+    const plan = res.locals.plan || getPlanSync(req.session.usuario.plan);
+    let usoUsuarios = null;
+    try {
+        usoUsuarios = await getUsage(req.session.usuario.restaurante_id, 'usuarios');
+    } catch (error) {
+        console.error('No se pudo contar usuarios:', error.message);
+    }
+
     res.render('register', {
         usuario: req.session.usuario,
+        plan,
+        usoUsuarios,
+        limiteUsuarios: getLimitSync(plan.codigo, 'usuarios'),
         error: null,
         success: null
     });
@@ -172,7 +185,8 @@ router.post('/register', async (req, res) => {
     const rol = String(req.body.rol || '').trim().toLowerCase();
     const pin = String(req.body.pin || '').trim();
     const restauranteId = req.session.usuario.restaurante_id;
-    const limiteUsuarios = 10;
+    const plan = res.locals.plan || getPlanSync(req.session.usuario.plan);
+    const limiteUsuarios = getLimitSync(plan.codigo, 'usuarios');
 
     try {
         if (!nombre || !rol || !pin) {
@@ -231,10 +245,13 @@ router.post('/register', async (req, res) => {
 
         if (countError) throw countError;
 
-        if ((count || 0) >= limiteUsuarios) {
+        if (enforcementEnabled() && limiteUsuarios != null && (count || 0) >= limiteUsuarios) {
             return res.render('register', {
                 usuario: req.session.usuario,
-                error: `Has alcanzado el limite maximo de ${limiteUsuarios} usuarios.`,
+                plan,
+                usoUsuarios: count || 0,
+                limiteUsuarios,
+                error: `Has alcanzado el límite de ${limiteUsuarios} usuarios del plan ${plan.nombre}.`,
                 success: null
             });
         }
@@ -264,6 +281,9 @@ router.post('/register', async (req, res) => {
 
         res.render('register', {
             usuario: req.session.usuario,
+            plan,
+            usoUsuarios: (count || 0) + 1,
+            limiteUsuarios,
             error: null,
             success: `El empleado ${nombre} fue creado exitosamente con el rol de ${rol}.`
         });

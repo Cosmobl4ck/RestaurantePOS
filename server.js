@@ -19,6 +19,7 @@ const SupabaseSessionStore = require('./config/SupabaseSessionStore');
 const authRole = require('./middlewares/authRole');
 const { requirePermission, requireSuperadmin, sameOriginForMutations } = require('./middlewares/access');
 const { verificarSesion } = require('./middlewares/authMiddleware');
+const { requireFeature } = require('./middlewares/planAccess');
 const { serializeForHtmlScript } = require('./utils/safe-json');
 
 // ==========================================
@@ -269,22 +270,24 @@ const kdsRoutes = require('./routes/kds');
 const areasRoutes = require('./routes/areas');
 const registroPedidosRoutes = require('./routes/registro_pedidos');
 const desperdiciosRoutes = require('./routes/desperdicios');
+const miPlanRoutes = require('./routes/mi_plan');
 
 // Usar rutas
-app.use('/mesas', authRole(ROLES_OPERACION), mesasRoutes);
-app.use('/productos', authRole(ROLES_CAJA), productosRoutes);
-app.use('/caja', authRole(ROLES_CAJA), cajaRoutes);
-app.use('/reportes', authRole(ROLES_OPERACION), reportesRoutes);
-app.use('/facturas', authRole(ROLES_CAJA), facturasRoutes);
-app.use('/clientes', authRole(ROLES_OPERACION), clientesRoutes);
-app.use('/cocina', authRole(['admin', 'gerente', 'cajero', 'cocina']), cocinaRoutes);
-app.use('/bar', authRole(['admin', 'gerente', 'cajero', 'bar']), barRoutes);
-app.use('/ventas', authRole(ROLES_CAJA), ventasRoutes);
-app.use('/configuracion', authRole(['admin', 'gerente']), configuracionRoutes);
+app.use('/mesas', authRole(ROLES_OPERACION), requireFeature('pos.mesas'), mesasRoutes);
+app.use('/productos', authRole(ROLES_CAJA), requireFeature('menu.productos'), productosRoutes);
+app.use('/caja', authRole(ROLES_CAJA), requireFeature('caja.basica'), cajaRoutes);
+app.use('/reportes', authRole(ROLES_OPERACION), requireFeature('reportes.basicos'), reportesRoutes);
+app.use('/facturas', authRole(ROLES_CAJA), requireFeature('facturas.internas'), facturasRoutes);
+app.use('/clientes', authRole(ROLES_OPERACION), requireFeature('clientes'), clientesRoutes);
+app.use('/cocina', authRole(['admin', 'gerente', 'cajero', 'cocina']), requireFeature('kds.cocina'), cocinaRoutes);
+app.use('/bar', authRole(['admin', 'gerente', 'cajero', 'bar']), requireFeature('kds.bar'), barRoutes);
+app.use('/ventas', authRole(ROLES_CAJA), requireFeature('ventas.historial'), ventasRoutes);
+app.use('/configuracion', authRole(['admin', 'gerente']), requireFeature('configuracion.basica'), configuracionRoutes);
 app.use('/kds', authRole(['admin', 'gerente', 'cajero', 'cocina', 'bar']), kdsRoutes);
-app.use('/areas', authRole(['admin', 'gerente']), areasRoutes);
-app.use('/registro-pedidos', authRole(ROLES_OPERACION), registroPedidosRoutes);
-app.use('/desperdicios', authRole(ROLES_CAJA), desperdiciosRoutes);
+app.use('/areas', authRole(['admin', 'gerente']), requireFeature('areas.croquis'), areasRoutes);
+app.use('/registro-pedidos', authRole(ROLES_OPERACION), requireFeature('pos.pedidos'), registroPedidosRoutes);
+app.use('/desperdicios', authRole(ROLES_CAJA), requireFeature('inventario.desperdicios'), desperdiciosRoutes);
+app.use('/mi-plan', authRole(['admin', 'gerente']), miPlanRoutes);
 
 // ==========================================
 // 16. MANEJO DE ERRORES

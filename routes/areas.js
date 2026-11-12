@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
+const { enforceLimit, enforcementEnabled } = require('../middlewares/planAccess');
+const { getPlanSync, getLimitSync } = require('../services/planService');
 
 function getUsuario(req) {
     return (req.session && req.session.usuario) || req.usuario || req.user || null;
@@ -62,7 +64,7 @@ router.get('/', async (req, res) => {
 // ============================================================
 // NUEVO: POST /areas/crear (Para el Modo A)
 // ============================================================
-router.post('/crear', async (req, res) => {
+router.post('/crear', enforceLimit('areas'), async (req, res) => {
     try {
         const usuario = getUsuario(req);
         if (!usuario) return res.status(401).send('No autenticado.');
@@ -162,6 +164,46 @@ router.post('/guardar-croquis', async (req, res) => {
             .from('areas_restaurante').select('id').eq('id', area_id).eq('restaurante_id', restaurante_id).maybeSingle();
         if (areaOwnerError) throw areaOwnerError;
         if (!areaOwner) return res.status(404).json({ success: false, message: 'Área no encontrada.' });
+
+        // Límite de mesas físicas del plan (las mesas especiales no cuentan).
+        const plan = getPlanSync(usuario.plan || 'trial');
+        const limiteMesas = getLimitSync(plan.codigo, 'mesas_fisicas');
+        if (enforcementEnabled() && limiteMesas != null) {
+            const { data: mesasExistentes, error: mesasExistentesError } = await supabase
+                .from('mesas')
+                .select('id_externo, numero, area_id, estado')
+                .eq('restaurante_id', restaurante_id);
+            if (mesasExistentesError) throw mesasExistentesError;
+
+            const fisicas = (mesasExistentes || []).filter(
+                (mesa) => !/domicilio|llevar/i.test(String(mesa.numero || ''))
+            );
+            const existentesExternos = new Set(
+                fisicas.map((mesa) => String(mesa.id_externo || '')).filter(Boolean)
+            );
+            const idsEnPayload = new Set(mesas.map((mesa) => String(mesa.id)));
+            const nuevas = mesas.filter((mesa) => !existentesExternos.has(String(mesa.id))).length;
+
+            // Las mesas libres de esta área que se quitaron del lienzo se
+            // eliminarán al guardar, así que no deben contar para el límite.
+            const seEliminan = fisicas.filter((mesa) =>
+                Number(mesa.area_id) === area_id
+                && mesa.estado === 'libre'
+                && !idsEnPayload.has(String(mesa.id_externo || ''))
+            ).length;
+            const proyectadas = fisicas.length - seEliminan + nuevas;
+
+            if (proyectadas > limiteMesas) {
+                return res.status(409).json({
+                    success: false,
+                    code: 'PLAN_LIMIT',
+                    message: `El croquis supera el límite de ${limiteMesas} mesas físicas del plan ${plan.nombre}.`,
+                    usage: fisicas.length,
+                    limit: limiteMesas,
+                    upgrade_url: '/mi-plan'
+                });
+            }
+        }
 
         // ── GUARDAR SUB-ÁREAS (croquis_areas) ─────────────────
         // id es TEXT generado en frontend. Antes de hacer upsert por PK global

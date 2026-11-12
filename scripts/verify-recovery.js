@@ -8,7 +8,7 @@ let failures = 0;
 function fail(message) { failures++; console.error(`FAIL ${message}`); }
 function read(rel) { return fs.readFileSync(path.join(root, rel), 'utf8'); }
 
-for (const dir of ['routes', 'middlewares', 'config', 'public/js']) {
+for (const dir of ['routes', 'middlewares', 'config', 'services', 'public/js']) {
   const abs = path.join(root, dir);
   for (const name of fs.readdirSync(abs)) {
     if (!name.endsWith('.js')) continue;
@@ -54,6 +54,12 @@ for (const rel of [
   'supabase/migrations/20260928214312_reconcile_restaurant_pos_live.sql',
   'supabase/migrations/20261110120000_fix_invoice_client_and_area_layout.sql',
   'supabase/migrations/20261110130000_add_product_info_allergens_and_prep_time.sql',
+  'supabase/migrations/20261111120000_add_plan_catalog_and_entitlements.sql',
+  'config/plans.js',
+  'services/planService.js',
+  'middlewares/planAccess.js',
+  'views/mi_plan.ejs',
+  'views/plan-required.ejs',
   'config/SupabaseSessionStore.js',
   'routes/kds.js',
   'routes/areas.js',
@@ -65,9 +71,10 @@ for (const rel of [
 }
 
 const server = read('server.js');
-for (const mount of ["app.use('/kds'", "app.use('/areas'", "app.use('/registro-pedidos'", "app.use('/desperdicios'"]) {
+for (const mount of ["app.use('/kds'", "app.use('/areas'", "app.use('/registro-pedidos'", "app.use('/desperdicios'", "app.use('/mi-plan'"]) {
   if (!server.includes(mount)) fail(`server.js missing mount ${mount}`);
 }
+if (!server.includes('requireFeature')) fail('server.js missing plan feature guards');
 if (!server.includes('SupabaseSessionStore')) fail('persistent session store not configured');
 if (!server.includes('requireSuperadmin')) fail('SuperAdmin guard not mounted');
 

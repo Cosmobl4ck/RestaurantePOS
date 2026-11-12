@@ -1,5 +1,6 @@
 // KDS seguro: actualización en vivo mediante Server-Sent Events autenticados por Express.
 const TIPO_MONITOR = window.tipoMonitor;
+const TIEMPOS_HABILITADOS = window.KDS_TIEMPOS_HABILITADOS !== false;
 let comandas = {};
 let eventSource = null;
 let fallbackTimer = null;
@@ -140,7 +141,7 @@ function renderGrid() {
             colorClass,
             estado,
             alertaAlergenos ? 'alerta-alergenos' : '',
-            tiempo.critico ? 'tiempo-critico' : ''
+            TIEMPOS_HABILITADOS && tiempo.critico ? 'tiempo-critico' : ''
         ].filter(Boolean).join(' ');
         const itemsHTML = p.items.map(it => {
             const nota = String(it.nota || '').trim();
@@ -154,7 +155,7 @@ function renderGrid() {
                     ${it.alergenos.length ? `<div class="item-alergenos"><i class="bi bi-exclamation-triangle-fill"></i> Contiene: ${it.alergenos.map(escapeHtml).join(', ')}</div>` : ''}
                     ${aviso ? `<div class="item-alergia-aviso"><i class="bi bi-exclamation-octagon-fill"></i> ALERGIA: ${escapeHtml(aviso)}</div>` : ''}
                     ${nota && (!aviso || !nota.includes(aviso)) ? `<div class="item-nota ${notaAlergia ? 'alerta' : ''}">📝 ${escapeHtml(nota)}</div>` : ''}
-                    ${it.tiempoPreparacion ? `<div class="item-tiempo"><i class="bi bi-clock"></i> ≈ ${it.tiempoPreparacion} min</div>` : ''}
+                    ${TIEMPOS_HABILITADOS && it.tiempoPreparacion ? `<div class="item-tiempo"><i class="bi bi-clock"></i> ≈ ${it.tiempoPreparacion} min</div>` : ''}
                 </div>
             </div>`;
         }).join('');
@@ -168,26 +169,28 @@ function renderGrid() {
             : '';
         return `<div class="comanda-card ${clases}" data-pedido="${p.pedidoId}">
             <div class="comanda-header"><div><div class="comanda-mesa">${escapeHtml(p.mesa)}</div><div class="comanda-hora">${horaCorta(p.hora)}</div></div>
-            <div class="comanda-badges">${alergiaBadge}<span class="tiempo-badge ${tiempo.critico ? 'urgente' : ''}">${textoBadge(tiempo)}</span></div></div>
+            <div class="comanda-badges">${alergiaBadge}${TIEMPOS_HABILITADOS ? `<span class="tiempo-badge ${tiempo.critico ? 'urgente' : ''}">${textoBadge(tiempo)}</span>` : ''}</div></div>
             <div class="comanda-items">${itemsHTML}</div><div class="comanda-actions">${acciones}</div></div>`;
     }).join('');
 }
 
 // El SSE solo emite eventos cuando cambia la cola; este intervalo mantiene
 // actualizado el tiempo restante y dispara el aviso a los 2 minutos.
-setInterval(() => {
-    document.querySelectorAll('.comanda-card').forEach(card => {
-        const pedido = comandas[card.dataset.pedido];
-        if (!pedido) return;
-        const tiempo = estadoTiempo(pedido);
-        const badge = card.querySelector('.tiempo-badge');
-        if (badge) {
-            badge.textContent = textoBadge(tiempo);
-            badge.classList.toggle('urgente', tiempo.critico);
-        }
-        card.classList.toggle('tiempo-critico', tiempo.critico);
-    });
-}, 1000);
+if (TIEMPOS_HABILITADOS) {
+    setInterval(() => {
+        document.querySelectorAll('.comanda-card').forEach(card => {
+            const pedido = comandas[card.dataset.pedido];
+            if (!pedido) return;
+            const tiempo = estadoTiempo(pedido);
+            const badge = card.querySelector('.tiempo-badge');
+            if (badge) {
+                badge.textContent = textoBadge(tiempo);
+                badge.classList.toggle('urgente', tiempo.critico);
+            }
+            card.classList.toggle('tiempo-critico', tiempo.critico);
+        });
+    }, 1000);
+}
 
 async function requestJson(url, options) {
     const resp = await fetch(url, options);

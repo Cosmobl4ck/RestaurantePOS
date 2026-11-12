@@ -4,6 +4,8 @@ const multer = require('multer');
 const excel = require('exceljs');
 const { supabase } = require('../config/supabase');
 const { hasXlsxSignature, uploadErrorMiddleware } = require('../utils/upload-security');
+const { hasFeatureSync, getUsage, getLimitSync } = require('../services/planService');
+const { requireFeature, enforceLimit, enforcementEnabled } = require('../middlewares/planAccess');
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -58,9 +60,12 @@ const mapearAlergenos = (producto) => {
     };
 };
 
-const normalizarProducto = (body, restauranteId, codigo) => {
+const normalizarProducto = (body, restauranteId, codigo, opciones = {}) => {
     const categoria = normalizarCategoria(body.categoria);
-    const manejaStock = categoria === 'Bar';
+    const manejaStock = categoria === 'Bar' && opciones.stock !== false;
+    const tiempoPreparacion = opciones.tiempoPreparacion === false
+        ? null
+        : normalizarTiempoPreparacion(body.tiempo_preparacion_minutos);
 
     return {
         restaurante_id: restauranteId,
@@ -73,8 +78,20 @@ const normalizarProducto = (body, restauranteId, codigo) => {
         stock_minimo: manejaStock ? Math.max(0, parseFloat(body.stock_minimo) || 0) : 0,
         descripcion_corta: String(body.descripcion_corta || '').trim().slice(0, 500) || null,
         ingredientes: String(body.ingredientes || '').trim().slice(0, 2000) || null,
-        tiempo_preparacion_minutos: normalizarTiempoPreparacion(body.tiempo_preparacion_minutos),
+        tiempo_preparacion_minutos: tiempoPreparacion,
         updated_at: new Date().toISOString()
+    };
+};
+
+const opcionesPlan = (req, res) => {
+    const planCode = req.session?.usuario?.plan || 'trial';
+    const puede = (featureKey) => {
+        if (typeof res?.locals?.planPuede === 'function') return res.locals.planPuede(featureKey);
+        return hasFeatureSync(planCode, featureKey);
+    };
+    return {
+        stock: puede('inventario.stock'),
+        tiempoPreparacion: puede('menu.tiempo_preparacion')
     };
 };
 
@@ -237,7 +254,7 @@ router.get('/alergenos', async (req, res) => {
 // ==========================================
 // 2. CREAR PRODUCTO
 // ==========================================
-router.post('/', async (req, res) => {
+router.post('/', enforceLimit('productos'), async (req, res) => {
     try {
         const restauranteId = getRestauranteId(req);
         const categoria = normalizarCategoria(req.body.categoria);
@@ -247,7 +264,7 @@ router.post('/', async (req, res) => {
             codigo = await generarCodigo(restauranteId, categoria);
         }
 
-        const producto = normalizarProducto(req.body, restauranteId, codigo);
+        const producto = normalizarProducto(req.body, restauranteId, codigo, opcionesPlan(req, res));
 
         const { data, error } = await supabase
             .from('productos')
@@ -275,7 +292,7 @@ router.put('/:id', async (req, res) => {
     try {
         const restauranteId = getRestauranteId(req);
         const codigo = String(req.body.codigo || '').trim();
-        const producto = normalizarProducto(req.body, restauranteId, codigo);
+        const producto = normalizarProducto(req.body, restauranteId, codigo, opcionesPlan(req, res));
 
         delete producto.restaurante_id;
 
@@ -331,7 +348,7 @@ router.delete('/:id', async (req, res) => {
 // ==========================================
 // 5. EXCEL: PLANTILLA E IMPORTACION
 // ==========================================
-router.get('/plantilla', async (req, res) => {
+router.get('/plantilla', requireFeature('inventario.importar'), async (req, res) => {
     const workbook = new excel.Workbook();
     const sheet = workbook.addWorksheet('Productos');
 
@@ -353,7 +370,7 @@ router.get('/plantilla', async (req, res) => {
     res.end();
 });
 
-router.post('/importar', uploadErrorMiddleware(upload.single('archivo')), async (req, res) => {
+router.post('/importar', requireFeature('inventario.importar'), uploadErrorMiddleware(upload.single('archivo')), async (req, res) => {
     try {
         const restauranteId = getRestauranteId(req);
 
@@ -389,11 +406,36 @@ router.post('/importar', uploadErrorMiddleware(upload.single('archivo')), async 
                 categoria,
                 stock: row.getCell(5).value,
                 stock_minimo: row.getCell(6).value
-            }, restauranteId, codigo));
+            }, restauranteId, codigo, opcionesPlan(req, res)));
         });
 
         if (productos.length === 0) {
             return res.status(400).json({ error: 'El archivo no contiene productos validos' });
+        }
+
+        const planCode = req.session?.usuario?.plan || 'trial';
+        const limiteProductos = getLimitSync(planCode, 'productos');
+        if (enforcementEnabled() && limiteProductos != null) {
+            const usoActual = await getUsage(restauranteId, 'productos');
+            const codigos = productos.map((producto) => producto.codigo);
+            const { data: existentes, error: existentesError } = await supabase
+                .from('productos')
+                .select('codigo')
+                .eq('restaurante_id', restauranteId)
+                .in('codigo', codigos);
+            if (existentesError) throw existentesError;
+            const existentesSet = new Set((existentes || []).map((item) => item.codigo));
+            const nuevos = productos.filter((producto) => !existentesSet.has(producto.codigo)).length;
+            if (usoActual + nuevos > limiteProductos) {
+                return res.status(403).json({
+                    error: `La importación supera el límite de ${limiteProductos} productos de tu plan.`,
+                    code: 'PLAN_LIMIT',
+                    limit_key: 'productos',
+                    usage: usoActual,
+                    limit: limiteProductos,
+                    upgrade_url: '/mi-plan'
+                });
+            }
         }
 
         const { error } = await supabase

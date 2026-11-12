@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarrocosPOS - Mi plan</title>
+    <link rel="icon" href="/img/logo-icon.svg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #08090A; color: #E8EAED; }
+        .plan-hero {
+            background: linear-gradient(135deg, rgba(0,161,156,.18), rgba(13,14,16,.9));
+            border: 1px solid rgba(0,161,156,.35);
+            border-radius: 18px;
+            box-shadow: 0 20px 55px rgba(0,0,0,.45);
+        }
+        .usage-bar { height: 7px; background: #1A1D20; border-radius: 999px; overflow: hidden; }
+        .usage-bar > span { display: block; height: 100%; background: #00A19C; border-radius: 999px; }
+        .usage-bar.danger > span { background: #EF4444; }
+        .feature-item { border-bottom: 1px solid #1A1D20; padding: .55rem 0; }
+        .feature-item:last-child { border-bottom: 0; }
+        .feature-on { color: #00D2BE; }
+        .feature-off { color: #66737A; }
+        .plan-card { background: #0D0E10; border: 1px solid #1A1D20; border-radius: 16px; }
+        .plan-card.current { border-color: #00A19C; box-shadow: 0 0 0 1px rgba(0,161,156,.35); }
+        .muted { color: #9AA6AD; }
+    </style>
+    <link rel="stylesheet" href="/css/petronas.css?v=petronas1">
+</head>
+<body>
+<%- include('partials/navbar') %>
+
+<div class="container py-4">
+    <div class="plan-hero p-4 p-md-5 mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+                <span class="badge mb-2" style="background:#00A19C;color:#06110F;">PLAN ACTUAL</span>
+                <h1 class="fw-bold mb-1"><%= plan.nombre %></h1>
+                <p class="muted mb-0"><%= plan.descripcion %></p>
+            </div>
+            <div class="text-md-end">
+                <% if (Number(plan.precio_mensual) > 0) { %>
+                    <div class="display-6 fw-bold">$<%= plan.precio_mensual %><small class="fs-6 muted">/mes</small></div>
+                <% } else { %>
+                    <div class="display-6 fw-bold">Prueba</div>
+                    <div class="muted small"><%= plan.duracion_dias %> días</div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="plan-card p-4 h-100">
+                <h5 class="fw-bold mb-3"><i class="bi bi-speedometer2 me-2"></i>Uso vs límite</h5>
+                <% usage.forEach((item) => { %>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span><%= item.label %></span>
+                            <strong class="<%= item.nearLimit ? 'text-danger' : '' %>">
+                                <%= item.usage %><%= item.limit == null ? ' / Sin límite' : ` / ${item.limit}` %>
+                            </strong>
+                        </div>
+                        <div class="usage-bar <%= item.nearLimit ? 'danger' : '' %>">
+                            <span style="width: <%= item.percent == null ? 8 : Math.max(4, item.percent) %>%;"></span>
+                        </div>
+                    </div>
+                <% }) %>
+                <p class="small muted mb-0">
+                    Los límites se validan al crear usuarios, productos, áreas y mesas.
+                </p>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="plan-card p-4 h-100">
+                <h5 class="fw-bold mb-3"><i class="bi bi-stars me-2"></i>Funciones del plan</h5>
+                <div class="row">
+                    <% Object.keys(featureGroups).forEach((group) => { %>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-uppercase small fw-bold" style="color:#00A19C;"><%= group %></h6>
+                            <% featureGroups[group].forEach((feature) => { %>
+                                <div class="feature-item d-flex align-items-start gap-2 small">
+                                    <i class="bi <%= feature.incluida ? 'bi-check-circle-fill feature-on' : 'bi-dash-circle feature-off' %>"></i>
+                                    <span class="<%= feature.incluida ? '' : 'muted' %>"><%= feature.label %></span>
+                                </div>
+                            <% }) %>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-4">
+        <div>
+            <h5 class="fw-bold mb-1">¿Necesitas más capacidad?</h5>
+            <p class="muted mb-0">Podemos activar un plan superior sin perder tus datos.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="/configuracion" class="btn btn-outline-aqua">
+                <i class="bi bi-gear me-1"></i> Configuración
+            </a>
+            <a href="<%= whatsappUrl %>" target="_blank" rel="noopener" class="btn btn-solid-aqua px-4">
+                <i class="bi bi-whatsapp me-1"></i> Solicitar cambio de plan
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-4">
+        <% planes.filter((item) => item.codigo !== 'trial').forEach((item) => { %>
+            <div class="col-md-4">
+                <div class="plan-card p-4 h-100 <%= item.codigo === plan.codigo ? 'current' : '' %>">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="fw-bold mb-1"><%= item.nombre %></h5>
+                        <% if (item.codigo === plan.codigo) { %>
+                            <span class="badge" style="background:#00A19C;color:#06110F;">Actual</span>
+                        <% } %>
+                    </div>
+                    <div class="fs-4 fw-bold mb-2">$<%= item.precio_mensual %><small class="fs-6 muted">/mes</small></div>
+                    <p class="small muted"><%= item.descripcion %></p>
+                    <div class="small">
+                        <div class="d-flex justify-content-between py-1">
+                            <span>Usuarios</span><strong><%= item.limits.usuarios == null ? 'Sin límite' : item.limits.usuarios %></strong>
+                        </div>
+                        <div class="d-flex justify-content-between py-1">
+                            <span>Mesas</span><strong><%= item.limits.mesas_fisicas == null ? 'Sin límite' : item.limits.mesas_fisicas %></strong>
+                        </div>
+                        <div class="d-flex justify-content-between py-1">
+                            <span>Productos</span><strong><%= item.limits.productos == null ? 'Sin límite' : item.limits.productos %></strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <% }) %>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

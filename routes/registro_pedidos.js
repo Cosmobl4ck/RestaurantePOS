@@ -3,6 +3,7 @@ const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { verificarSesion } = require('../middlewares/authMiddleware');
 const { formatTimeInTimeZone } = require('../utils/business-time');
+const { requireFeature } = require('../middlewares/planAccess');
 
 const TIMEZONE_DEFAULT = 'America/El_Salvador';
 
@@ -208,7 +209,7 @@ router.get('/detalle/:id', verificarSesion, soloAdminCajero, async (req, res) =>
 // ================================================================
 // GET /registro-pedidos/reporte - Reporte del período
 // ================================================================
-router.get('/reporte', verificarSesion, soloAdminCajero, async (req, res) => {
+router.get('/reporte', verificarSesion, soloAdminCajero, requireFeature('reportes.avanzados'), async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
         const { desde, hasta } = req.query;

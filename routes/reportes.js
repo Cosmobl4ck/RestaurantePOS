@@ -3,6 +3,7 @@ const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { verificarSesion } = require('../middlewares/authMiddleware');
 const { dateInTimeZone } = require('../utils/business-time');
+const { requireFeature } = require('../middlewares/planAccess');
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 
@@ -11,6 +12,11 @@ const DIA_MS = 24 * 60 * 60 * 1000;
 router.get('/', verificarSesion, async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
+        const puede = (featureKey) => typeof res.locals.planPuede === 'function'
+            ? res.locals.planPuede(featureKey)
+            : true;
+        const puedeAvanzado = puede('reportes.avanzados');
+        const puedeStock = puede('inventario.alertas');
 
         const { data: negocio } = await supabase
             .from('restaurantes')
@@ -117,11 +123,14 @@ router.get('/', verificarSesion, async (req, res) => {
             stats: {
                 ingresosHoy,
                 pedidosHoy,
-                stockCritico: stockCriticoFiltrado,
-                ventasSemana,
-                topProductos,
-                anulacionesSemana
+                stockCritico: puedeStock ? stockCriticoFiltrado : [],
+                ventasSemana: puedeAvanzado ? ventasSemana : [],
+                topProductos: puedeAvanzado ? topProductos : [],
+                anulacionesSemana: puedeAvanzado ? anulacionesSemana : []
             },
+            puedeAvanzado,
+            puedeStock,
+            puedeExportar: puede('reportes.exportar'),
             usuario: req.session.usuario
         });
 
@@ -132,7 +141,7 @@ router.get('/', verificarSesion, async (req, res) => {
 });
 
 // Ruta adicional para el JSON del PDF (Blindada)
-router.get('/lista-compras', verificarSesion, async (req, res) => {
+router.get('/lista-compras', verificarSesion, requireFeature('inventario.alertas'), async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
 

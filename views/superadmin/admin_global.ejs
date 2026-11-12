@@ -65,6 +65,22 @@
 
     <div class="container mt-4">
         
+        <% if (locals.planError) { %>
+            <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <%= planError %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <% } %>
+
+        <% if (locals.planChanged) { %>
+            <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                Plan actualizado correctamente.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <% } %>
+
         <!-- Grid de Tarjetas -->
         <div class="stats-grid">
             <div class="stat-card bg-blue">
@@ -95,6 +111,9 @@
                 </div>
             </div>
             <div class="col text-end">
+                <button class="btn btn-outline-secondary shadow-sm px-3 me-2" data-bs-toggle="modal" data-bs-target="#modalPlanes">
+                    <i class="bi bi-gem me-2"></i>Ver planes
+                </button>
                 <button class="btn btn-primary shadow-sm px-4" data-bs-toggle="modal" data-bs-target="#modalNuevoNegocio">
                     <i class="bi bi-plus-lg me-2"></i>Nuevo Restaurante
                 </button>
@@ -109,8 +128,8 @@
                         <tr>
                             <th class="ps-3">Negocio</th>
                             <th>Código</th>
-                            <th class="text-center">Usuarios</th>
                             <th>Plan</th>
+                            <th>Uso vs límite</th>
                             <th>Vencimiento</th>
                             <th>Estado</th>
 
@@ -132,16 +151,26 @@
                                 </div>
                             </td>
                             <td><code class="fw-bold text-primary text-uppercase"><%= n.codigo_negocio %></code></td>
-                            <td class="text-center">
+                            <td>
                                 <span class="badge rounded-pill bg-light text-dark border px-3">
-                                    <%= String(n.plan || 'trial').toUpperCase().replace(/_/g,' ') %>
+                                    <%= n.plan_nombre || String(n.plan || 'trial').toUpperCase().replace(/_/g,' ') %>
                                 </span>
+                                <small class="d-block text-muted mt-1">
+                                    <% if (Number(n.plan_precio) > 0) { %>
+                                        $<%= n.plan_precio %>/mes
+                                    <% } else { %>
+                                        Prueba
+                                    <% } %>
+                                </small>
                             </td>
-                            <td class="text-center">
-
-                                <span class="badge rounded-pill bg-light text-dark border px-3">
-                                    <i class="bi bi-people-fill me-1"></i><%= n.total_usuarios || 0 %>
-                                </span>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1" style="max-width: 260px;">
+                                    <% (n.uso || []).forEach((item) => { %>
+                                        <span class="badge <%= item.nearLimit ? 'bg-danger-subtle text-danger border border-danger' : 'bg-light text-dark border' %> fw-normal">
+                                            <%= item.label %>: <%= item.usage %><%= item.limit == null ? '' : ` / ${item.limit}` %>
+                                        </span>
+                                    <% }) %>
+                                </div>
                             </td>
                             <td>
                                 <span class="<%= new Date(n.fecha_vencimiento) < new Date() ? 'text-danger fw-bold' : '' %>">
@@ -200,30 +229,28 @@
     Plan
                                         </button>
                                         <ul class="dropdown-menu">
+                                            <% planes.forEach((p) => { %>
                                             <li>
-                                                <form action="/superadmin/activar-plan/<%= n.id %>" method="POST">
-                                                    <input type="hidden" name="plan" value="trial">
-                                                    <button class="dropdown-item" type="submit">TRIAL</button>
-                                                </form>
+                                                <button type="button"
+                                                        class="dropdown-item d-flex justify-content-between align-items-center gap-3"
+                                                        data-action="cambiar-plan"
+                                                        data-id="<%= n.id %>"
+                                                        data-nombre="<%= n.nombre_comercial %>"
+                                                        data-plan="<%= p.codigo %>"
+                                                        data-plan-label="<%= p.nombre %>"
+                                                        data-precio="<%= p.precio_mensual %>"
+                                                        data-duracion="<%= p.duracion_dias %>"
+                                                        data-plan-order="<%= p.orden %>"
+                                                        data-current-order="<%= n.plan_orden %>"
+                                                        data-current-plan="<%= n.plan %>"
+                                                        data-current-plan-label="<%= n.plan_nombre %>">
+                                                    <span><%= p.nombre %></span>
+                                                    <small class="text-muted">
+                                                        <%= Number(p.precio_mensual) > 0 ? `$${p.precio_mensual}/mes` : 'Prueba' %>
+                                                    </small>
+                                                </button>
                                             </li>
-                                            <li>
-                                                <form action="/superadmin/activar-plan/<%= n.id %>" method="POST">
-                                                    <input type="hidden" name="plan" value="basic">
-                                                    <button class="dropdown-item" type="submit">BASIC</button>
-                                                </form>
-                                            </li>
-                                            <li>
-                                                <form action="/superadmin/activar-plan/<%= n.id %>" method="POST">
-                                                    <input type="hidden" name="plan" value="premium">
-                                                    <button class="dropdown-item" type="submit">PREMIUM</button>
-                                                </form>
-                                            </li>
-                                            <li>
-                                                <form action="/superadmin/activar-plan/<%= n.id %>" method="POST">
-                                                    <input type="hidden" name="plan" value="pro_plus">
-                                                    <button class="dropdown-item" type="submit">PRO PLUS</button>
-                                                </form>
-                                            </li>
+                                            <% }) %>
                                         </ul>
                                     </div>
 
@@ -325,6 +352,82 @@
         </div>
     </div>
 
+    <!-- Modal Cambiar Plan -->
+    <div class="modal fade" id="modalCambiarPlan" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <form id="formCambiarPlan" method="POST">
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title fw-bold">Cambiar plan</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="plan" id="planNuevoInput">
+                        <p class="mb-2">Negocio: <strong id="planNegocio"></strong></p>
+                        <p class="mb-2">Plan actual: <strong id="planActual"></strong></p>
+                        <p class="mb-2">Nuevo plan: <strong id="planNuevoLabel"></strong> <span id="planPrecio" class="text-muted"></span></p>
+                        <p class="mb-2 small text-muted">La licencia se activará por <span id="planDuracion"></span> días desde hoy.</p>
+                        <div id="planDowngradeWarning" class="alert alert-warning small d-none mb-0">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            Estás bajando de plan. El servidor validará que los datos actuales quepan en los nuevos límites.
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary px-4">Confirmar cambio</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Catálogo de Planes -->
+    <div class="modal fade" id="modalPlanes" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-gem me-2"></i>Catálogo de planes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <% planes.filter((p) => p.codigo !== 'trial').forEach((p) => { %>
+                            <div class="col-md-4">
+                                <div class="card h-100 border-0 shadow-sm">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <h5 class="fw-bold mb-0"><%= p.nombre %></h5>
+                                            <span class="badge bg-dark">#<%= p.orden %></span>
+                                        </div>
+                                        <p class="text-muted small mt-2 mb-3"><%= p.descripcion %></p>
+                                        <h3 class="fw-bold text-primary">$<%= p.precio_mensual %><small class="fs-6 text-muted">/mes</small></h3>
+                                        <hr>
+                                        <ul class="list-unstyled small mb-0">
+                                            <% limitCatalog.forEach((limit) => { %>
+                                                <li class="d-flex justify-content-between py-1">
+                                                    <span><%= limit.label %></span>
+                                                    <strong><%= p.limits[limit.key] == null ? 'Sin límite' : p.limits[limit.key] %></strong>
+                                                </li>
+                                            <% }) %>
+                                            <li class="d-flex justify-content-between py-1 border-top mt-2 pt-2">
+                                                <span>Funciones incluidas</span>
+                                                <strong><%= p.features.length %></strong>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }) %>
+                    </div>
+                    <p class="small text-muted mt-3 mb-0">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Trial usa las funciones y límites de Premium durante 7 días. Gold incluye DTE y el roadmap avanzado cuando esté disponible.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
@@ -352,6 +455,21 @@
             new bootstrap.Modal(document.getElementById('modalConfirmarEliminar')).show();
         }
 
+        function abrirCambiarPlan(boton) {
+            const { id, nombre, plan, planLabel, precio, duracion, planOrder, currentOrder, currentPlan, currentPlanLabel } = boton.dataset;
+            document.getElementById('formCambiarPlan').action = `/superadmin/activar-plan/${encodeURIComponent(id)}`;
+            document.getElementById('planNuevoInput').value = plan;
+            document.getElementById('planNegocio').innerText = nombre;
+            document.getElementById('planActual').innerText = currentPlanLabel || 'Actual';
+            document.getElementById('planNuevoLabel').innerText = planLabel;
+            document.getElementById('planPrecio').innerText = Number(precio) > 0 ? `($${precio}/mes)` : '(prueba)';
+            document.getElementById('planDuracion').innerText = duracion;
+            const esDowngrade = Number(planOrder) < Number(currentOrder)
+                || (currentPlan === 'trial' && plan === 'basic');
+            document.getElementById('planDowngradeWarning').classList.toggle('d-none', !esDowngrade);
+            new bootstrap.Modal(document.getElementById('modalCambiarPlan')).show();
+        }
+
         // Delegación: los datos de la BD nunca se interpolan en atributos onclick.
         document.addEventListener('click', (event) => {
             const boton = event.target.closest('[data-action]');
@@ -359,6 +477,7 @@
             const { action, id, nombre } = boton.dataset;
             if (action === 'editar') abrirModalEditar(id, nombre);
             else if (action === 'eliminar') prepararEliminacion(id, nombre);
+            else if (action === 'cambiar-plan') abrirCambiarPlan(boton);
         });
     </script>
 </body>

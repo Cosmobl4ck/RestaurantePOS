@@ -23,6 +23,9 @@
 </head>
 <body>
 <%- include('partials/navbar') %>
+<% const puede = (featureKey) => typeof locals.planPuede === 'function' ? locals.planPuede(featureKey) : true; %>
+<% const stockHabilitado = puede('inventario.stock'); %>
+<% const tiempoHabilitado = puede('menu.tiempo_preparacion'); %>
 
     <div class="container mt-4">
         <div class="card">
@@ -34,12 +37,14 @@
                     <button id="btnNuevoProducto" class="btn btn-primary">
                         <i class="bi bi-plus-lg me-1"></i> Nuevo Producto
                     </button>
+                    <% if (puede('inventario.importar')) { %>
                     <button id="btnDescargarPlantilla" class="btn btn-outline-success">
                         <i class="bi bi-file-earmark-excel"></i> Plantilla Excel
                     </button>
                     <button id="btnImportarProductos" class="btn btn-outline-primary">
                         <i class="bi bi-upload"></i> Importar Excel
                     </button>
+                    <% } %>
                     <input type="file" id="archivoImport" accept=".xlsx" class="d-none">
                 </div>
             </div>
@@ -79,7 +84,9 @@
                                         <% } %>
                                     </td>
                                     <td class="text-center">
-                                        <% if(producto.categoria && producto.categoria.toLowerCase() === 'bar') { %>
+                                        <% if (!stockHabilitado) { %>
+                                            <span class="text-muted" title="Disponible en Premium"><i class="bi bi-lock"></i> -</span>
+                                        <% } else if(producto.categoria && producto.categoria.toLowerCase() === 'bar') { %>
                                             <span class="<%= (Number(producto.stock) <= Number(producto.stock_minimo)) ? 'text-danger fw-bold' : '' %>">
                                                 <%= producto.stock %>
                                             </span>
@@ -166,7 +173,7 @@
                             <textarea class="form-control" id="ingredientes" rows="3" maxlength="2000" placeholder="Ej. Carne de res, arroz, ensalada, chimichurri"></textarea>
                             <div class="form-text">Se muestra al mesero en la ficha del platillo.</div>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-3 <%= tiempoHabilitado ? '' : 'd-none' %>">
                             <label class="form-label">8. Tiempo aproximado de preparación</label>
                             <div class="input-group">
                                 <input type="number" class="form-control" id="tiempo_preparacion_minutos" min="1" max="240" placeholder="15">
@@ -220,6 +227,7 @@
         const inputIngredientes = document.getElementById('ingredientes');
         const inputTiempo = document.getElementById('tiempo_preparacion_minutos');
         const checkboxesAlergenos = Array.from(document.querySelectorAll('input[name="alergenos"]'));
+        const STOCK_HABILITADO = <%= stockHabilitado ? 'true' : 'false' %>;
 
         // BUSCADOR EN TIEMPO REAL
         inputBusqueda.addEventListener('keyup', function() {
@@ -238,7 +246,7 @@
             if (cat === 'bar' || cat === 'cocina') {
                 inputNombre.disabled = false;
                 inputPrecio.disabled = false;
-                if (cat === 'bar') {
+                if (cat === 'bar' && STOCK_HABILITADO) {
                     stockContainer.classList.remove('d-none');
                     stockMinimoContainer.classList.remove('d-none'); // Mostrar Minimo
                     inputStock.disabled = false;
@@ -302,7 +310,7 @@
                 const cat = fila.cells[2].innerText.trim().toLowerCase();
                 selectCategoria.value = cat;
 
-                if (cat === 'bar') {
+                if (cat === 'bar' && STOCK_HABILITADO) {
                     stockContainer.classList.remove('d-none');
                     stockMinimoContainer.classList.remove('d-none');
                     inputStock.disabled = false;
@@ -368,8 +376,8 @@
             location.reload();
         });
 
-        document.getElementById('btnDescargarPlantilla').addEventListener('click', () => window.open('/productos/plantilla', '_blank'));
-        document.getElementById('btnImportarProductos').addEventListener('click', () => document.getElementById('archivoImport').click());
+        document.getElementById('btnDescargarPlantilla')?.addEventListener('click', () => window.open('/productos/plantilla', '_blank'));
+        document.getElementById('btnImportarProductos')?.addEventListener('click', () => document.getElementById('archivoImport').click());
         document.getElementById('archivoImport').addEventListener('change', async function() {
             const fd = new FormData();
             fd.append('archivo', this.files[0]);

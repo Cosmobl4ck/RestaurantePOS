@@ -3,6 +3,7 @@ const router = express.Router();
 const { supabase } = require('../config/supabase');
 const multer = require('multer');
 const { detectedImageType, uploadErrorMiddleware } = require('../utils/upload-security');
+const { hasFeatureSync } = require('../services/planService');
 
 // IMPORTAR AL GUARDIA DE SEGURIDAD
 const { verificarSesion } = require('../middlewares/authMiddleware');
@@ -34,6 +35,9 @@ const byteaABase64 = (bytea) => {
 router.get('/', verificarSesion, async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
+        const puedeMarca = typeof res.locals.planPuede === 'function'
+            ? res.locals.planPuede('configuracion.marca')
+            : hasFeatureSync(req.session.usuario.plan, 'configuracion.marca');
 
         // Buscamos la configuración específica de ESTE restaurante
         const { data: config, error } = await supabase
@@ -58,6 +62,7 @@ router.get('/', verificarSesion, async (req, res) => {
                     logo_src: null,
                     qr_src: null
                 },
+                puedeMarca,
                 usuario: req.session.usuario
             });
         }
@@ -72,9 +77,17 @@ router.get('/', verificarSesion, async (req, res) => {
         delete configParaVista.qr_data;
         configParaVista.logo_src = logoBase64 ? `data:image/${config.logo_tipo};base64,${logoBase64}` : null;
         configParaVista.qr_src = qrBase64 ? `data:image/${config.qr_tipo};base64,${qrBase64}` : null;
+        if (!puedeMarca) {
+            configParaVista.logo_src = null;
+            configParaVista.qr_src = null;
+            configParaVista.pie_pagina = null;
+            configParaVista.ancho_papel = 80;
+            configParaVista.font_size = 1;
+        }
 
         res.render('configuracion', {
             config: configParaVista,
+            puedeMarca,
             usuario: req.session.usuario
         });
     } catch (error) {
@@ -92,6 +105,9 @@ router.post('/', verificarSesion, uploadErrorMiddleware(upload.fields([
 ])), async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
+        const puedeMarca = typeof res.locals.planPuede === 'function'
+            ? res.locals.planPuede('configuracion.marca')
+            : hasFeatureSync(req.session.usuario.plan, 'configuracion.marca');
         const {
             nombre_negocio,
             direccion,
@@ -113,23 +129,28 @@ router.post('/', verificarSesion, uploadErrorMiddleware(upload.fields([
             direccion: String(direccion || '').trim().slice(0, 200) || null,
             telefono: String(telefono || '').trim().slice(0, 30) || null,
             nit: String(nit || '').trim().slice(0, 30) || null,
-            pie_pagina: String(pie_pagina || '').trim().slice(0, 200) || null,
-            ancho_papel: Number(ancho_papel) === 58 ? 58 : 80,
-            font_size: Number(font_size) === 2 ? 2 : 1,
             updated_at: new Date().toISOString()
         };
 
-        if (req.files?.logo) {
-            const logoType = detectedImageType(req.files.logo[0].buffer);
-            if (!logoType) return res.status(400).json({ error: 'La imagen de logo no es valida.' });
-            registro.logo_data = bufferABytea(req.files.logo[0].buffer);
-            registro.logo_tipo = logoType;
-        }
-        if (req.files?.qr) {
-            const qrType = detectedImageType(req.files.qr[0].buffer);
-            if (!qrType) return res.status(400).json({ error: 'La imagen QR no es valida.' });
-            registro.qr_data = bufferABytea(req.files.qr[0].buffer);
-            registro.qr_tipo = qrType;
+        // El branding previo no se borra al bajar de plan: solo se ignora al
+        // guardar y se oculta al mostrar/imprimir. Si vuelve a Premium, reaparece.
+        if (puedeMarca) {
+            registro.pie_pagina = String(pie_pagina || '').trim().slice(0, 200) || null;
+            registro.ancho_papel = Number(ancho_papel) === 58 ? 58 : 80;
+            registro.font_size = Number(font_size) === 2 ? 2 : 1;
+
+            if (req.files?.logo) {
+                const logoType = detectedImageType(req.files.logo[0].buffer);
+                if (!logoType) return res.status(400).json({ error: 'La imagen de logo no es valida.' });
+                registro.logo_data = bufferABytea(req.files.logo[0].buffer);
+                registro.logo_tipo = logoType;
+            }
+            if (req.files?.qr) {
+                const qrType = detectedImageType(req.files.qr[0].buffer);
+                if (!qrType) return res.status(400).json({ error: 'La imagen QR no es valida.' });
+                registro.qr_data = bufferABytea(req.files.qr[0].buffer);
+                registro.qr_tipo = qrType;
+            }
         }
 
         // restaurante_id es UNIQUE en esta tabla, así que upsert crea o actualiza en un solo paso
