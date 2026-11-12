@@ -6,6 +6,7 @@ const { supabase } = require('../config/supabase');
 const { normalizeRole } = require('../middlewares/access');
 const { getPlanSync, getLimitSync, getUsage } = require('../services/planService');
 const { enforcementEnabled } = require('../middlewares/planAccess');
+const { registrarAuditoria } = require('../services/auditService');
 
 // Hash de referencia para igualar el tiempo de respuesta cuando el usuario no
 // existe (evita enumeración de usuarios por timing).
@@ -127,6 +128,12 @@ router.post('/login', loginLimiter, async (req, res) => {
                 return res.render('login', { error: 'No se pudo iniciar una sesión segura.' });
             }
             req.session.usuario = sessionUser;
+            registrarAuditoria(req, {
+                accion: 'sesion.iniciar',
+                entidad: 'usuario',
+                entidadId: user.id,
+                detalle: { rol: sessionUser.rol }
+            }).catch(() => {});
             req.session.save(() => res.redirect(rutaInicioPorRol(sessionUser.rol)));
         });
     } catch (error) {
@@ -136,6 +143,15 @@ router.post('/login', loginLimiter, async (req, res) => {
 });
 
 function cerrarSesion(req, res) {
+    const usuario = req.session?.usuario;
+    if (usuario) {
+        registrarAuditoria(req, {
+            accion: 'sesion.cerrar',
+            entidad: 'usuario',
+            entidadId: usuario.id,
+            detalle: { rol: usuario.rol }
+        }).catch(() => {});
+    }
     req.session.destroy(() => {
         res.clearCookie('marrocos.sid');
         res.redirect('/login');
@@ -258,7 +274,7 @@ router.post('/register', async (req, res) => {
 
         const pinHash = await bcrypt.hash(pin, 10);
 
-        const { error: insertError } = await supabase
+        const { data: usuarioCreado, error: insertError } = await supabase
             .from('usuarios')
             .insert({
                 restaurante_id: restauranteId,
@@ -266,7 +282,9 @@ router.post('/register', async (req, res) => {
                 rol,
                 pin_hash: pinHash,
                 estado: 1
-            });
+            })
+            .select('id')
+            .maybeSingle();
 
         if (insertError) {
             if (String(insertError.code) === '23505') {
@@ -278,6 +296,13 @@ router.post('/register', async (req, res) => {
             }
             throw insertError;
         }
+
+        await registrarAuditoria(req, {
+            accion: 'usuario.crear',
+            entidad: 'usuario',
+            entidadId: usuarioCreado?.id,
+            detalle: { nombre, rol }
+        });
 
         res.render('register', {
             usuario: req.session.usuario,

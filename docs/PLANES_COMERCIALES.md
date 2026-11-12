@@ -89,11 +89,12 @@ Notas:
 | Multi-sucursal | No | No | Roadmap fase 2 |
 | DTE / facturación electrónica | No | No | Roadmap fase 2 |
 | API / webhooks | No | No | Roadmap fase 2 |
-| Auditoría y permisos avanzados | No | No | Roadmap fase 2 |
+| Auditoría de acciones | No | No | Implementada (requiere migración) |
+| Permisos avanzados | No | No | Roadmap fase 2 |
 | Reportes personalizados / BI | No | No | Roadmap fase 2 |
 | Backups automáticos | No | No | Roadmap fase 2 |
 
-> Importante: las funciones de “roadmap fase 2” están marcadas en el catálogo como incluidas en Gold, pero **no deben venderse como disponibles** hasta que se implementen. DTE queda reservado para el repositorio privado posterior.
+> Importante: las funciones de “roadmap fase 2” están marcadas en el catálogo como incluidas en Gold, pero **no deben venderse como disponibles** hasta que se implementen. La auditoría ya está implementada en código y solo requiere aplicar su migración. DTE queda reservado para el repositorio privado posterior.
 
 ---
 
@@ -125,7 +126,11 @@ Notas:
 | `routes/mi_plan.js` + `views/mi_plan.ejs` | Página `/mi-plan` con plan actual, uso vs límite, funciones y CTA de upgrade |
 | `views/plan-required.ejs` | Página 403 amigable cuando falta una función o se alcanza un límite |
 | `routes/superadmin.js` + `views/superadmin/admin_global.ejs` | Asignación de plan, uso vs límite, validación de downgrade, bitácora |
+| `config/audit.js` | Catálogo de acciones auditables, etiquetas y agrupación para filtros |
+| `services/auditService.js` | Registro tolerante a fallos, consulta paginada y resumen de auditoría |
+| `routes/auditoria.js` + `views/auditoria.ejs` | Vista Gold `/auditoria` con filtros por acción, usuario y fechas |
 | `supabase/migrations/20261111120000_add_plan_catalog_and_entitlements.sql` | Tablas `planes`, `plan_features`, `plan_limits`, `plan_change_log`, seeds y normalización |
+| `supabase/migrations/20261112120000_add_audit_log.sql` | Tabla `auditoria_eventos`, índices por tenant, RLS y permisos de servicio |
 
 ### 5.2 Tablas
 
@@ -133,6 +138,7 @@ Notas:
 - `plan_features`: features habilitadas por plan.
 - `plan_limits`: límites por plan; `NULL` significa sin límite.
 - `plan_change_log`: auditoría de cambios de plan hechos desde SuperAdmin.
+- `auditoria_eventos`: bitácora por restaurante de acciones sensibles del POS.
 
 La migración es idempotente, normaliza `pro_plus → gold`, crea un check en `restaurantes.plan`, siembra los cuatro planes y deja RLS activa con acceso solo para `service_role`.
 
@@ -154,11 +160,35 @@ PLAN_CACHE_TTL_MS=60000
 - `PLAN_ENFORCEMENT=true` aplica el gating. `false` lo desactiva temporalmente.
 - `PLAN_CACHE_TTL_MS` controla el caché en memoria del catálogo leído desde Supabase.
 
+### 5.5 Auditoría de acciones (Gold)
+
+La feature `auditoria` está implementada en código y se expone en `/auditoria` para `admin` y `gerente`.
+
+**Eventos registrados actualmente:**
+
+- Inicio y cierre de sesión.
+- Creación de usuarios.
+- Crear, actualizar, eliminar e importar productos.
+- Abrir y cerrar caja.
+- Facturar, cancelar y mover pedidos.
+- Anular facturas.
+- Guardar configuración del negocio.
+
+**Reglas de privacidad:**
+
+- Nunca se guardan PINs, contraseñas, tokens ni imágenes.
+- El detalle se limita en tamaño y se muestra escapado en la vista.
+- Cada consulta filtra por `restaurante_id` de la sesión.
+- La tabla no tiene acceso directo para `anon` ni `authenticated`; solo `service_role`.
+- La vista es de solo lectura y no permite borrar ni editar eventos.
+
+**Requisito:** aplicar `supabase/migrations/20261112120000_add_audit_log.sql`. Si falta, la app sigue operando y `/auditoria` muestra un aviso; simplemente no se registran eventos nuevos.
+
 ---
 
 ## 6. Operación con SuperAdmin
 
-1. Aplicar la migración en Supabase SQL Editor.
+1. Aplicar las migraciones de planes y auditoría en Supabase SQL Editor.
 2. Entrar a `/superadmin/panel` con Basic Auth.
 3. Crear o localizar el negocio.
 4. Revisar la columna **Uso vs límite**.
@@ -170,7 +200,7 @@ PLAN_CACHE_TTL_MS=60000
 
 ## 7. Pendientes deliberados
 
-- Aplicar la migración en el proyecto real de Supabase.
+- Aplicar las migraciones de planes y auditoría en el proyecto real de Supabase.
 - Implementar DTE en el repositorio privado y activar su feature solo cuando exista.
-- Multi-caja, multi-sucursal, API, auditoría, BI y backups siguen como roadmap; no venderlos como disponibles.
-- Evaluar retención histórica por plan cuando exista una política de depuración.
+- Multi-caja, multi-sucursal, API, BI, permisos avanzados y backups siguen como roadmap; no venderlos como disponibles.
+- Evaluar retención histórica de auditoría por plan cuando exista una política de depuración.

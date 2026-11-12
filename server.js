@@ -271,6 +271,7 @@ const areasRoutes = require('./routes/areas');
 const registroPedidosRoutes = require('./routes/registro_pedidos');
 const desperdiciosRoutes = require('./routes/desperdicios');
 const miPlanRoutes = require('./routes/mi_plan');
+const auditoriaRoutes = require('./routes/auditoria');
 
 // Usar rutas
 app.use('/mesas', authRole(ROLES_OPERACION), requireFeature('pos.mesas'), mesasRoutes);
@@ -288,6 +289,7 @@ app.use('/areas', authRole(['admin', 'gerente']), requireFeature('areas.croquis'
 app.use('/registro-pedidos', authRole(ROLES_OPERACION), requireFeature('pos.pedidos'), registroPedidosRoutes);
 app.use('/desperdicios', authRole(ROLES_CAJA), requireFeature('inventario.desperdicios'), desperdiciosRoutes);
 app.use('/mi-plan', authRole(['admin', 'gerente']), miPlanRoutes);
+app.use('/auditoria', authRole(['admin', 'gerente']), requireFeature('auditoria'), auditoriaRoutes);
 
 // ==========================================
 // 16. MANEJO DE ERRORES

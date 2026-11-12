@@ -7,6 +7,7 @@ const { verificarSesion } = require('../middlewares/authMiddleware');
 const authRole = require('../middlewares/authRole');
 const { getBusinessDate } = require('../utils/business-time');
 const { requireFeature } = require('../middlewares/planAccess');
+const { registrarAuditoria } = require('../services/auditService');
 
 const allowedRoles = ['admin', 'gerente', 'cajero'];
 const detallesSchema = Joi.object()
@@ -70,6 +71,12 @@ router.post('/abrir', verificarSesion, authRole(allowedRoles), async (req, res) 
             p_detalles: serializeDetalles(value.detalles)
         });
         if (error) throw error;
+        await registrarAuditoria(req, {
+            accion: 'caja.abrir',
+            entidad: 'caja',
+            entidadId: data?.id,
+            detalle: { turno: value.turno, monto_apertura: value.monto_inicial }
+        });
         return res.status(201).json({ success: true, caja: data });
     } catch (error) {
         return cashErrorResponse(res, error, 'abrir');
@@ -88,6 +95,16 @@ router.post('/cerrar', verificarSesion, authRole(allowedRoles), async (req, res)
             p_detalles: serializeDetalles(value.detalles)
         });
         if (error) throw error;
+        await registrarAuditoria(req, {
+            accion: 'caja.cerrar',
+            entidad: 'caja',
+            entidadId: value.caja_id,
+            detalle: {
+                monto_cierre: value.monto_final,
+                ventas_efectivo: data?.ventas_efectivo,
+                diferencia: data?.diferencia
+            }
+        });
         return res.json({ success: true, ...data });
     } catch (error) {
         return cashErrorResponse(res, error, 'cerrar');

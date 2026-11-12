@@ -3,6 +3,7 @@ const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { verificarSesion } = require('../middlewares/authMiddleware');
 const authRole = require('../middlewares/authRole');
+const { registrarAuditoria } = require('../services/auditService');
 
 // ===================================
 // 1. RUTA PRINCIPAL (LISTADO + HISTORIAL)
@@ -65,6 +66,15 @@ router.post('/anular/:id', verificarSesion, authRole(['admin','gerente','cajero'
             p_motivo: String(req.body.motivo || '').slice(0, 500)
         });
         if (error) throw error;
+        await registrarAuditoria(req, {
+            accion: 'factura.anular',
+            entidad: 'factura',
+            entidadId: req.params.id,
+            detalle: {
+                motivo: String(req.body.motivo || '').slice(0, 200),
+                already_voided: Boolean(data?.already_voided)
+            }
+        });
         res.json({ success: true, ...data });
     } catch (error) {
         console.error('❌ Error al anular:', error.message);

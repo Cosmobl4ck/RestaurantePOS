@@ -3,6 +3,7 @@ const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { verificarSesion } = require('../middlewares/authMiddleware');
 const { requireFeature } = require('../middlewares/planAccess');
+const { registrarAuditoria } = require('../services/auditService');
 
 // =========================================================================
 // GET /mesas - Renderizar vista principal
@@ -245,6 +246,17 @@ router.post('/pedidos/:pedidoId/facturar', verificarSesion, async (req, res) => 
             p_forma_pago: formaPago
         });
         if (error) throw error;
+        await registrarAuditoria(req, {
+            accion: 'pedido.facturar',
+            entidad: 'pedido',
+            entidadId: req.params.pedidoId,
+            detalle: {
+                forma_pago: formaPago,
+                factura_id: data?.factura_id,
+                total: data?.total,
+                already_invoiced: Boolean(data?.already_invoiced)
+            }
+        });
         res.json({ success: true, ...(data || {}) });
     } catch (error) {
         console.error('❌ Error al facturar:', error.message);
@@ -264,6 +276,15 @@ router.delete('/pedidos/:pedidoId', verificarSesion, async (req, res) => {
             p_pedido_id: Number(req.params.pedidoId)
         });
         if (error) throw error;
+        await registrarAuditoria(req, {
+            accion: 'pedido.cancelar',
+            entidad: 'pedido',
+            entidadId: req.params.pedidoId,
+            detalle: {
+                mesa_id: data?.mesa_id,
+                already_cancelled: Boolean(data?.already_cancelled)
+            }
+        });
         res.json({ success: true, ...data });
     } catch (error) {
         console.error('Error cancelando pedido:', error.message);
@@ -311,6 +332,16 @@ router.post('/mover-pedido', verificarSesion, requireFeature('pos.mover_pedido')
             p_mesa_destino_id: Number(mesa_destino_id)
         });
         if (error) throw error;
+        await registrarAuditoria(req, {
+            accion: 'pedido.mover',
+            entidad: 'pedido',
+            entidadId: pedido_id,
+            detalle: {
+                mesa_origen_id: Number(mesa_origen_id),
+                mesa_destino_id: Number(mesa_destino_id),
+                mesa_destino: data?.mesa_destino
+            }
+        });
         res.json({ success: true, message: `Pedido movido a ${data?.mesa_destino || 'la mesa destino'}`, data });
     } catch (error) {
         console.error('❌ Error al mover pedido:', error.message);

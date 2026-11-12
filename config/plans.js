@@ -56,7 +56,7 @@ const FEATURE_CATALOG = Object.freeze([
   { key: 'multi_sucursal', label: 'Multi-sucursal', group: 'Gold roadmap' },
   { key: 'dte', label: 'DTE / facturación electrónica', group: 'Gold roadmap' },
   { key: 'api', label: 'API e integraciones', group: 'Gold roadmap' },
-  { key: 'auditoria', label: 'Auditoría de acciones', group: 'Gold roadmap' },
+  { key: 'auditoria', label: 'Auditoría de acciones', group: 'Auditoría y control' },
   { key: 'reportes.bi', label: 'Reportes BI', group: 'Gold roadmap' },
   { key: 'soporte.prioritario', label: 'Soporte prioritario', group: 'Servicios' },
   { key: 'onboarding', label: 'Capacitación / onboarding', group: 'Servicios' }

@@ -6,6 +6,7 @@ const { supabase } = require('../config/supabase');
 const { hasXlsxSignature, uploadErrorMiddleware } = require('../utils/upload-security');
 const { hasFeatureSync, getUsage, getLimitSync } = require('../services/planService');
 const { requireFeature, enforceLimit, enforcementEnabled } = require('../middlewares/planAccess');
+const { registrarAuditoria } = require('../services/auditService');
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -278,6 +279,18 @@ router.post('/', enforceLimit('productos'), async (req, res) => {
             await sincronizarAlergenos(restauranteId, data.id, req.body.alergenos);
         }
 
+        await registrarAuditoria(req, {
+            accion: 'producto.crear',
+            entidad: 'producto',
+            entidadId: data.id,
+            detalle: {
+                codigo: data.codigo,
+                nombre: producto.nombre,
+                categoria: producto.categoria,
+                precio_unidad: producto.precio_unidad
+            }
+        });
+
         res.status(201).json({ message: 'Producto creado con exito', codigo: data.codigo, id: data.id });
     } catch (error) {
         console.error('Error al crear producto:', error.message);
@@ -312,6 +325,18 @@ router.put('/:id', async (req, res) => {
             await sincronizarAlergenos(restauranteId, data[0].id, req.body.alergenos);
         }
 
+        await registrarAuditoria(req, {
+            accion: 'producto.actualizar',
+            entidad: 'producto',
+            entidadId: data[0].id,
+            detalle: {
+                codigo: producto.codigo,
+                nombre: producto.nombre,
+                categoria: producto.categoria,
+                precio_unidad: producto.precio_unidad
+            }
+        });
+
         res.json({ message: 'Producto actualizado con exito' });
     } catch (error) {
         console.error('Error al actualizar:', error);
@@ -331,12 +356,19 @@ router.delete('/:id', async (req, res) => {
             .delete()
             .eq('id', req.params.id)
             .eq('restaurante_id', restauranteId)
-            .select('id');
+            .select('id, codigo, nombre');
 
         if (error) throw error;
         if (!data || data.length === 0) {
             return res.status(404).json({ error: 'Producto no encontrado' });
         }
+
+        await registrarAuditoria(req, {
+            accion: 'producto.eliminar',
+            entidad: 'producto',
+            entidadId: data[0].id,
+            detalle: { codigo: data[0].codigo, nombre: data[0].nombre }
+        });
 
         res.json({ message: 'Producto eliminado' });
     } catch (error) {
@@ -443,6 +475,15 @@ router.post('/importar', requireFeature('inventario.importar'), uploadErrorMiddl
             .upsert(productos, { onConflict: 'restaurante_id,codigo' });
 
         if (error) throw error;
+
+        await registrarAuditoria(req, {
+            accion: 'producto.importar',
+            entidad: 'producto',
+            detalle: {
+                total: productos.length,
+                archivo: String(req.file.originalname || '').slice(0, 120)
+            }
+        });
 
         res.json({ message: 'Importacion finalizada', total: productos.length });
     } catch (error) {

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarrocosPOS - Auditoría</title>
+    <link rel="icon" href="/img/logo-icon.svg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/petronas.css?v=petronas1">
+    <style>
+        body { background-color: #08090A; color: #E8EAED; }
+        .text-aqua { color: #00D2BE !important; }
+        .audit-hero {
+            background: linear-gradient(135deg, rgba(0,161,156,.18), rgba(13,14,16,.92));
+            border: 1px solid rgba(0,161,156,.35);
+            border-radius: 18px;
+            box-shadow: 0 20px 55px rgba(0,0,0,.45);
+        }
+        .audit-card {
+            background: #0D0E10;
+            border: 1px solid #1A1D20;
+            border-radius: 16px;
+            box-shadow: 0 18px 45px rgba(0,0,0,.32);
+        }
+        .audit-stat {
+            height: 100%;
+            padding: 1rem 1.1rem;
+            border: 1px solid #1A1D20;
+            border-radius: 14px;
+            background: linear-gradient(160deg, #101215, #0B0C0E);
+        }
+        .audit-stat .label {
+            color: #9AA6AD;
+            font-size: .72rem;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+        }
+        .audit-stat .value {
+            color: #E8EAED;
+            font-size: 1.55rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .audit-stat .hint { color: #6F7B82; font-size: .76rem; }
+        .form-control, .form-select {
+            background-color: #08090A;
+            border-color: #262A2E;
+            color: #E8EAED;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #08090A;
+            color: #E8EAED;
+            border-color: #00A19C;
+            box-shadow: 0 0 0 .2rem rgba(0,161,156,.22);
+        }
+        .form-control::placeholder { color: #5F6A70; }
+        .audit-table { --bs-table-bg: transparent; color: #E8EAED; }
+        .audit-table thead th {
+            color: #8D99A0;
+            background: #0A0B0D;
+            border-bottom-color: #1A1D20;
+            font-size: .7rem;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .audit-table td { border-color: #1A1D20; vertical-align: middle; }
+        .audit-table tbody tr:hover { background: rgba(0,161,156,.035); }
+        .badge-action {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .32rem .55rem;
+            border-radius: 999px;
+            font-size: .72rem;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+        }
+        .badge-action.info {
+            color: #00D2BE;
+            background: rgba(0,210,190,.10);
+            border: 1px solid rgba(0,210,190,.32);
+        }
+        .badge-action.success {
+            color: #35D07F;
+            background: rgba(53,208,127,.10);
+            border: 1px solid rgba(53,208,127,.30);
+        }
+        .badge-action.danger {
+            color: #FF6B6B;
+            background: rgba(255,107,107,.10);
+            border: 1px solid rgba(255,107,107,.30);
+        }
+        .audit-code {
+            color: #8D99A0;
+            font-size: .72rem;
+            background: #08090A;
+            border: 1px solid #1A1D20;
+            border-radius: 6px;
+            padding: .08rem .3rem;
+        }
+        .audit-detail {
+            max-height: 260px;
+            overflow: auto;
+            background: #08090A;
+            border: 1px solid #1A1D20;
+            border-radius: 10px;
+            padding: .75rem;
+            color: #AEB9BF;
+            font-size: .76rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .audit-empty { padding: 3.25rem 1rem; text-align: center; color: #8D99A0; }
+        .audit-empty i { color: #00A19C; font-size: 2rem; }
+        .pagination .page-link {
+            background: #0D0E10;
+            border-color: #1A1D20;
+            color: #C8D0D4;
+        }
+        .pagination .page-link:hover { background: rgba(0,161,156,.14); color: #00D2BE; }
+        .pagination .active .page-link { background: #00A19C; border-color: #00A19C; color: #06110F; }
+        .pagination .disabled .page-link { background: #0A0B0D; color: #4E585E; }
+        details > summary { cursor: pointer; }
+        details > summary::marker { color: #00A19C; }
+        @media (max-width: 991.98px) {
+            .audit-stat .value { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+<%- include('partials/navbar') %>
+
+<div class="container pb-5">
+    <section class="audit-hero p-4 mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+                <div class="text-aqua fw-semibold small text-uppercase mb-2" style="letter-spacing:.12em;">
+                    <i class="bi bi-gem me-1"></i> Plan Gold
+                </div>
+                <h1 class="h3 mb-1">Auditoría de acciones</h1>
+                <p class="text-secondary mb-0">
+                    Historial de movimientos sensibles del negocio. Solo lectura para administradores y gerentes.
+                </p>
+            </div>
+            <span class="badge rounded-pill text-aqua" style="background:rgba(0,210,190,.10);border:1px solid rgba(0,210,190,.32);">
+                <i class="bi bi-shield-check me-1"></i> Registro protegido
+            </span>
+        </div>
+    </section>
+
+    <% if (migrationMissing) { %>
+        <div class="audit-card p-4">
+            <div class="d-flex gap-3">
+                <div class="text-warning fs-3"><i class="bi bi-database-exclamation"></i></div>
+                <div>
+                    <h2 class="h5 mb-2">Falta aplicar la migración de auditoría</h2>
+                    <p class="text-secondary mb-3">
+                        La pantalla ya está disponible, pero la tabla todavía no existe en Supabase. Aplica este archivo
+                        en el SQL Editor y vuelve a cargar esta página:
+                    </p>
+                    <p class="mb-3">
+                        <code class="audit-code">supabase/migrations/20261112120000_add_audit_log.sql</code>
+                    </p>
+                    <p class="text-secondary mb-0 small">
+                        Mientras no se aplique, las acciones del POS siguen funcionando normalmente, pero no quedan registradas.
+                    </p>
+                </div>
+            </div>
+        </div>
+    <% } else { %>
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-lg-3">
+                <div class="audit-stat">
+                    <div class="label">Eventos registrados</div>
+                    <div class="value"><%= resumen.total %></div>
+                    <div class="hint">Histórico del negocio</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="audit-stat">
+                    <div class="label">Últimas 24 h</div>
+                    <div class="value"><%= resumen.ultimas24h %></div>
+                    <div class="hint">Actividad reciente</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="audit-stat">
+                    <div class="label">En esta página</div>
+                    <div class="value"><%= eventos.length %></div>
+                    <div class="hint">de <%= total %> resultados</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="audit-stat">
+                    <div class="label">Último evento</div>
+                    <div class="value" style="font-size:1rem;line-height:1.45;">
+                        <%= eventos.length ? eventos[0].creado_en_texto : '—' %>
+                    </div>
+                    <div class="hint">Según los filtros actuales</div>
+                </div>
+            </div>
+        </div>
+
+        <form class="audit-card p-3 mb-4" method="GET" action="/auditoria">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-lg-3">
+                    <label class="form-label small text-secondary" for="audit-accion">Acción</label>
+                    <select class="form-select" id="audit-accion" name="accion">
+                        <option value="">Todas las acciones</option>
+                        <% acciones.forEach((grupo) => { %>
+                            <optgroup label="<%= grupo.nombre %>">
+                                <% grupo.items.forEach((item) => { %>
+                                    <option value="<%= item.key %>" <%= filtros.accion === item.key ? 'selected' : '' %>>
+                                        <%= item.label %>
+                                    </option>
+                                <% }) %>
+                            </optgroup>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-3">
+                    <label class="form-label small text-secondary" for="audit-usuario">Usuario</label>
+                    <input class="form-control" id="audit-usuario" name="usuario" type="search"
+                           value="<%= filtros.usuario %>" placeholder="Nombre del usuario" autocomplete="off">
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label small text-secondary" for="audit-desde">Desde</label>
+                    <input class="form-control" id="audit-desde" name="desde" type="date" value="<%= filtros.desde %>">
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label small text-secondary" for="audit-hasta">Hasta</label>
+                    <input class="form-control" id="audit-hasta" name="hasta" type="date" value="<%= filtros.hasta %>">
+                </div>
+                <div class="col-12 col-lg-2 d-flex gap-2">
+                    <button class="btn btn-solid-aqua flex-grow-1" type="submit">
+                        <i class="bi bi-funnel me-1"></i> Filtrar
+                    </button>
+                    <a class="btn btn-outline-aqua" href="/auditoria" title="Limpiar filtros" aria-label="Limpiar filtros">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+            </div>
+        </form>
+
+        <div class="audit-card overflow-hidden">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3 border-bottom border-secondary-subtle">
+                <div>
+                    <strong><%= total %></strong>
+                    <span class="text-secondary">evento<%= total === 1 ? '' : 's' %> encontrado<%= total === 1 ? '' : 's' %></span>
+                </div>
+                <div class="small text-secondary">Página <%= page %> de <%= totalPages %></div>
+            </div>
+
+            <% if (!eventos.length) { %>
+                <div class="audit-empty">
+                    <div class="mb-2"><i class="bi bi-inbox"></i></div>
+                    <div class="fw-semibold mb-1">No hay eventos para mostrar</div>
+                    <div class="small">Prueba con otro rango de fechas o limpia los filtros.</div>
+                </div>
+            <% } else { %>
+                <div class="table-responsive">
+                    <table class="table audit-table mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Fecha</th>
+                                <th scope="col">Acción</th>
+                                <th scope="col">Usuario</th>
+                                <th scope="col">Entidad</th>
+                                <th scope="col">Detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% eventos.forEach((evento) => { %>
+                                <% const detalle = evento.detalle && Object.keys(evento.detalle).length
+                                    ? JSON.stringify(evento.detalle, null, 2)
+                                    : ''; %>
+                                <tr>
+                                    <td class="small text-secondary text-nowrap"><%= evento.creado_en_texto %></td>
+                                    <td>
+                                        <span class="badge-action <%= evento.accion_tone %>">
+                                            <i class="bi bi-activity"></i><%= evento.accion_label %>
+                                        </span>
+                                        <div class="mt-1"><code class="audit-code"><%= evento.accion %></code></div>
+                                    </td>
+                                    <td>
+                                        <div><%= evento.usuario_nombre || 'Sistema' %></div>
+                                        <div class="small text-secondary"><%= evento.ip || 'Sin IP' %></div>
+                                    </td>
+                                    <td>
+                                        <% if (evento.entidad) { %>
+                                            <span class="text-secondary"><%= evento.entidad %></span>
+                                            <% if (evento.entidad_id) { %>
+                                                <code class="audit-code">#<%= evento.entidad_id %></code>
+                                            <% } %>
+                                        <% } else { %>
+                                            <span class="text-secondary">—</span>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <% if (detalle) { %>
+                                            <details>
+                                                <summary class="small text-aqua">Ver detalle</summary>
+                                                <pre class="audit-detail mt-2 mb-0"><%= detalle %></pre>
+                                            </details>
+                                        <% } else { %>
+                                            <span class="text-secondary">—</span>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            <% } %>
+
+            <% if (totalPages > 1) { %>
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3 border-top border-secondary-subtle">
+                    <div class="small text-secondary">Mostrando <%= eventos.length %> de <%= total %></div>
+                    <nav aria-label="Paginación de auditoría">
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                                <a class="page-link" href="<%= prevUrl || '#' %>" <%= page <= 1 ? 'tabindex="-1" aria-disabled="true"' : '' %>>Anterior</a>
+                            </li>
+                            <li class="page-item disabled"><span class="page-link"><%= page %> / <%= totalPages %></span></li>
+                            <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                                <a class="page-link" href="<%= nextUrl || '#' %>" <%= page >= totalPages ? 'tabindex="-1" aria-disabled="true"' : '' %>>Siguiente</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            <% } %>
+        </div>
+    <% } %>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((element) => {
+        new bootstrap.Tooltip(element);
+    });
+</script>
+</body>
+</html>

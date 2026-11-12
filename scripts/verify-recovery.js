@@ -55,10 +55,15 @@ for (const rel of [
   'supabase/migrations/20261110120000_fix_invoice_client_and_area_layout.sql',
   'supabase/migrations/20261110130000_add_product_info_allergens_and_prep_time.sql',
   'supabase/migrations/20261111120000_add_plan_catalog_and_entitlements.sql',
+  'supabase/migrations/20261112120000_add_audit_log.sql',
   'config/plans.js',
+  'config/audit.js',
   'services/planService.js',
+  'services/auditService.js',
   'middlewares/planAccess.js',
+  'routes/auditoria.js',
   'views/mi_plan.ejs',
+  'views/auditoria.ejs',
   'views/plan-required.ejs',
   'config/SupabaseSessionStore.js',
   'routes/kds.js',
@@ -71,7 +76,7 @@ for (const rel of [
 }
 
 const server = read('server.js');
-for (const mount of ["app.use('/kds'", "app.use('/areas'", "app.use('/registro-pedidos'", "app.use('/desperdicios'", "app.use('/mi-plan'"]) {
+for (const mount of ["app.use('/kds'", "app.use('/areas'", "app.use('/registro-pedidos'", "app.use('/desperdicios'", "app.use('/mi-plan'", "app.use('/auditoria'"]) {
   if (!server.includes(mount)) fail(`server.js missing mount ${mount}`);
 }
 if (!server.includes('requireFeature')) fail('server.js missing plan feature guards');

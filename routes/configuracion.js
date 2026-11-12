@@ -4,6 +4,7 @@ const { supabase } = require('../config/supabase');
 const multer = require('multer');
 const { detectedImageType, uploadErrorMiddleware } = require('../utils/upload-security');
 const { hasFeatureSync } = require('../services/planService');
+const { registrarAuditoria } = require('../services/auditService');
 
 // IMPORTAR AL GUARDIA DE SEGURIDAD
 const { verificarSesion } = require('../middlewares/authMiddleware');
@@ -160,6 +161,22 @@ router.post('/', verificarSesion, uploadErrorMiddleware(upload.fields([
             .upsert(registro, { onConflict: 'restaurante_id' });
 
         if (error) throw error;
+
+        await registrarAuditoria(req, {
+            accion: 'configuracion.actualizar',
+            entidad: 'configuracion',
+            detalle: {
+                nombre_negocio: registro.nombre_negocio,
+                direccion: Boolean(registro.direccion),
+                telefono: Boolean(registro.telefono),
+                nit: Boolean(registro.nit),
+                marca: puedeMarca,
+                logo: Boolean(req.files?.logo),
+                qr: Boolean(req.files?.qr),
+                ancho_papel: registro.ancho_papel,
+                font_size: registro.font_size
+            }
+        });
 
         res.redirect('/configuracion');
     } catch (error) {
