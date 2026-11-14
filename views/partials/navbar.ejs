@@ -4,250 +4,632 @@
     .card { border: 1px solid #1A1D20; border-radius: 14px; box-shadow: 0 18px 45px rgba(0,0,0,.45); }
     .table { --bs-table-bg: transparent; }
     .form-control:focus, .form-select:focus, .btn:focus-visible { border-color: var(--mp-accent); box-shadow: 0 0 0 .2rem rgba(0,161,156,.22); }
-    @media (max-width: 991.98px) { .navbar-custom .user-badge { width:100%; justify-content:center; } }
 
-    /* Estilos base del Navbar - Carbono Petronas */
-    .navbar-custom {
-        background-color: #0D0E10; /* Carbono Petronas */
-        box-shadow: 0 1px 0 rgba(0,161,156,.55), 0 8px 26px rgba(0,0,0,.50);
-        font-size: 1.1rem;
+    /* ============================================================
+       Barra superior + menú lateral izquierdo
+       ============================================================ */
+    .mp-topbar {
+        position: sticky;
+        top: 0;
+        z-index: 1030;
+        padding: .62rem 0;
+        background: linear-gradient(180deg, #0D0E10 0%, #0A0B0D 100%);
+        border-bottom: 1px solid rgba(0,161,156,.38);
+        box-shadow: 0 10px 30px rgba(0,0,0,.42);
     }
-    .navbar-custom .navbar-brand {
-        color: #00A19C !important; /* Texto Acqua principal */
-        font-weight: bold;
-        font-size: 1.4rem;
+    .mp-topbar-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        min-width: 0;
     }
-    .navbar-custom .navbar-brand .text-business {
-        color: #E8EAED !important; /* Plata para el nombre del negocio */
-    }
-    
-    /* Botones Acqua personalizados */
-    .btn-outline-aqua {
-        color: #00D2BE;
-        border: 1px solid rgba(0, 210, 190, 0.55);
+    .mp-brand {
+        display: flex;
+        align-items: center;
+        gap: .65rem;
+        min-width: 0;
+        padding: .15rem .12rem;
+        border: 0;
+        border-radius: 12px;
         background: transparent;
-        transition: all 0.2s ease-in-out;
+        color: #00A19C;
+        text-align: left;
+        transition: background-color .2s ease, color .2s ease, box-shadow .2s ease;
     }
-    .btn-outline-aqua:hover {
-        background-color: rgba(0, 161, 156, 0.18); /* Brillo teal translúcido */
+    .mp-brand:hover,
+    .mp-brand:focus-visible {
         color: #00D2BE;
-        border-color: #00D2BE;
+        background: rgba(0,161,156,.12);
+        outline: none;
     }
-    .btn-solid-aqua {
-        background-color: #00A19C;
-        color: #06110F;
-        border: 1px solid #00A19C;
-        font-weight: bold;
+    .mp-brand:focus-visible { box-shadow: 0 0 0 .2rem rgba(0,210,190,.22); }
+    .mp-brand-logo {
+        width: 38px;
+        height: 38px;
+        flex-shrink: 0;
+        filter: drop-shadow(0 0 4px rgba(0,161,156,.6));
     }
-    .btn-solid-aqua:hover {
-        background-color: #00D2BE;
-        color: #06110F;
+    .mp-brand-copy {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        line-height: 1.05;
+    }
+    .mp-brand-title {
+        font-size: 1.12rem;
+        font-weight: 800;
+        letter-spacing: .01em;
+        white-space: nowrap;
+    }
+    .mp-brand-business {
+        max-width: 230px;
+        overflow: hidden;
+        color: #C7D0D4;
+        font-size: .72rem;
+        font-weight: 500;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .mp-user-chip {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .35rem .5rem;
+        border: 1px solid rgba(0,161,156,.28);
+        border-radius: 999px;
+        background: rgba(0,0,0,.24);
+        color: #E8EAED;
+    }
+    .mp-user-avatar {
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        border: 1px solid rgba(0,210,190,.45);
+        border-radius: 50%;
+        background: rgba(0,161,156,.18);
+        color: #00D2BE;
+        font-size: .78rem;
+        font-weight: 800;
+        flex-shrink: 0;
+    }
+    .mp-user-meta { display: none; min-width: 0; line-height: 1.05; }
+    .mp-user-name {
+        max-width: 125px;
+        overflow: hidden;
+        font-size: .78rem;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .mp-user-role {
+        color: #00D2BE;
+        font-size: .62rem;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+    @media (min-width: 576px) {
+        .mp-user-meta { display: flex; flex-direction: column; }
     }
 
-    /* Estilo para el usuario logueado */
-    .user-badge {
-        background-color: rgba(0, 0, 0, 0.3); /* Fondo carbón más oscuro */
-        padding: 0.4rem 0.8rem;
-        border-radius: 20px;
-        color: #00A19C; /* Texto y logo Acqua */
-        font-size: 0.9rem;
-        border: 1px solid rgba(0, 161, 156, 0.4); /* Borde Acqua sutil */
+    /* Fondo oscuro del menú */
+    .mp-sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1040;
+        background: rgba(0,0,0,.66);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .24s ease;
     }
-    
-    /* Resaltado de página activa */
-    .nav-active {
-        background-color: #00A19C !important;
-        color: #06110F !important; /* Ícono en carbono para resaltar */
-        border-color: #00A19C !important;
-        box-shadow: 0 0 12px rgba(0, 161, 156, 0.45); /* Resplandor teal */
+    body.mp-sidebar-open .mp-sidebar-backdrop {
+        opacity: 1;
+        pointer-events: auto;
     }
 
-    /* Hamburguesa Acqua */
-    .navbar-custom .navbar-toggler {
-        border-color: rgba(0, 210, 190, 0.55);
+    /* Menú lateral */
+    .mp-sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 1045;
+        display: flex;
+        flex-direction: column;
+        width: min(88vw, 330px);
+        background: linear-gradient(180deg, #0D0E10 0%, #090A0C 100%);
+        border-right: 1px solid rgba(0,161,156,.38);
+        box-shadow: 18px 0 50px rgba(0,0,0,.55);
+        transform: translateX(-104%);
+        visibility: hidden;
+        transition: transform .26s cubic-bezier(.2,.8,.2,1), visibility .26s ease;
+    }
+    body.mp-sidebar-open .mp-sidebar {
+        transform: translateX(0);
+        visibility: visible;
+    }
+    body.mp-sidebar-open { overflow: hidden; }
+    .mp-sidebar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        padding: 1rem 1rem .9rem;
+        border-bottom: 1px solid #1A1D20;
+    }
+    .mp-sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        min-width: 0;
+        color: #00A19C;
+        font-weight: 800;
+    }
+    .mp-sidebar-brand img {
+        width: 34px;
+        height: 34px;
+        filter: drop-shadow(0 0 4px rgba(0,161,156,.55));
+        flex-shrink: 0;
+    }
+    .mp-sidebar-brand-name { display: block; line-height: 1.05; }
+    .mp-sidebar-brand-business {
+        display: block;
+        max-width: 170px;
+        overflow: hidden;
+        color: #8D99A0;
+        font-size: .7rem;
+        font-weight: 500;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .mp-sidebar-close {
+        display: grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        flex-shrink: 0;
+        border: 1px solid rgba(0,210,190,.35);
         border-radius: 10px;
-        padding: 0.45rem 0.6rem;
-        transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        background: transparent;
+        color: #00D2BE;
+        transition: background-color .2s ease, border-color .2s ease;
     }
-    .navbar-custom .navbar-toggler:hover {
-        background-color: rgba(0, 161, 156, 0.18);
+    .mp-sidebar-close:hover,
+    .mp-sidebar-close:focus-visible {
+        background: rgba(0,161,156,.15);
         border-color: #00D2BE;
+        outline: none;
     }
-    .navbar-custom .navbar-toggler:focus {
-        border-color: #00D2BE;
-        box-shadow: 0 0 0 0.2rem rgba(0, 210, 190, 0.25);
+    .mp-sidebar-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: .75rem .65rem 1rem;
     }
-    .navbar-custom .navbar-toggler-icon {
-        width: 1.5em;
-        height: 1.5em;
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%2300D2BE' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    .mp-sidebar-kicker {
+        padding: .6rem .7rem .35rem;
+        color: #6F7B82;
+        font-size: .64rem;
+        font-weight: 700;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+    }
+    .mp-sidebar-link {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        width: 100%;
+        padding: .7rem .72rem;
+        border: 1px solid transparent;
+        border-radius: 11px;
+        color: #C9D1D5;
+        font-size: .9rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background-color .18s ease, color .18s ease, border-color .18s ease, transform .18s ease;
+    }
+    .mp-sidebar-link i {
+        width: 1.25rem;
+        color: #00A19C;
+        font-size: 1.06rem;
+        text-align: center;
+        flex-shrink: 0;
+    }
+    .mp-sidebar-link:hover,
+    .mp-sidebar-link:focus-visible {
+        color: #F2F5F6;
+        background: rgba(0,161,156,.10);
+        border-color: rgba(0,161,156,.28);
+        outline: none;
+        transform: translateX(2px);
+    }
+    .mp-sidebar-link.active {
+        color: #00F5DF;
+        background: linear-gradient(90deg, rgba(0,161,156,.26), rgba(0,161,156,.06));
+        border-color: rgba(0,210,190,.40);
+        box-shadow: inset 3px 0 0 #00D2BE;
+    }
+    .mp-sidebar-link.active i { color: #00F5DF; }
+    .mp-sidebar-footer {
+        padding: .85rem .8rem 1rem;
+        border-top: 1px solid #1A1D20;
+        background: rgba(0,0,0,.18);
+    }
+    .mp-sidebar-user {
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        margin-bottom: .65rem;
+        padding: .65rem .7rem;
+        border: 1px solid #1A1D20;
+        border-radius: 12px;
+        background: #08090A;
+    }
+    .mp-sidebar-user-copy { min-width: 0; }
+    .mp-sidebar-user-name {
+        overflow: hidden;
+        font-size: .84rem;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .mp-sidebar-user-meta {
+        overflow: hidden;
+        color: #8D99A0;
+        font-size: .7rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .mp-plan-pill {
+        margin-left: auto;
+        padding: .25rem .45rem;
+        border: 1px solid rgba(0,210,190,.35);
+        border-radius: 999px;
+        color: #00D2BE;
+        font-size: .62rem;
+        font-weight: 800;
+        letter-spacing: .04em;
+        white-space: nowrap;
+    }
+    .mp-logout {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .5rem;
+        width: 100%;
+        padding: .68rem .75rem;
+        border: 1px solid rgba(255,107,107,.35);
+        border-radius: 10px;
+        background: rgba(255,107,107,.08);
+        color: #FF8A8A;
+        font-size: .85rem;
+        font-weight: 700;
+        transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+    }
+    .mp-logout:hover,
+    .mp-logout:focus-visible {
+        background: rgba(255,107,107,.16);
+        border-color: rgba(255,107,107,.55);
+        color: #FFB1B1;
+        outline: none;
+    }
+
+    @media (min-width: 992px) {
+        .mp-sidebar { width: 340px; }
+    }
+    @media (max-width: 575.98px) {
+        .mp-brand-logo { width: 34px; height: 34px; }
+        .mp-brand-title { font-size: 1rem; }
+        .mp-brand-business { max-width: 155px; font-size: .67rem; }
+        .mp-sidebar-body { padding-left: .55rem; padding-right: .55rem; }
     }
 </style>
 
-<nav class="navbar navbar-expand-lg navbar-dark navbar-custom mb-4">
-    <div class="container">
-        <a class="navbar-brand" href="/dashboard">
-            <img src="/img/logo-icon-white.svg" alt="Logo" width="30" height="30" class="d-inline-block align-text-top" style="filter: drop-shadow(0px 0px 2px #00A19C);">
-            MarrocosPOS 
-            <% if (locals.usuario && usuario.nombre_negocio) { %>
-                | <span class="fw-light small text-business"><%= usuario.nombre_negocio %></span>
-            <% } else { %>
-                | <span class="fw-light small text-business">Demo</span>
-            <% } %>
-        </a>
-        
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Abrir menú">
-            <span class="navbar-toggler-icon"></span>
+<%
+const usuario = locals.usuario || null;
+const puede = (featureKey) => typeof locals.planPuede === 'function' ? locals.planPuede(featureKey) : true;
+const rol = usuario?.rol || '';
+const esAdmin = ['admin', 'gerente'].includes(rol);
+const esCaja = ['admin', 'gerente', 'cajero'].includes(rol);
+const esOperacion = ['admin', 'gerente', 'cajero', 'mesero'].includes(rol);
+const esCocina = ['admin', 'gerente', 'cajero', 'cocina'].includes(rol);
+const esBar = ['admin', 'gerente', 'cajero', 'bar'].includes(rol);
+const negocio = usuario?.nombre_negocio || 'Demo';
+const planTexto = (locals.planLabel || usuario?.plan || 'trial').toUpperCase().replace(/_/g, ' ');
+const inicial = (usuario?.nombre || '?').trim().charAt(0).toUpperCase() || '?';
+const rutaActual = String(locals.currentPath || '');
+const activo = (ruta) => ruta === '/kds/cocina' || ruta === '/kds/bar'
+    ? rutaActual.startsWith(ruta)
+    : rutaActual === ruta || rutaActual.startsWith(`${ruta}/`);
+const verDashboard = esAdmin;
+const verMesas = esOperacion && puede('pos.mesas');
+const verProductos = esCaja && puede('menu.productos');
+const verCaja = esCaja && puede('caja.basica');
+const verPedidos = esCaja && puede('pos.pedidos');
+const verFacturas = esCaja && puede('facturas.internas');
+const verVentas = esCaja && puede('ventas.historial');
+const verReportes = esCaja && puede('reportes.basicos');
+const verAuditoria = Boolean(usuario && ['admin', 'gerente'].includes(usuario.rol) && puede('auditoria'));
+const verClientes = esOperacion && puede('clientes');
+const verKdsCocina = esCocina && puede('kds.cocina');
+const verKdsBar = esBar && puede('kds.bar');
+const verAreas = esAdmin && puede('areas.croquis');
+const verDesperdicios = esCaja && puede('inventario.desperdicios');
+const verConfiguracion = esAdmin && puede('configuracion.basica');
+const verPersonal = esAdmin && puede('usuarios');
+const verMiPlan = esAdmin;
+const grupoOperacion = verDashboard || verMesas || verProductos || verCaja || verPedidos || verFacturas || verVentas || verReportes || verAuditoria;
+const grupoServicio = verClientes || verKdsCocina || verKdsBar;
+const grupoAdmin = verAreas || verDesperdicios || verConfiguracion || verPersonal || verMiPlan;
+%>
+
+<nav class="navbar navbar-custom mp-topbar mb-4" aria-label="Barra principal">
+    <div class="container mp-topbar-inner">
+        <button type="button" class="mp-brand" id="mpSidebarToggle" aria-controls="mpSidebar" aria-expanded="false" aria-label="Abrir menú de navegación" title="Abrir menú">
+            <img src="/img/logo-icon-white.svg" alt="Logo MarrocosPOS" width="38" height="38" class="mp-brand-logo">
+            <span class="mp-brand-copy">
+                <span class="mp-brand-title">MarrocosPOS</span>
+                <span class="mp-brand-business"><%= negocio %></span>
+            </span>
         </button>
 
-        <div class="collapse navbar-collapse" id="navbarContent">
-            <div class="d-flex flex-wrap ms-auto align-items-center gap-2 mt-3 mt-lg-0">
-                
-                <% if (locals.usuario) { %>
-                    <% const puede = (featureKey) => typeof locals.planPuede === 'function' ? locals.planPuede(featureKey) : true; %>
-                    
-                    <!-- DASHBOARD: Solo Admin -->
-                    <% if (['admin', 'gerente'].includes(usuario.rol)) { %>
-                        <a href="/dashboard" class="btn btn-outline-aqua <%= locals.page === 'dashboard' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Panel de Ventas">
-                            <i class="bi bi-grid-fill"></i>
-                        </a>
-                    <% } %>
-
-                    <!-- MESAS: Admin, Cajero y Mesero -->
-                    <% if (['admin', 'gerente', 'cajero', 'mesero'].includes(usuario.rol) && puede('pos.mesas')) { %>
-                        <a href="/mesas" class="btn btn-outline-aqua <%= locals.page === 'mesas' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Mesas y Mostrador">
-                            <i class="bi bi-grid"></i>
-                        </a>
-                    <% } %>
-
-                    <!-- INVENTARIO / MENÚ: Admin y Cajero -->
-                    <% if (['admin', 'gerente', 'cajero'].includes(usuario.rol) && puede('menu.productos')) { %>
-                        <a href="/productos" class="btn btn-outline-aqua <%= locals.page === 'productos' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Inventario y Menú">
-                            <i class="bi bi-box"></i>
-                        </a>
-                    <% } %>
-
-                    <!-- CAJA, PEDIDOS, FACTURAS Y REPORTES: Admin y Cajero -->
-                    <% if (['admin', 'gerente', 'cajero'].includes(usuario.rol)) { %>
-                        <% if (puede('caja.basica')) { %>
-                        <a href="/caja" class="btn btn-outline-aqua <%= locals.page === 'caja' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Movimientos de Caja">
-                            <i class="bi bi-cart-check"></i>
-                        </a>
-                        <% } %>
-                        <% if (puede('pos.pedidos')) { %>
-                        <a href="/registro-pedidos" class="btn btn-outline-aqua <%= locals.page === 'registro-pedidos' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Registro de Pedidos">
-                            <i class="bi bi-list-check"></i>
-                        </a>
-                        <% } %>
-                        <% if (puede('facturas.internas')) { %>
-                        <a href="/facturas" class="btn btn-outline-aqua <%= locals.page === 'facturas' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Facturas">
-                            <i class="bi bi-receipt-cutoff"></i>
-                        </a>
-                        <% } %>
-                        <% if (puede('ventas.historial')) { %>
-                        <a href="/ventas" class="btn btn-outline-aqua <%= locals.page === 'ventas' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Ventas">
-                            <i class="bi bi-cash-coin"></i>
-                        </a>
-                        <% } %>
-                        <% if (puede('reportes.basicos')) { %>
-                        <a href="/reportes" class="btn btn-outline-aqua <%= locals.page === 'reportes' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Reportes">
-                            <i class="bi bi-bar-chart-line"></i>
-                        </a>
-                        <% } %>
-                        <% if (['admin', 'gerente'].includes(usuario.rol) && puede('auditoria')) { %>
-                        <a href="/auditoria" class="btn btn-outline-aqua <%= locals.page === 'auditoria' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Auditoría de acciones">
-                            <i class="bi bi-shield-check"></i>
-                        </a>
-                        <% } %>
-                    <% } %>
-
-                    <!-- CLIENTES: Admin, Cajero y Mesero -->
-                    <% if (['admin', 'gerente', 'cajero', 'mesero'].includes(usuario.rol) && puede('clientes')) { %>
-                        <a href="/clientes" class="btn btn-outline-aqua <%= locals.page === 'clientes' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Clientes">
-                            <i class="bi bi-people"></i>
-                        </a>
-                    <% } %>
-
-                    <!-- MONITOR DE COCINA: Admin y Cocina -->
-                    <% if (['admin', 'gerente', 'cajero', 'cocina'].includes(usuario.rol) && puede('kds.cocina')) { %>
-                        <a href="/kds/cocina" class="btn btn-outline-aqua <%= locals.currentPath && locals.currentPath.startsWith('/kds/cocina') ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Monitor de Cocina">
-                            <i class="bi bi-egg-fried"></i>
-                        </a>
-                    <% } %>
-
-                    <!-- MONITOR DE BAR: Admin y Bar -->
-                    <% if (['admin', 'gerente', 'cajero', 'bar'].includes(usuario.rol) && puede('kds.bar')) { %>
-                        <a href="/kds/bar" class="btn btn-outline-aqua <%= locals.currentPath && locals.currentPath.startsWith('/kds/bar') ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Monitor de Bar">
-                            <i class="bi bi-cup-straw"></i>
-                        </a>
-                    <% } %>
-
-
-                    <% if (['admin', 'gerente'].includes(usuario.rol) && puede('areas.croquis')) { %>
-                        <a href="/areas" class="btn btn-outline-aqua <%= locals.page === 'areas' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Croquis y áreas del restaurante">
-                            <i class="bi bi-bounding-box-circles"></i>
-                        </a>
-                    <% } %>
-
-                    <% if (['admin', 'gerente', 'cajero'].includes(usuario.rol) && puede('inventario.desperdicios')) { %>
-                        <a href="/desperdicios" class="btn btn-outline-aqua <%= locals.page === 'desperdicios' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Control de desperdicios">
-                            <i class="bi bi-trash3"></i>
-                        </a>
-                    <% } %>
-
-                    <% if (['admin', 'gerente'].includes(usuario.rol) && puede('configuracion.basica')) { %>
-                        <a href="/configuracion" class="btn btn-outline-aqua <%= locals.page === 'configuracion' ? 'nav-active' : '' %>" data-bs-toggle="tooltip" title="Configuración del negocio">
-                            <i class="bi bi-gear"></i>
-                        </a>
-                    <% } %>
-
-                    <!-- GESTIÓN DE PERSONAL: Solo Admin -->
-                    <% if (['admin', 'gerente'].includes(usuario.rol) && puede('usuarios')) { %>
-                        <a href="/register" class="btn btn-solid-aqua ms-lg-2" data-bs-toggle="tooltip" title="Gestión de Personal">
-                            <i class="bi bi-person-plus"></i> <span class="d-none d-lg-inline">Personal</span>
-                        </a>
-                    <% } %>
-
-                    <% if (['admin', 'gerente'].includes(usuario.rol)) { %>
-                        <a href="/mi-plan" class="btn btn-outline-aqua" data-bs-toggle="tooltip" title="Mi plan y límites">
-                            <i class="bi bi-gem"></i>
-                        </a>
-                    <% } %>
-
-                    <div class="vr mx-2 d-none d-lg-block" style="background-color: #00A19C; opacity: 0.3;"></div>
-
-                    <!-- BADGE DE USUARIO -->
-                    <div class="user-badge ms-2 ms-lg-0 mb-2 mb-lg-0 d-flex align-items-center">
-                        <i class="bi bi-person-circle me-2"></i>
-                        <span class="fw-bold me-1 text-light"><%= usuario.nombre %></span> 
-                        <span class="badge ms-1 text-uppercase" style="background-color: #00A19C; color: #06110F; font-size: 0.7rem;">
-                            <%= usuario.rol %>
-                        </span>
-                        <span class="badge ms-1" style="font-size: 0.7rem; background-color: transparent; border: 1px solid #00A19C; color: #00A19C; text-transform: uppercase;">
-                            <%= (locals.planLabel || usuario.plan || 'trial').toUpperCase().replace(/_/g, ' ') %>
-                        </span>
-                    </div>
-                    
-                    <!-- BOTÓN SALIR -->
-                    <form action="/logout" method="post" class="d-inline ms-2">
-                        <button type="submit" class="btn btn-outline-aqua btn-sm" data-bs-toggle="tooltip" title="Cerrar Sesión">
-                            <i class="bi bi-box-arrow-right"></i> <span class="d-none d-lg-inline">Salir</span>
-                        </button>
-                    </form>
-
-                <% } %>
-
+        <% if (usuario) { %>
+            <div class="mp-user-chip" aria-label="Usuario actual">
+                <span class="mp-user-avatar" aria-hidden="true"><%= inicial %></span>
+                <span class="mp-user-meta">
+                    <span class="mp-user-name"><%= usuario.nombre %></span>
+                    <span class="mp-user-role"><%= rol %></span>
+                </span>
             </div>
-        </div>
+        <% } %>
     </div>
 </nav>
 
+<div class="mp-sidebar-backdrop" id="mpSidebarBackdrop" aria-hidden="true"></div>
+
+<aside class="mp-sidebar" id="mpSidebar" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="mpSidebarTitle">
+    <div class="mp-sidebar-header">
+        <div class="mp-sidebar-brand" id="mpSidebarTitle">
+            <img src="/img/logo-icon-white.svg" alt="Logo MarrocosPOS" width="34" height="34">
+            <span>
+                <span class="mp-sidebar-brand-name">MarrocosPOS</span>
+                <span class="mp-sidebar-brand-business"><%= negocio %></span>
+            </span>
+        </div>
+        <button type="button" class="mp-sidebar-close" id="mpSidebarClose" aria-label="Cerrar menú">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+
+    <div class="mp-sidebar-body">
+        <% if (usuario) { %>
+            <div class="mp-sidebar-kicker">Menú</div>
+
+            <% if (grupoOperacion) { %>
+                <div class="mp-sidebar-kicker">Operación</div>
+
+                <% if (verDashboard) { %>
+                    <a href="/dashboard" class="mp-sidebar-link <%= activo('/dashboard') ? 'active' : '' %>" <%= activo('/dashboard') ? 'aria-current="page"' : '' %> title="Panel de Ventas">
+                        <i class="bi bi-grid-fill"></i>
+                        <span>Panel de Ventas</span>
+                    </a>
+                <% } %>
+
+                <% if (verMesas) { %>
+                    <a href="/mesas" class="mp-sidebar-link <%= activo('/mesas') ? 'active' : '' %>" <%= activo('/mesas') ? 'aria-current="page"' : '' %> title="Mesas y Mostrador">
+                        <i class="bi bi-grid"></i>
+                        <span>Mesas y mostrador</span>
+                    </a>
+                <% } %>
+
+                <% if (verProductos) { %>
+                    <a href="/productos" class="mp-sidebar-link <%= activo('/productos') ? 'active' : '' %>" <%= activo('/productos') ? 'aria-current="page"' : '' %> title="Inventario y Menú">
+                        <i class="bi bi-box"></i>
+                        <span>Menú e inventario</span>
+                    </a>
+                <% } %>
+
+                <% if (verCaja) { %>
+                    <a href="/caja" class="mp-sidebar-link <%= activo('/caja') ? 'active' : '' %>" <%= activo('/caja') ? 'aria-current="page"' : '' %> title="Movimientos de Caja">
+                        <i class="bi bi-cart-check"></i>
+                        <span>Movimientos de caja</span>
+                    </a>
+                <% } %>
+
+                <% if (verPedidos) { %>
+                    <a href="/registro-pedidos" class="mp-sidebar-link <%= activo('/registro-pedidos') ? 'active' : '' %>" <%= activo('/registro-pedidos') ? 'aria-current="page"' : '' %> title="Registro de Pedidos">
+                        <i class="bi bi-list-check"></i>
+                        <span>Registro de pedidos</span>
+                    </a>
+                <% } %>
+
+                <% if (verFacturas) { %>
+                    <a href="/facturas" class="mp-sidebar-link <%= activo('/facturas') ? 'active' : '' %>" <%= activo('/facturas') ? 'aria-current="page"' : '' %> title="Facturas">
+                        <i class="bi bi-receipt-cutoff"></i>
+                        <span>Facturas</span>
+                    </a>
+                <% } %>
+
+                <% if (verVentas) { %>
+                    <a href="/ventas" class="mp-sidebar-link <%= activo('/ventas') ? 'active' : '' %>" <%= activo('/ventas') ? 'aria-current="page"' : '' %> title="Ventas">
+                        <i class="bi bi-cash-coin"></i>
+                        <span>Ventas</span>
+                    </a>
+                <% } %>
+
+                <% if (verReportes) { %>
+                    <a href="/reportes" class="mp-sidebar-link <%= activo('/reportes') ? 'active' : '' %>" <%= activo('/reportes') ? 'aria-current="page"' : '' %> title="Reportes">
+                        <i class="bi bi-bar-chart-line"></i>
+                        <span>Reportes</span>
+                    </a>
+                <% } %>
+
+                <% if (verAuditoria) { %>
+                    <a href="/auditoria" class="mp-sidebar-link <%= activo('/auditoria') ? 'active' : '' %>" <%= activo('/auditoria') ? 'aria-current="page"' : '' %> title="Auditoría de acciones">
+                        <i class="bi bi-shield-check"></i>
+                        <span>Auditoría</span>
+                    </a>
+                <% } %>
+            <% } %>
+
+            <% if (grupoServicio) { %>
+                <div class="mp-sidebar-kicker">Servicio</div>
+
+                <% if (verClientes) { %>
+                    <a href="/clientes" class="mp-sidebar-link <%= activo('/clientes') ? 'active' : '' %>" <%= activo('/clientes') ? 'aria-current="page"' : '' %> title="Clientes">
+                        <i class="bi bi-people"></i>
+                        <span>Clientes</span>
+                    </a>
+                <% } %>
+
+                <% if (verKdsCocina) { %>
+                    <a href="/kds/cocina" class="mp-sidebar-link <%= activo('/kds/cocina') ? 'active' : '' %>" <%= activo('/kds/cocina') ? 'aria-current="page"' : '' %> title="Monitor de Cocina">
+                        <i class="bi bi-egg-fried"></i>
+                        <span>Monitor de cocina</span>
+                    </a>
+                <% } %>
+
+                <% if (verKdsBar) { %>
+                    <a href="/kds/bar" class="mp-sidebar-link <%= activo('/kds/bar') ? 'active' : '' %>" <%= activo('/kds/bar') ? 'aria-current="page"' : '' %> title="Monitor de Bar">
+                        <i class="bi bi-cup-straw"></i>
+                        <span>Monitor de bar</span>
+                    </a>
+                <% } %>
+            <% } %>
+
+            <% if (grupoAdmin) { %>
+                <div class="mp-sidebar-kicker">Administración</div>
+
+                <% if (verAreas) { %>
+                    <a href="/areas" class="mp-sidebar-link <%= activo('/areas') ? 'active' : '' %>" <%= activo('/areas') ? 'aria-current="page"' : '' %> title="Croquis y áreas del restaurante">
+                        <i class="bi bi-bounding-box-circles"></i>
+                        <span>Croquis y áreas</span>
+                    </a>
+                <% } %>
+
+                <% if (verDesperdicios) { %>
+                    <a href="/desperdicios" class="mp-sidebar-link <%= activo('/desperdicios') ? 'active' : '' %>" <%= activo('/desperdicios') ? 'aria-current="page"' : '' %> title="Control de desperdicios">
+                        <i class="bi bi-trash3"></i>
+                        <span>Desperdicios</span>
+                    </a>
+                <% } %>
+
+                <% if (verConfiguracion) { %>
+                    <a href="/configuracion" class="mp-sidebar-link <%= activo('/configuracion') ? 'active' : '' %>" <%= activo('/configuracion') ? 'aria-current="page"' : '' %> title="Configuración del negocio">
+                        <i class="bi bi-gear"></i>
+                        <span>Configuración</span>
+                    </a>
+                <% } %>
+
+                <% if (verPersonal) { %>
+                    <a href="/register" class="mp-sidebar-link <%= activo('/register') ? 'active' : '' %>" <%= activo('/register') ? 'aria-current="page"' : '' %> title="Gestión de Personal">
+                        <i class="bi bi-person-plus"></i>
+                        <span>Personal</span>
+                    </a>
+                <% } %>
+
+                <% if (verMiPlan) { %>
+                    <a href="/mi-plan" class="mp-sidebar-link <%= activo('/mi-plan') ? 'active' : '' %>" <%= activo('/mi-plan') ? 'aria-current="page"' : '' %> title="Mi plan y límites">
+                        <i class="bi bi-gem"></i>
+                        <span>Mi plan y límites</span>
+                    </a>
+                <% } %>
+            <% } %>
+        <% } else { %>
+            <div class="mp-sidebar-kicker">Menú</div>
+            <div class="px-2 py-3 text-secondary small">Inicia sesión para ver el menú del negocio.</div>
+        <% } %>
+    </div>
+
+    <% if (usuario) { %>
+        <div class="mp-sidebar-footer">
+            <div class="mp-sidebar-user">
+                <span class="mp-user-avatar" aria-hidden="true"><%= inicial %></span>
+                <div class="mp-sidebar-user-copy">
+                    <div class="mp-sidebar-user-name"><%= usuario.nombre %></div>
+                    <div class="mp-sidebar-user-meta"><%= rol %> · <%= negocio %></div>
+                </div>
+                <span class="mp-plan-pill"><%= planTexto %></span>
+            </div>
+            <form action="/logout" method="post">
+                <button type="submit" class="mp-logout" title="Cerrar Sesión">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Cerrar Sesión</span>
+                </button>
+            </form>
+        </div>
+    <% } %>
+</aside>
+
+<%- include('pwa-install') %>
+
 <script>
-    document.addEventListener("DOMContentLoaded", function(){
-        // Inicializar tooltips de Bootstrap
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    document.addEventListener('DOMContentLoaded', function () {
+        const toggle = document.getElementById('mpSidebarToggle');
+        const sidebar = document.getElementById('mpSidebar');
+        const backdrop = document.getElementById('mpSidebarBackdrop');
+        const closeButton = document.getElementById('mpSidebarClose');
+
+        if (toggle && sidebar && backdrop && closeButton) {
+            const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+            let lastFocused = null;
+
+            const openSidebar = () => {
+                if (document.body.classList.contains('mp-sidebar-open')) return;
+                lastFocused = document.activeElement;
+                document.body.classList.add('mp-sidebar-open');
+                sidebar.classList.add('is-open');
+                sidebar.setAttribute('aria-hidden', 'false');
+                toggle.setAttribute('aria-expanded', 'true');
+                window.setTimeout(() => closeButton.focus(), 300);
+            };
+
+            const closeSidebar = (restoreFocus = true) => {
+                if (!document.body.classList.contains('mp-sidebar-open')) return;
+                document.body.classList.remove('mp-sidebar-open');
+                sidebar.classList.remove('is-open');
+                sidebar.setAttribute('aria-hidden', 'true');
+                toggle.setAttribute('aria-expanded', 'false');
+                if (restoreFocus) {
+                    const target = lastFocused && typeof lastFocused.focus === 'function' ? lastFocused : toggle;
+                    target.focus();
+                }
+            };
+
+            toggle.addEventListener('click', openSidebar);
+            closeButton.addEventListener('click', () => closeSidebar());
+            backdrop.addEventListener('click', () => closeSidebar());
+            sidebar.querySelectorAll('a[href]').forEach((link) => {
+                link.addEventListener('click', () => closeSidebar(false));
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && document.body.classList.contains('mp-sidebar-open')) {
+                    closeSidebar();
+                    return;
+                }
+                if (event.key !== 'Tab' || !document.body.classList.contains('mp-sidebar-open')) return;
+
+                const focusable = Array.from(sidebar.querySelectorAll(focusableSelector))
+                    .filter((element) => element.offsetParent !== null);
+                if (!focusable.length) return;
+
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (event.shiftKey && document.activeElement === first) {
+                    event.preventDefault();
+                    last.focus();
+                } else if (!event.shiftKey && document.activeElement === last) {
+                    event.preventDefault();
+                    first.focus();
+                }
+            });
+        }
+
         if (window.bootstrap && bootstrap.Tooltip) {
-            tooltipTriggerList.map(function (tooltipTriggerEl) { return new bootstrap.Tooltip(tooltipTriggerEl); });
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((element) => {
+                new bootstrap.Tooltip(element);
+            });
         }
     });
 </script>

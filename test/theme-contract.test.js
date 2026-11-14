@@ -90,3 +90,31 @@ test('la factura conserva papel blanco al imprimir aunque el POS sea oscuro', ()
   assert.match(printBlock, /body\.factura-print \.ticket[\s\S]*background:\s*#FFFFFF\s*!important/i);
   assert.match(printBlock, /body\.factura-print \.acciones[\s\S]*display:\s*none\s*!important/i);
 });
+
+test('la app expone el manifiesto y el aviso de instalación PWA', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'public/manifest.webmanifest'), 'utf8'));
+  const installer = fs.readFileSync(path.join(root, 'public/js/pwa-install.js'), 'utf8');
+  const serviceWorker = fs.readFileSync(path.join(root, 'public/sw.js'), 'utf8');
+  const login = fs.readFileSync(path.join(root, 'views/login.ejs'), 'utf8');
+  const navbar = fs.readFileSync(path.join(root, 'views/partials/navbar.ejs'), 'utf8');
+  const installPartial = fs.readFileSync(path.join(root, 'views/partials/pwa-install.ejs'), 'utf8');
+
+  assert.equal(manifest.display, 'standalone');
+  assert.equal(manifest.start_url, '/login');
+  assert.match(installer, /beforeinstallprompt/);
+  assert.match(installer, /serviceWorker\.register\('\/sw\.js'\)/);
+  assert.match(serviceWorker, /CACHE_NAME/);
+  assert.match(login, /include\('partials\/pwa-install'\)/);
+  assert.match(installPartial, /mpInstallBanner/);
+  assert.match(navbar, /include\('pwa-install'\)/);
+});
+
+test('el login conserva una estructura móvil aunque Bootstrap no esté disponible', () => {
+  const login = fs.readFileSync(path.join(root, 'views/login.ejs'), 'utf8');
+
+  assert.match(login, /body > \.container \{ width: min\(100%, 646px\)/);
+  assert.match(login, /\.login-card \.form-label \{[\s\S]*display: block/);
+  assert.match(login, /\.login-card \.form-control \{[\s\S]*width: 100%/);
+  assert.match(login, /\.login-card \.btn-login \{[\s\S]*width: 100%/);
+  assert.match(login, /@media \(max-width: 575\.98px\)/);
+});

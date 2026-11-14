@@ -122,6 +122,15 @@ app.use(express.json({ limit: '256kb' }));
 app.use(express.urlencoded({ extended: true, limit: '128kb' }));
 
 // Los estáticos van antes del rate limit: no deben consumir cuota de API.
+app.use('/vendor/bootstrap', express.static(path.join(__dirname, 'node_modules', 'bootstrap', 'dist'), {
+    maxAge: '7d'
+}));
+app.use('/vendor/bootstrap-icons', express.static(path.join(__dirname, 'node_modules', 'bootstrap-icons'), {
+    maxAge: '7d'
+}));
+app.use('/vendor/chart.js', express.static(path.join(__dirname, 'node_modules', 'chart.js', 'dist'), {
+    maxAge: '7d'
+}));
 app.use(express.static(path.join(__dirname, 'public'), {
     dotfiles: 'deny',
     maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0

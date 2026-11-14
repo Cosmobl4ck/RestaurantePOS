@@ -25,6 +25,18 @@ test('el navbar incluye accesos a pedidos, facturas y ventas', () => {
   assert.match(navbar, /title="Reportes"/);
 });
 
+test('el navbar móvil abre un aside izquierdo desde el logo', () => {
+  const navbar = read('views', 'partials', 'navbar.ejs');
+  assert.match(navbar, /id="mpSidebarToggle"/);
+  assert.match(navbar, /class="mp-brand"/);
+  assert.match(navbar, /<aside class="mp-sidebar" id="mpSidebar"/);
+  assert.match(navbar, /left:\s*0;/);
+  assert.match(navbar, /transform:\s*translateX\(-104%\)/);
+  assert.match(navbar, /body\.mp-sidebar-open \.mp-sidebar/);
+  assert.match(navbar, /event\.key === 'Escape'/);
+  assert.doesNotMatch(navbar, /navbar-toggler-icon/);
+});
+
 test('reportes construye una serie de 7 días locales con hoy en cero', () => {
   const reportes = read('routes', 'reportes.js');
   assert.match(reportes, /for \(let i = 6; i >= 0; i -= 1\)/);
@@ -34,6 +46,8 @@ test('reportes construye una serie de 7 días locales con hoy en cero', () => {
 test('las etiquetas del gráfico de ventas se formatean como fecha local', () => {
   const view = read('views', 'reportes.ejs');
   assert.match(view, /formatearDia/);
+  assert.match(view, /\/vendor\/chart\.js\/chart\.umd\.js/);
+  assert.doesNotMatch(view, /cdn\.jsdelivr\.net\/npm\/chart\.js/);
   assert.doesNotMatch(view, /new Date\(d\.dia\)\.toLocaleDateString\(\)/);
 });
 

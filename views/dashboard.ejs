@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Facturación</title>
     <link rel="icon" href="/img/logo-icon.svg">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/font/bootstrap-icons.css">
     <style>
         body {
             background-color: #08090A;
@@ -184,6 +184,19 @@
             animation: float 4s ease-in-out infinite;
             filter: drop-shadow(0 5px 15px rgba(0,0,0,0.1));
         }
+        .dashboard-hero-logo {
+            width: 100%;
+            max-width: min(300px, 55vw);
+        }
+        @media (max-width: 575.98px) {
+            .dashboard-main {
+                min-height: auto !important;
+                padding: 2rem 0 1rem;
+            }
+            .dashboard-hero-logo {
+                max-width: min(210px, 52vw);
+            }
+        }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -202,9 +215,9 @@
 <body>
     <%- include('partials/navbar') %>
 
-    <main class="d-flex flex-column align-items-center justify-content-center flex-grow-1" style="min-height: 70vh;">
+    <main class="dashboard-main d-flex flex-column align-items-center justify-content-center flex-grow-1" style="min-height: 70vh;">
         <div class="text-center fade-in">
-            <img src="/img/logo-500.svg" alt="MarrocosPOS" class="img-fluid logo-animated" style="max-width: 300px;">
+            <img src="/img/logo-500.svg" alt="MarrocosPOS" class="img-fluid logo-animated dashboard-hero-logo">
             <h2 class="mt-4 text-muted fw-light">Bienvenido, <%= locals.usuario ? usuario.nombre : 'Usuario' %></h2>
         </div>
     </main>
@@ -318,7 +331,7 @@
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css">

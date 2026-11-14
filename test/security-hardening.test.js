@@ -97,12 +97,12 @@ test('todas las vistas con navbar cargan Bootstrap e iconos y son documentos com
 
     assert.match(
       html,
-      /bootstrap@[\d.]+\/dist\/css\/bootstrap\.min\.css/,
+      /\/vendor\/bootstrap\/css\/bootstrap\.min\.css/,
       `${file} incluye el navbar pero no carga Bootstrap CSS`
     );
     assert.match(
       html,
-      /bootstrap-icons@[\d.]+\/font\/bootstrap-icons\.css/,
+      /\/vendor\/bootstrap-icons\/font\/bootstrap-icons\.css/,
       `${file} incluye el navbar pero no carga Bootstrap Icons`
     );
     assert.match(html, /<!DOCTYPE html>/i, `${file} no es un documento HTML completo`);
@@ -113,5 +113,8 @@ test('todas las vistas con navbar cargan Bootstrap e iconos y son documentos com
 
 test('login carga los iconos que usa', () => {
   const login = read('views', 'login.ejs');
-  assert.match(login, /bootstrap-icons@[\d.]+\/font\/bootstrap-icons\.css/);
+  const server = read('server.js');
+  assert.match(login, /\/vendor\/bootstrap-icons\/font\/bootstrap-icons\.css/);
+  assert.match(server, /app\.use\('\/vendor\/bootstrap'/);
+  assert.match(server, /app\.use\('\/vendor\/bootstrap-icons'/);
 });

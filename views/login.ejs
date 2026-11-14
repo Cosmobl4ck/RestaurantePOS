@@ -5,15 +5,91 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | MarrocosPOS</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/font/bootstrap-icons.css">
     <style>
-        body { background: #08090A; color: #E8EAED; height: 100vh; display: flex; align-items: center; }
-        .login-card { border-radius: 20px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .btn-login { border-radius: 10px; padding: 12px; font-weight: bold; }
-        .form-control { border-radius: 10px; padding: 12px; }
+        * { box-sizing: border-box; }
+        html { background: #08090A; }
+        body {
+            min-height: 100dvh;
+            margin: 0;
+            padding: 1.5rem;
+            background: #08090A;
+            color: #E8EAED;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        body > .container { width: min(100%, 646px); margin: 0 auto; }
+        body > .container > .row,
+        body > .container .col-md-5,
+        body > .container .col-lg-4 { width: 100%; margin: 0; }
+        .login-card {
+            width: 100%;
+            padding: clamp(1.8rem, 6vw, 3rem) !important;
+            border: 1px solid rgba(0, 161, 156, .55) !important;
+            border-radius: 20px;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, .45);
+        }
+        .login-card .text-center { text-align: center; }
+        .login-card h2 { margin: 0 0 .7rem; font-size: clamp(2rem, 7vw, 2.35rem); }
+        .login-card p { margin: 0; }
+        .login-card form { margin-top: 3rem; }
+        .login-card .mb-3 { margin-bottom: 1.75rem !important; }
+        .login-card .mb-4 { margin-bottom: 1.85rem !important; }
+        .login-card .form-label {
+            display: block;
+            margin-bottom: .65rem;
+            color: #E8EAED;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+        .login-card .form-control {
+            display: block;
+            width: 100%;
+            min-height: 62px;
+            padding: .8rem 1rem;
+            border: 1px solid #22262A;
+            border-radius: 12px;
+            background: #121518;
+            color: #E8EAED;
+            font: inherit;
+            font-size: 1.08rem;
+        }
+        .login-card .form-control:focus {
+            outline: 0;
+            border-color: #00D2BE;
+            box-shadow: 0 0 0 .2rem rgba(0, 210, 190, .18);
+        }
+        .login-card .btn-login {
+            display: block;
+            width: 100%;
+            min-height: 62px;
+            padding: .75rem 1rem;
+            border: 0;
+            border-radius: 12px;
+            background: #00A19C;
+            color: #06110F;
+            font: inherit;
+            font-size: 1.08rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .login-card .btn-login:hover { background: #00D2BE; }
+        .login-card .mt-4 { margin-top: 2.25rem !important; }
+        .login-card a { color: #00D2BE; }
+        @media (max-width: 575.98px) {
+            body { align-items: flex-start; padding: 2.25rem 1rem; }
+            .login-card { padding: 1.5rem !important; }
+            .login-card form { margin-top: 2.2rem; }
+        }
     </style>
     <link rel="stylesheet" href="/css/petronas.css?v=petronas1">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#00A19C">
+    <link rel="apple-touch-icon" href="/img/logo-500.svg">
+    <link rel="stylesheet" href="/css/pwa-install.css">
 </head>
 <body>
     <div class="container">
@@ -60,5 +136,6 @@
             </div>
         </div>
     </div>
+    <%- include('partials/pwa-install') %>
 </body>
 </html>
