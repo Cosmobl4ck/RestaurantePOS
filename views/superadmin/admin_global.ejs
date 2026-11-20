@@ -6,7 +6,7 @@
     <title>MarrocosPOS - Master Control Pro</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/font/bootstrap-icons.css">
-    <style>
+    <style nonce="<%= cspNonce %>">
         body { background-color: #08090A; color: #E8EAED; }
         
         .stats-grid {
@@ -430,7 +430,7 @@
 
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     
-    <script>
+    <script nonce="<%= cspNonce %>">
         // Buscador
         document.getElementById('busquedaRestaurante').addEventListener('keyup', function() {
             let filtro = this.value.toLowerCase();

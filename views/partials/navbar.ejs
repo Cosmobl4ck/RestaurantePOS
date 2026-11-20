@@ -1,4 +1,4 @@
-<style>
+<style nonce="<%= cspNonce %>">
     :root { --mp-accent:#00A19C; --mp-bg:#08090A; --mp-surface:#0D0E10; --mp-text:#E8EAED; --mp-muted:#9AA6AD; }
     body { background-color: var(--mp-bg); color: var(--mp-text); }
     .card { border: 1px solid #1A1D20; border-radius: 14px; box-shadow: 0 18px 45px rgba(0,0,0,.45); }
@@ -341,7 +341,7 @@ const rutaActual = String(locals.currentPath || '');
 const activo = (ruta) => ruta === '/kds/cocina' || ruta === '/kds/bar'
     ? rutaActual.startsWith(ruta)
     : rutaActual === ruta || rutaActual.startsWith(`${ruta}/`);
-const verDashboard = esAdmin;
+const verDashboard = esCaja;
 const verMesas = esOperacion && puede('pos.mesas');
 const verProductos = esCaja && puede('menu.productos');
 const verCaja = esCaja && puede('caja.basica');
@@ -552,9 +552,9 @@ const grupoAdmin = verAreas || verDesperdicios || verConfiguracion || verPersona
                 <span class="mp-plan-pill"><%= planTexto %></span>
             </div>
             <form action="/logout" method="post">
-                <button type="submit" class="mp-logout" title="Cerrar Sesión">
+                <button type="submit" class="mp-logout" title="Finalizar turno y cerrar sesión">
                     <i class="bi bi-box-arrow-right"></i>
-                    <span>Cerrar Sesión</span>
+                    <span>Finalizar turno</span>
                 </button>
             </form>
         </div>
@@ -563,7 +563,7 @@ const grupoAdmin = verAreas || verDesperdicios || verConfiguracion || verPersona
 
 <%- include('pwa-install') %>
 
-<script>
+<script nonce="<%= cspNonce %>">
     document.addEventListener('DOMContentLoaded', function () {
         const toggle = document.getElementById('mpSidebarToggle');
         const sidebar = document.getElementById('mpSidebar');

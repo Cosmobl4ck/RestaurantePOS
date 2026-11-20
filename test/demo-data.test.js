@@ -11,7 +11,7 @@ test('el navbar no contiene mojibake y conserva las etiquetas correctas', () => 
   assert.doesNotMatch(navbar, /Ã|Â|â€|ðŸ|�/);
   assert.match(navbar, /Menú/);
   assert.match(navbar, /Gestión de Personal/);
-  assert.match(navbar, /Cerrar Sesión/);
+  assert.match(navbar, /Finalizar turno/);
 });
 
 test('el navbar incluye accesos a pedidos, facturas y ventas', () => {

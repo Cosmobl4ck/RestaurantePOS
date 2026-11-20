@@ -8,7 +8,7 @@
     <!-- CSS de Bootstrap y Iconos -->
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/font/bootstrap-icons.css">
-    <style>
+    <style nonce="<%= cspNonce %>">
         body { background-color: #08090A; color: #E8EAED; }
     </style>
     <link rel="stylesheet" href="/css/petronas.css?v=petronas1">
@@ -82,12 +82,12 @@
     </div>
 
     <!-- Scripts Esenciales al final del Body -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/vendor/jquery/jquery-3.6.0.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/vendor/html2canvas/html2canvas.min.js" crossorigin="anonymous"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
     
-    <script>
+    <script nonce="<%= cspNonce %>">
     // Escapa datos de la BD antes de interpolarlos en HTML (previene XSS).
     function escapeHtml(value) {
         return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -155,7 +155,7 @@
             const fCierre = new Date(info.fecha_cierre);
 
             let htmlDetalle = `
-                <div id="captura-detalle" style="padding: 30px; background: white; font-family: 'Segoe UI', Roboto, sans-serif; width: 420px; color: #000; border: 1px solid #eee;">
+                <div id="captura-detalle" style="padding: 28px; background: white; font-family: 'Segoe UI', Roboto, sans-serif; width: 100%; max-width: 420px; margin: 0 auto; box-sizing: border-box; color: #000; border-radius: 14px; overflow: hidden;">
                     
                     <div style="text-align: center; margin-bottom: 10px;">
                         <img src="/img/logo-icon.svg" style="max-width: 100px; height: auto; display: inline-block;" alt="Logo">
@@ -209,10 +209,14 @@
 
             Swal.fire({
                 html: htmlDetalle,
-                width: '450px',
+                width: 'min(94vw, 470px)',
+                padding: 0,
+                showCloseButton: true,
                 showCancelButton: true,
-                confirmButtonText: '<i class="bi bi-download"></i> Descargar Imagen',
+                confirmButtonText: '<i class="bi bi-download"></i> Descargar',
                 cancelButtonText: 'Cerrar',
+                reverseButtons: true,
+                customClass: { popup: 'swal-factura' },
                 confirmButtonColor: '#00A19C'
             }).then((result) => {
                 if (result.isConfirmed) {

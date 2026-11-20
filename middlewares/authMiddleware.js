@@ -1,5 +1,6 @@
 const { supabase } = require('../config/supabase');
 const { normalizeRole } = require('./access');
+const { isAllowed: ipAllowed } = require('../utils/ip-access');
 const planService = require('../services/planService');
 
 // La licencia y el estado del usuario se revalidan contra la base de datos,
@@ -21,6 +22,21 @@ function sesionInvalida(req, res, message) {
     if (req.path.endsWith('/events')) return res.status(401).end();
     if (esperaJson(req)) return res.status(401).json({ error: message });
     return res.redirect('/login');
+}
+
+function ipBloqueada(req, permitida) {
+    if (!permitida) return false;
+    const rol = normalizeRole(req.session?.usuario?.rol);
+    if (['admin', 'gerente'].includes(rol)) return false;
+    return !ipAllowed(req.ip, permitida);
+}
+
+function bloquearIp(req, res) {
+    const message = 'Acceso solo desde la red del restaurante.';
+    req.session.destroy(() => {
+        if (esperaJson(req)) return res.status(403).json({ error: message });
+        return res.status(403).render('error', { error: { message, status: 403 } });
+    });
 }
 
 async function attachPlanContext(req, res) {
@@ -57,6 +73,7 @@ const verificarSesion = async (req, res, next) => {
             }
             return denegar(req, res, cache.status || 403, cache.message);
         }
+        if (ipBloqueada(req, cache.ipPermitida)) return bloquearIp(req, res);
         await attachPlanContext(req, res);
         return next();
     }
@@ -67,7 +84,7 @@ const verificarSesion = async (req, res, next) => {
         const [negocioResult, usuarioResult] = await Promise.all([
             supabase
                 .from('restaurantes')
-                .select('estado, fecha_vencimiento, nombre_comercial, plan')
+                .select('estado, fecha_vencimiento, nombre_comercial, plan, ip_permitida')
                 .eq('id', restauranteId)
                 .maybeSingle(),
             supabase
@@ -121,7 +138,12 @@ const verificarSesion = async (req, res, next) => {
             req.session.usuario.plan = planActual;
         }
 
-        req.session.licenseCheck = { at: Date.now(), ok: true };
+        if (ipBloqueada(req, negocio.ip_permitida)) {
+            req.session.licenseCheck = { at: Date.now(), ok: true, ipPermitida: negocio.ip_permitida };
+            return bloquearIp(req, res);
+        }
+
+        req.session.licenseCheck = { at: Date.now(), ok: true, ipPermitida: negocio.ip_permitida || null };
         await attachPlanContext(req, res);
         return next();
     } catch (error) {

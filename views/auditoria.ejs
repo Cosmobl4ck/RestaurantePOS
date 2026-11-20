@@ -8,7 +8,7 @@
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/css/petronas.css?v=petronas1">
-    <style>
+    <style nonce="<%= cspNonce %>">
         body { background-color: #08090A; color: #E8EAED; }
         .text-aqua { color: #00D2BE !important; }
         .audit-hero {
@@ -128,10 +128,82 @@
         @media (max-width: 991.98px) {
             .audit-stat .value { font-size: 1.3rem; }
         }
+        .audit-tabs { border-bottom-color: #1A1D20; }
+        .audit-tabs .nav-link {
+            color: #9AA6AD;
+            border: 0;
+            border-bottom: 2px solid transparent;
+            font-weight: 600;
+        }
+        .audit-tabs .nav-link:hover { color: #E8EAED; }
+        .audit-tabs .nav-link.active {
+            color: #00D2BE;
+            background: transparent;
+            border-bottom-color: #00D2BE;
+        }
+        .audit-detail-list {
+            display: grid;
+            grid-template-columns: minmax(110px, auto) 1fr;
+            gap: .25rem .9rem;
+            margin: 0;
+        }
+        .audit-detail-list dt { color: #9AA6AD; font-weight: 600; font-size: .82rem; }
+        .audit-detail-list dd { margin: 0; color: #E8EAED; font-size: .88rem; word-break: break-word; }
+        .audit-empleados {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            gap: .2rem .8rem;
+            max-height: 160px;
+            overflow: auto;
+            padding: .6rem .75rem;
+            border: 1px solid #1A1D20;
+            border-radius: 10px;
+            background: #0B0C0E;
+        }
+        .audit-empleados .form-check { margin: 0; }
+        .audit-empleados .form-check-label { font-size: .86rem; }
+        @media (max-width: 575.98px) {
+            .audit-detail-list { grid-template-columns: 1fr; }
+            .audit-detail-list dt { margin-top: .35rem; }
+        }
     </style>
 </head>
 <body>
 <%- include('partials/navbar') %>
+
+<%
+const etiquetasDetalle = {
+    rol: 'Rol', turno: 'Turno', monto_apertura: 'Monto de apertura',
+    monto_cierre: 'Monto de cierre', ventas_efectivo: 'Ventas en efectivo',
+    diferencia: 'Diferencia', forma_pago: 'Forma de pago', factura_id: 'Factura',
+    total: 'Total', already_invoiced: 'Ya facturado', nombre: 'Nombre',
+    email: 'Correo', direccion: 'Dirección', pin_reset: 'PIN restablecido',
+    configurada: 'Configurada', cantidad: 'Cantidad', mesa_id: 'Mesa',
+    pedido_id: 'Pedido', nombre_negocio: 'Negocio', plan: 'Plan',
+    accion: 'Acción', entidad: 'Entidad', usuario: 'Usuario'
+};
+const rolesDetalle = {
+    admin: 'Administrador', gerente: 'Gerente', cajero: 'Cajero',
+    mesero: 'Mesero', cocina: 'Cocina', bar: 'Bar'
+};
+const formatearDetalle = (clave, valor) => {
+    if (valor === true) return 'Sí';
+    if (valor === false) return 'No';
+    if (valor === null || valor === undefined || valor === '') return '—';
+    if (clave === 'rol' && rolesDetalle[valor]) return rolesDetalle[valor];
+    if (['monto_apertura', 'monto_cierre', 'ventas_efectivo', 'diferencia', 'total'].includes(clave)
+        && !Number.isNaN(Number(valor))) {
+        return `$${Number(valor).toFixed(2)}`;
+    }
+    if (Array.isArray(valor)) return valor.join(', ');
+    if (typeof valor === 'object') {
+        return Object.entries(valor)
+            .map(([k, v]) => `${etiquetasDetalle[k] || k}: ${v}`)
+            .join(' · ');
+    }
+    return String(valor);
+};
+%>
 
 <div class="container pb-5">
     <section class="audit-hero p-4 mb-4">
@@ -150,6 +222,26 @@
             </span>
         </div>
     </section>
+
+    <ul class="nav nav-tabs audit-tabs mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link <%= activeTab === 'eventos' ? 'active' : '' %>" id="tab-eventos-btn"
+                    data-bs-toggle="tab" data-bs-target="#tab-eventos" type="button" role="tab"
+                    aria-controls="tab-eventos" aria-selected="<%= activeTab === 'eventos' %>">
+                <i class="bi bi-activity me-1"></i>Eventos registrados
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link <%= activeTab === 'asistencia' ? 'active' : '' %>" id="tab-asistencia-btn"
+                    data-bs-toggle="tab" data-bs-target="#tab-asistencia" type="button" role="tab"
+                    aria-controls="tab-asistencia" aria-selected="<%= activeTab === 'asistencia' %>">
+                <i class="bi bi-clock-history me-1"></i>Asistencia de Personal
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade <%= activeTab === 'eventos' ? 'show active' : '' %>" id="tab-eventos" role="tabpanel" aria-labelledby="tab-eventos-btn">
 
     <% if (migrationMissing) { %>
         <div class="audit-card p-4">
@@ -205,6 +297,7 @@
         </div>
 
         <form class="audit-card p-3 mb-4" method="GET" action="/auditoria">
+    <input type="hidden" name="tab" value="eventos">
             <div class="row g-2 align-items-end">
                 <div class="col-12 col-lg-3">
                     <label class="form-label small text-secondary" for="audit-accion">Acción</label>
@@ -274,9 +367,8 @@
                         </thead>
                         <tbody>
                             <% eventos.forEach((evento) => { %>
-                                <% const detalle = evento.detalle && Object.keys(evento.detalle).length
-                                    ? JSON.stringify(evento.detalle, null, 2)
-                                    : ''; %>
+                                <% const detalleObj = evento.detalle && typeof evento.detalle === 'object' ? evento.detalle : null; %>
+                                <% const detalleEntradas = detalleObj ? Object.entries(detalleObj) : []; %>
                                 <tr>
                                     <td class="small text-secondary text-nowrap"><%= evento.creado_en_texto %></td>
                                     <td>
@@ -300,10 +392,15 @@
                                         <% } %>
                                     </td>
                                     <td>
-                                        <% if (detalle) { %>
+                                        <% if (detalleEntradas.length) { %>
                                             <details>
                                                 <summary class="small text-aqua">Ver detalle</summary>
-                                                <pre class="audit-detail mt-2 mb-0"><%= detalle %></pre>
+                                                <dl class="audit-detail-list mt-2 mb-0">
+                                                    <% detalleEntradas.forEach(([clave, valor]) => { %>
+                                                        <dt><%= etiquetasDetalle[clave] || clave.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) %></dt>
+                                                        <dd><%= formatearDetalle(clave, valor) %></dd>
+                                                    <% }) %>
+                                                </dl>
                                             </details>
                                         <% } else { %>
                                             <span class="text-secondary">—</span>
@@ -334,10 +431,134 @@
             <% } %>
         </div>
     <% } %>
-</div>
+        </div><!-- /tab-eventos -->
+
+        <div class="tab-pane fade <%= activeTab === 'asistencia' ? 'show active' : '' %>" id="tab-asistencia" role="tabpanel" aria-labelledby="tab-asistencia-btn">
+
+        <!-- REPORTE DE ASISTENCIA -->
+        <%
+          const seleccionados = new Set((asistSeleccionados || []).map(Number));
+          const empleadosQuery = (asistSeleccionados || []).join(',');
+          const exportUrl = `/auditoria/asistencia/exportar?asist_desde=${asistDesde}&asist_hasta=${asistHasta}${empleadosQuery ? `&asist_empleados=${empleadosQuery}` : ''}`;
+        %>
+        <div class="audit-card p-4 mt-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div>
+                    <h2 class="h5 mb-1"><i class="bi bi-clock-history me-2"></i>Reporte de asistencia</h2>
+                    <p class="small text-secondary mb-0">
+                        Entradas, salidas y horas por empleado. Horas = primera entrada a última salida del día.
+                    </p>
+                </div>
+                <a class="btn btn-sm btn-outline-success" href="<%= exportUrl %>">
+                    <i class="bi bi-file-earmark-excel me-1"></i>Descargar Excel
+                </a>
+            </div>
+
+            <form method="GET" action="/auditoria" class="row g-2 align-items-end mb-3">
+                <input type="hidden" name="tab" value="asistencia">
+                <div class="col-6 col-md-3">
+                    <label class="form-label small text-secondary" for="asist-desde">Desde</label>
+                    <input class="form-control" id="asist-desde" type="date" name="asist_desde" value="<%= asistDesde %>">
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small text-secondary" for="asist-hasta">Hasta</label>
+                    <input class="form-control" id="asist-hasta" type="date" name="asist_hasta" value="<%= asistHasta %>">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-secondary">
+                        Empleados <span class="text-secondary">(sin selección = todos)</span>
+                    </label>
+                    <div class="audit-empleados">
+                        <% (empleadosFiltro || []).forEach((emp) => { %>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="asist_empleados"
+                                       id="emp-<%= emp.id %>" value="<%= emp.id %>"
+                                       <%= seleccionados.has(Number(emp.id)) ? 'checked' : '' %>>
+                                <label class="form-check-label" for="emp-<%= emp.id %>">
+                                    <%= emp.nombre %> <span class="text-secondary">(<%= emp.rol %>)</span>
+                                </label>
+                            </div>
+                        <% }) %>
+                    </div>
+                </div>
+                <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+                    <a href="/auditoria?tab=asistencia" class="btn btn-outline-secondary">Limpiar</a>
+                </div>
+            </form>
+
+            <div class="row g-3 mb-3">
+                <div class="col-6 col-lg-3">
+                    <div class="audit-stat">
+                        <div class="label">Empleados</div>
+                        <div class="value"><%= asistencia.resumen.empleados %></div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="audit-stat">
+                        <div class="label">Entradas</div>
+                        <div class="value"><%= asistencia.resumen.entradas %></div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="audit-stat">
+                        <div class="label">Salidas</div>
+                        <div class="value"><%= asistencia.resumen.salidas %></div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="audit-stat">
+                        <div class="label">Horas totales</div>
+                        <div class="value"><%= asistencia.resumen.totalHoras %></div>
+                    </div>
+                </div>
+            </div>
+
+            <% if (!asistencia.rows.length) { %>
+                <div class="audit-empty">
+                    <div class="mb-2"><i class="bi bi-calendar-x"></i></div>
+                    <div class="fw-semibold mb-1">Sin registros en este rango</div>
+                    <div class="small">Ajusta las fechas o espera a que se registren entradas y salidas.</div>
+                </div>
+            <% } else { %>
+                <div class="table-responsive">
+                    <table class="table audit-table mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Día</th>
+                                <th scope="col">Empleado</th>
+                                <th scope="col">Rol</th>
+                                <th scope="col">Entrada</th>
+                                <th scope="col">Salida</th>
+                                <th scope="col">Horas</th>
+                                <th scope="col">IP entrada</th>
+                                <th scope="col">IP salida</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% asistencia.rows.forEach((fila) => { %>
+                                <tr>
+                                    <td class="text-nowrap"><%= fila.dia %></td>
+                                    <td><%= fila.empleado %></td>
+                                    <td class="text-secondary"><%= fila.rol %></td>
+                                    <td class="text-aqua"><%= fila.entrada_texto %></td>
+                                    <td class="text-aqua"><%= fila.salida_texto %></td>
+                                    <td><%= fila.horas_texto %></td>
+                                    <td class="small text-secondary"><%= fila.ip_entrada || '—' %></td>
+                                    <td class="small text-secondary"><%= fila.ip_salida || '—' %></td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            <% } %>
+        </div>
+        </div><!-- /tab-asistencia -->
+    </div><!-- /tab-content -->
+    </div>
 
 <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-<script>
+<script nonce="<%= cspNonce %>">
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((element) => {
         new bootstrap.Tooltip(element);
     });

@@ -6,7 +6,7 @@
     <title>Gestión de Clientes</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/font/bootstrap-icons.css">
-    <style>
+    <style nonce="<%= cspNonce %>">
         body {
             background-color: #08090A;
             color: #E8EAED;
@@ -44,6 +44,7 @@
 </head>
 <body>
     <%- include('partials/navbar') %>
+<% const puedeBorrarClientes = ['admin', 'gerente', 'cajero'].includes((locals.usuario && locals.usuario.rol) || ''); %>
 
     <div class="container">
         <div class="card">
@@ -93,12 +94,14 @@
                                                     title="Editar">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
+                                            <% if (puedeBorrarClientes) { %>
                                             <button class="btn btn-sm btn-outline-danger"
                                                     data-cliente-id="<%= cliente.id %>"
                                                     data-action="eliminar"
                                                     title="Eliminar">
                                                 <i class="bi bi-trash"></i>
                                             </button>
+                                            <% } %>
                                         </div>
                                     </td>
                                 </tr>
@@ -149,7 +152,7 @@
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/vendor/jquery/jquery-3.6.0.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/js/clientes.js"></script>
 </body>

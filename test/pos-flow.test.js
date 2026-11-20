@@ -24,7 +24,7 @@ test('el POS maneja la respuesta de recuperación y muestra el error', () => {
 
   assert.match(client, /if \(!resp\.ok\) throw new Error\(data\.error/);
   assert.match(client, /if \(!data\.pedido\?\.id\)/);
-  assert.match(client, /Swal\.fire\(\{ icon: 'error', title: 'No se pudo abrir la mesa'/);
+  assert.match(client, /swalPos\(\{ icon: 'error', title: 'No se pudo abrir la mesa'/);
 });
 
 test('agregar un item registra el usuario autenticado', () => {

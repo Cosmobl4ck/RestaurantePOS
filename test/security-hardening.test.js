@@ -81,10 +81,59 @@ test('existe migración de unicidad de usuario por tenant', () => {
   assert.match(migration, /lower\(nombre\)/);
 });
 
-test('la CSP permite la fuente de Bootstrap Icons y los estilos de cdnjs', () => {
+test('la CSP no usa unsafe-inline y localiza los CDN', () => {
   const server = read('server.js');
-  assert.match(server, /"font-src": \[[^\]]*https:\/\/cdn\.jsdelivr\.net/);
-  assert.match(server, /"style-src": \[[^\]]*https:\/\/cdnjs\.cloudflare\.com/);
+  // script-src/style-src dependen de nonce, no de 'unsafe-inline'.
+  assert.match(server, /"script-src": \["'self'", \(req, res\) => `'nonce-\$\{res\.locals\.cspNonce\}'`\]/);
+  assert.match(server, /"script-src-attr": \["'none'"\]/);
+  assert.match(server, /"style-src": \[[^\]]*fonts\.googleapis\.com/);
+  assert.doesNotMatch(server, /"script-src": \[[^\]]*unsafe-inline/);
+  assert.doesNotMatch(server, /"style-src": \[[^\]]*unsafe-inline/);
+  // Las librerias ya no se sirven desde CDN.
+  assert.doesNotMatch(server, /code\.jquery\.com|cdnjs\.cloudflare\.com/);
+  assert.doesNotMatch(server, /"script-src": \[[^\]]*cdn\.jsdelivr\.net/);
+  assert.doesNotMatch(server, /"font-src": \[[^\]]*cdn\.jsdelivr\.net/);
+  // El nonce se genera por request antes de helmet.
+  assert.ok(server.indexOf('res.locals.cspNonce = crypto.randomBytes') < server.indexOf('app.use(helmet('));
+});
+
+test('ninguna vista usa handlers inline y todo script/estilo inline lleva nonce', () => {
+  const viewsDir = path.join(root, 'views');
+  const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const abs = path.join(dir, e.name);
+    if (e.isDirectory()) return walk(abs);
+    return e.name.endsWith('.ejs') ? [abs] : [];
+  });
+
+  for (const file of walk(viewsDir)) {
+    const html = fs.readFileSync(file, 'utf8');
+    const rel = path.relative(root, file);
+    assert.doesNotMatch(html, /\son[a-z]+\s*=\s*["']/, `${rel} usa un handler inline`);
+    const inlineScripts = html.match(/<script(?![^>]*\bsrc=)[^>]*>/gi) || [];
+    for (const tag of inlineScripts) {
+      assert.match(tag, /nonce=/, `${rel} tiene un <script> inline sin nonce`);
+    }
+    const styles = html.match(/<style[^>]*>/gi) || [];
+    for (const tag of styles) {
+      assert.match(tag, /nonce=/, `${rel} tiene un <style> sin nonce`);
+    }
+  }
+});
+
+test('las librerias de frontend se sirven desde /vendor y no desde CDN', () => {
+  for (const lib of ['jquery/jquery-3.6.0.min.js', 'sweetalert2/sweetalert2.all.min.js', 'select2/select2.min.js', 'html2canvas/html2canvas.min.js', 'jspdf/jspdf.umd.min.js']) {
+    assert.equal(exists('public', 'vendor', ...lib.split('/')), true, `falta public/vendor/${lib}`);
+  }
+  const viewsDir = path.join(root, 'views');
+  const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const abs = path.join(dir, e.name);
+    if (e.isDirectory()) return walk(abs);
+    return e.name.endsWith('.ejs') ? [abs] : [];
+  });
+  for (const file of walk(viewsDir)) {
+    const html = fs.readFileSync(file, 'utf8');
+    assert.doesNotMatch(html, /(code\.jquery\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com)/, `${path.relative(root, file)} aun referencia un CDN`);
+  }
 });
 
 test('todas las vistas con navbar cargan Bootstrap e iconos y son documentos completos', () => {

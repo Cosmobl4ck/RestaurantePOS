@@ -1,4 +1,4 @@
-const CACHE_NAME = 'marrocos-pos-shell-v3';
+﻿const CACHE_NAME = 'marrocos-pos-shell-v7';
 const APP_SHELL = [
   '/login',
   '/manifest.webmanifest',
@@ -10,7 +10,17 @@ const APP_SHELL = [
   '/vendor/bootstrap/js/bootstrap.bundle.min.js',
   '/vendor/bootstrap-icons/font/bootstrap-icons.css',
   '/vendor/bootstrap-icons/font/fonts/bootstrap-icons.woff2',
-  '/vendor/chart.js/chart.umd.js'
+  '/vendor/chart.js/chart.umd.js',
+  '/vendor/jquery/jquery-3.6.0.min.js',
+  '/vendor/sweetalert2/sweetalert2.all.min.js',
+  '/vendor/sweetalert2/theme-bootstrap-4.min.css',
+  '/vendor/select2/select2.min.css',
+  '/vendor/select2/select2.min.js',
+  '/vendor/select2/select2-bootstrap-5-theme.min.css',
+  '/vendor/animate.css/animate.min.css',
+  '/vendor/html2canvas/html2canvas.min.js',
+  '/vendor/jspdf/jspdf.umd.min.js',
+  '/vendor/jspdf/jspdf.plugin.autotable.min.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -34,3 +44,6 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
 });
+
+
+

@@ -445,7 +445,7 @@ router.post('/mesa/desbloquear', async (req, res) => {
         const usuario = getUsuario(req);
         if (!usuario) return res.status(401).json({ success: false });
 
-        if (!['admin', 'cajero', 'gerente'].includes(usuario.rol)) {
+        if (!['admin', 'gerente'].includes(usuario.rol)) {
             return res.status(403).json({ success: false, message: 'Sin permiso para desbloquear mesas.' });
         }
 

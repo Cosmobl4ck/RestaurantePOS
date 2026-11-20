@@ -4,6 +4,7 @@ const { supabase } = require('../config/supabase');
 
 // IMPORTAR AL GUARDIA DE SEGURIDAD
 const { verificarSesion } = require('../middlewares/authMiddleware');
+const { requirePermission } = require('../middlewares/access');
 
 // ==========================================
 // 1. GET /clientes - Mostrar página
@@ -172,7 +173,7 @@ router.put('/:id', verificarSesion, async (req, res) => {
 // ==========================================
 // 6. DELETE /clientes/:id - Eliminar cliente
 // ==========================================
-router.delete('/:id', verificarSesion, async (req, res) => {
+router.delete('/:id', verificarSesion, requirePermission('customers.delete'), async (req, res) => {
     try {
         const restauranteId = req.session.usuario.restaurante_id;
         const clienteId = Number(req.params.id);

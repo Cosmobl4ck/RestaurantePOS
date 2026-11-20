@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Factura #<%= factura.id %> — <%= config.nombre_negocio || 'RestaurantePOS' %></title>
-    <style>
+    <style nonce="<%= cspNonce %>">
         :root { --ancho: <%= Number(config.ancho_papel) === 58 ? '58mm' : '80mm' %>; }
         * { box-sizing: border-box; }
         body {
@@ -72,8 +72,8 @@
             : (detalles || []).reduce((acc, d) => acc + Number(d.subtotal || 0), 0);
     %>
     <div class="acciones">
-        <button type="button" class="btn-imprimir" onclick="window.print()">Imprimir</button>
-        <button type="button" class="btn-cerrar" onclick="window.close()">Cerrar</button>
+        <button type="button" class="btn-imprimir">Imprimir</button>
+        <button type="button" class="btn-cerrar">Cerrar</button>
     </div>
 
     <div class="ticket">
@@ -136,5 +136,10 @@
             <%= config.pie_pagina || '¡Gracias por su preferencia!' %>
         </div>
     </div>
+
+    <script nonce="<%= cspNonce %>">
+        document.querySelector('.btn-imprimir').addEventListener('click', () => window.print());
+        document.querySelector('.btn-cerrar').addEventListener('click', () => window.close());
+    </script>
 </body>
 </html>

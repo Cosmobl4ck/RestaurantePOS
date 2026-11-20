@@ -6,7 +6,7 @@
     <title>Cocina — MarrocosPOS</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/font/bootstrap-icons.css">
-    <style>
+    <style nonce="<%= cspNonce %>">
         * { box-sizing: border-box; }
         body {
             background: #08090A;
@@ -338,7 +338,7 @@
 
 <div id="toast-container"></div>
 
-<script>
+<script nonce="<%= cspNonce %>">
     window.tipoMonitor = 'cocina';
     window.KDS_TIEMPOS_HABILITADOS = <%= locals.planPuede && locals.planPuede('kds.tiempos') ? 'true' : 'false' %>;
 </script>

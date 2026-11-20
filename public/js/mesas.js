@@ -1,3 +1,15 @@
+window.swalPos = function (opts) {
+    return Swal.fire(Object.assign({
+        target: document.body,
+        backdrop: true,
+        confirmButtonText: 'Aceptar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true,
+        width: 'min(92vw, 430px)',
+        customClass: { popup: 'swal-pos' }
+    }, opts || {}));
+};
+
 // 1. Funciones Globales
 function cerrarMenuLateral() {
     const canvasElement = document.getElementById('canvasPedido');
@@ -12,24 +24,22 @@ window.seleccionarProducto = async function(p, opciones = {}) {
     canvasEl.removeAttribute('tabindex');
 
     // 1️⃣ Cantidad
-    const { value: cantidadRes } = await Swal.fire({
+    const { value: cantidadRes } = await swalPos({
         title: `Cantidad: ${p.nombre}`,
         input: 'number',
         inputValue: 1,
         showCancelButton: true,
-        confirmButtonText: 'Siguiente',
-        target: canvasEl 
-    });
+        confirmButtonText: 'Siguiente',});
 
     if (!cantidadRes) return;
 
     // 2️⃣ Nota
-    const { value: notaRes } = await Swal.fire({
+    const { value: notaRes } = await swalPos({
         title: 'Agrega una nota',
         input: 'text',
         inputPlaceholder: 'Ej: sin cebolla...',
         showCancelButton: true,
-        target: canvasEl
+        confirmButtonText: 'Agregar'
     });
 
     try {
@@ -41,7 +51,6 @@ window.seleccionarProducto = async function(p, opciones = {}) {
             body: JSON.stringify({
                 producto_id: p.id,
                 cantidad: Number(cantidadRes),
-                precio: Number(p.precio_unidad || p.precio_unitario),
                 nota: notaRes || '',
                 unidad: 'UND',
                 alergia_aviso: String(opciones.alergiaAviso || '').trim().slice(0, 200)
@@ -53,12 +62,12 @@ window.seleccionarProducto = async function(p, opciones = {}) {
             throw new Error(errorData.error || "Error al agregar producto");
         }
 
-        Swal.fire({ icon: 'success', title: 'Agregado', timer: 800, showConfirmButton: false, target: canvasEl });
+        swalPos({ icon: 'success', title: 'Agregado', timer: 800, showConfirmButton: false,});
         if (window.recargarItemsActuales) window.recargarItemsActuales(pedidoId);
 
     } catch (err) {
         console.error("❌ Error:", err);
-        Swal.fire({ icon: 'error', title: 'Error', text: err.message, target: canvasEl });
+        swalPos({ icon: 'error', title: 'Error', text: err.message,});
     }
 };
 
@@ -71,11 +80,13 @@ $(function() {
 
     window.gestionarMesa = function(id, numero, estado) {
         if (estado === 'libre') {
-            Swal.fire({
+            swalPos({
                 title: `Mesa #${numero}`,
                 text: "Nombre del cliente:",
                 input: 'text',
+                inputPlaceholder: 'Ej. Juan Pérez',
                 showCancelButton: true,
+                confirmButtonText: 'Abrir mesa',
                 inputValidator: (value) => { if (!value) return '¡Necesitas un nombre!'; }
             }).then((result) => {
                 if (result.isConfirmed) abrirMesaNueva(id, result.value);
@@ -103,7 +114,7 @@ $(function() {
             });
             if(!resp.ok) throw new Error("Error al abrir mesa");
             location.reload();
-        } catch(err) { Swal.fire({icon:'error', title: err.message}); }
+        } catch(err) { swalPos({icon:'error', title: err.message}); }
     }
 
     async function recuperarPedido(mesaId) {
@@ -121,7 +132,7 @@ $(function() {
             canvas.show();
         } catch(err) {
             console.error("Error recuperando pedido:", err);
-            Swal.fire({ icon: 'error', title: 'No se pudo abrir la mesa', text: err.message });
+            swalPos({ icon: 'error', title: 'No se pudo abrir la mesa', text: err.message });
         }
     }
 
@@ -185,11 +196,10 @@ $(function() {
         const aviso = check.checked ? detalle.value.trim() : '';
 
         if (check.checked && !aviso) {
-            Swal.fire({
+            swalPos({
                 icon: 'warning',
                 title: 'Falta la alergia',
-                text: 'Escribe a qué ingrediente es alérgico el cliente.',
-                target: document.getElementById('modalInfoProducto')
+                text: 'Escribe a qué ingrediente es alérgico el cliente.'
             });
             detalle.focus();
             return;
@@ -328,37 +338,63 @@ $(function() {
         try {
             const pedidoId = $('#pedidoMesa').data('pedido-id');
             if(!pedidoId || items.length === 0) {
-                return Swal.fire({ icon: 'warning', title: 'Pedido vacío', target: '#canvasPedido' });
+                return swalPos({ icon: 'warning', title: 'Pedido vacío',});
             }
 
             const totalPedido = items.reduce((acc, it) => acc + (Number(it.subtotal || (it.cantidad * (it.precio_unitario || it.precio)))), 0);
 
-            const { value: formaPago } = await Swal.fire({
-                title: `Total: ${formatear(totalPedido)}`,
+            const totalTexto = formatear(totalPedido);
+            const anchoPago = 'min(92vw, 430px)';
+
+            const { value: formaPago, isConfirmed } = await swalPos({
+                width: anchoPago,
+                title: 'Cobrar pedido',
+                html: `<p class="swal-pago-total">Total a pagar</p><p class="swal-pago-monto">${totalTexto}</p>`,
                 input: 'select',
                 inputOptions: { efectivo: '💵 Efectivo', transferencia: '💳 Transferencia' },
+                inputValue: 'efectivo',
+                inputValidator: (v) => (!v ? 'Selecciona una forma de pago.' : undefined),
                 showCancelButton: true,
-                target: '#canvasPedido'
+                confirmButtonText: 'Cobrar',
+                cancelButtonText: 'Cancelar',
+                reverseButtons: true
             });
 
-            if(!formaPago) return;
+            if(!isConfirmed) return;
 
             if(formaPago === 'efectivo') {
-                const { value: entregado } = await Swal.fire({
+                const { value: entregado, isConfirmed: pagoOk } = await swalPos({
+                    width: anchoPago,
                     title: '¿Con cuánto paga?',
+                    html: `<p class="swal-pago-total">Total a pagar</p><p class="swal-pago-monto">${totalTexto}</p>`,
                     input: 'number',
                     inputValue: totalPedido,
+                    inputAttributes: { min: 0, step: '0.01', inputmode: 'decimal' },
                     showCancelButton: true,
-                    target: '#canvasPedido',
-                    inputValidator: (v) => { if(Number(v) < totalPedido) return 'Dinero insuficiente'; }
+                    confirmButtonText: 'Calcular cambio',
+                    cancelButtonText: 'Cancelar',
+                    reverseButtons: true,
+                    inputValidator: (v) => {
+                        if(v === '' || v === null) return 'Ingresa el monto recibido.';
+                        if(Number(v) < totalPedido) return 'Dinero insuficiente.';
+                    }
                 });
-                if(!entregado) return;
-                
-                const cambio = Number(entregado) - totalPedido;
-                await Swal.fire({
-                    title: 'Cambio:',
-                    html: `<h1 class="display-4 text-success">${formatear(cambio)}</h1>`,
-                    target: '#canvasPedido'
+                if(!pagoOk) return;
+
+                const recibido = Number(entregado);
+                const cambio = recibido - totalPedido;
+                await swalPos({
+                    width: anchoPago,
+                    title: 'Cambio',
+                    html: `
+                        <div class="swal-cambio">
+                            <span>Total: ${totalTexto}</span>
+                            <span>Recibido: ${formatear(recibido)}</span>
+                            <strong>${formatear(cambio)}</strong>
+                            <small>Entrega este cambio al cliente.</small>
+                        </div>`,
+                    confirmButtonText: 'Aceptar',
+                    showCancelButton: false
                 });
             }
 
@@ -372,10 +408,16 @@ $(function() {
             if(!resp.ok) throw new Error(dataRespuesta.error || "Error al facturar");
 
             cerrarMenuLateral();
-            Swal.fire({ icon: 'success', title: 'Venta Cerrada' }).then(() => location.reload());
+            swalPos({
+                width: 'min(92vw, 430px)',
+                icon: 'success',
+                title: 'Venta cerrada',
+                html: `<p class="swal-pago-total">Total cobrado</p><p class="swal-pago-monto">${totalTexto}</p>`,
+                confirmButtonText: 'Aceptar'
+            }).then(() => location.reload());
 
         } catch (err) {
-            Swal.fire({ icon: 'error', title: 'Error', text: err.message, target: '#canvasPedido' });
+            swalPos({ icon: 'error', title: 'Error', text: err.message,});
         }
     });
 
@@ -383,7 +425,7 @@ $(function() {
     $('#btnEnviarCocina').on('click', async () => {
         const pedidoId = $('#pedidoMesa').data('pedido-id');
         if (!pedidoId) {
-            return Swal.fire({ icon: 'warning', title: 'Sin pedido', text: 'Abre un pedido antes de enviar la comanda.', target: '#canvasPedido' });
+            return swalPos({ icon: 'warning', title: 'Sin pedido', text: 'Abre un pedido antes de enviar la comanda.',});
         }
         const btn = document.getElementById('btnEnviarCocina');
         if (btn) btn.disabled = true;
@@ -396,18 +438,16 @@ $(function() {
             const data = await resp.json();
             if (!resp.ok) throw new Error(data.error || 'No se pudo enviar la comanda.');
             const enviados = Number(data.enviados || 0);
-            await Swal.fire({
+            await swalPos({
                 icon: enviados > 0 ? 'success' : 'info',
                 title: enviados > 0 ? 'Comanda enviada' : 'Sin cambios',
                 text: enviados > 0 ? `${enviados} producto(s) enviados a producción.` : 'No hay productos pendientes por enviar.',
                 timer: enviados > 0 ? 1400 : undefined,
-                showConfirmButton: enviados === 0,
-                target: '#canvasPedido'
-            });
+                showConfirmButton: enviados === 0,});
             if (window.recargarItemsActuales) await window.recargarItemsActuales(pedidoId);
             if (enviados > 0) cerrarMenuLateral();
         } catch (err) {
-            Swal.fire({ icon: 'error', title: 'Error al enviar', text: err.message, target: '#canvasPedido' });
+            swalPos({ icon: 'error', title: 'Error al enviar', text: err.message,});
         } finally {
             if (btn) btn.disabled = false;
         }

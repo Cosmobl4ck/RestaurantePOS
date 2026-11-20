@@ -7,7 +7,7 @@
     <link rel="icon" href="/img/logo-icon.svg">
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/font/bootstrap-icons.css">
-    <style>
+    <style nonce="<%= cspNonce %>">
         :root {
             /* Colores extraídos de tu imagen */
             --pos-dark-bg: #0D0E10;      /* Carbono Petronas */
@@ -239,7 +239,7 @@
     </div>
 
     <!-- Offcanvas para Pedidos -->
-    <div class="offcanvas offcanvas-end shadow" tabindex="-1" id="canvasPedido" style="width: 450px;">
+    <div class="offcanvas offcanvas-end shadow" tabindex="-1" id="canvasPedido">
         
         <!-- HEADER ACTUALIZADO CON COLORES DE LA MARCA -->
         <div class="offcanvas-header bg-petronas text-white border-bottom border-teal" style="border-bottom-width: 3px !important;">
@@ -381,12 +381,12 @@
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/vendor/jquery/jquery-3.6.0.min.js"></script>
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
     <script src="/js/mesas.js"></script>
 
-    <script>
+    <script nonce="<%= cspNonce %>">
     document.getElementById('btnMoverMesaHeader')?.addEventListener('click', async function() {
     // 1. Extraer IDs usando los nombres exactos detectados en consola
     const $pedidoMesa = $('#pedidoMesa');
@@ -401,12 +401,10 @@
 
     // 2. Validación inmediata
     if (!pedidoId || !mesaOrigenId) {
-        return Swal.fire({
+        return swalPos({
             icon: 'error',
             title: 'Error de datos',
-            text: `No se pudo obtener la información (P:${pedidoId} M:${mesaOrigenId}).`,
-            target: document.getElementById('canvasPedido')
-        });
+            text: `No se pudo obtener la información (P:${pedidoId} M:${mesaOrigenId}).`,});
     }
 
     const canvasEl = document.getElementById('canvasPedido');
@@ -424,19 +422,17 @@
         );
 
         if (mesasLibres.length === 0) {
-            return Swal.fire({
+            return swalPos({
                 title: 'Sin espacio',
                 text: 'No hay otras mesas libres disponibles.',
-                icon: 'warning',
-                target: canvasEl
-            });
+                icon: 'warning',});
         }
 
         const opciones = {};
         mesasLibres.forEach(m => { opciones[m.id] = `${m.numero}`; });
 
         // 4. Preguntar destino
-        const { value: mesaDestinoId } = await Swal.fire({
+        const { value: mesaDestinoId } = await swalPos({
             title: 'Mover pedido',
             text: `¿A qué mesa quieres trasladar el pedido de ${numeroMesaOrigen}?`,
             input: 'select',
@@ -444,15 +440,12 @@
             inputPlaceholder: 'Selecciona destino...',
             showCancelButton: true,
             confirmButtonText: 'Trasladar Ahora',
-            confirmButtonColor: '#00A19C', /* Petronas Teal */
-            target: canvasEl
-        });
+            confirmButtonColor: '#00A19C', /* Petronas Teal */});
 
         if (mesaDestinoId) {
-            Swal.fire({ 
+            swalPos({ 
                 title: 'Procesando...', 
-                allowOutsideClick: false, 
-                target: canvasEl,
+                allowOutsideClick: false,
                 didOpen: () => Swal.showLoading() 
             });
 
@@ -469,11 +462,10 @@
             const result = await response.json();
             
             if (result.success) {
-                await Swal.fire({
+                await swalPos({
                     icon: 'success',
                     title: '¡Movimiento Exitoso!',
                     text: `Pedido trasladado a la mesa ${opciones[mesaDestinoId]}`,
-                    target: canvasEl,
                     confirmButtonColor: '#00A19C'
                 });
                 location.reload();
@@ -483,12 +475,10 @@
         }
     } catch (error) {
         console.error("❌ Error en movimiento:", error);
-        Swal.fire({
+        swalPos({
             icon: 'error',
             title: 'No se pudo mover',
-            text: error.message,
-            target: canvasEl
-        });
+            text: error.message,});
     }
 });
 
@@ -500,7 +490,7 @@
     const canvasEl = document.getElementById('canvasPedido');
 
     if (!mesaId) {
-        return Swal.fire({ icon: 'warning', title: 'Sin mesa seleccionada', target: canvasEl });
+        return swalPos({ icon: 'warning', title: 'Sin mesa seleccionada',});
     }
 
     try {
@@ -510,23 +500,20 @@
         // =====================================================
         if (pedidoId) {
 
-            const { isConfirmed } = await Swal.fire({
+            const { isConfirmed } = await swalPos({
                 icon: 'warning',
                 title: 'Limpiar ticket actual',
                 text: 'Se cancelará el pedido completo, se devolverá su stock y la mesa quedará disponible si no tiene otro pedido activo.',
                 showCancelButton: true,
                 confirmButtonText: 'Sí, cancelar pedido',
                 cancelButtonText: 'Volver',
-                confirmButtonColor: '#EF4444',
-                target: canvasEl
-            });
+                confirmButtonColor: '#EF4444',});
 
             if (!isConfirmed) return;
 
-            Swal.fire({
+            swalPos({
                 title: 'Limpiando...',
                 allowOutsideClick: false,
-                target: canvasEl,
                 didOpen: () => Swal.showLoading()
             });
 
@@ -537,7 +524,7 @@
             const data = await resp.json();
             if (!resp.ok) throw new Error(data.error || 'No se pudo limpiar el ticket');
 
-            await Swal.fire({
+            await swalPos({
                 icon: 'success',
                 title: 'Pedido cancelado',
                 text: 'El stock y el estado de la mesa fueron conciliados.',
@@ -549,21 +536,17 @@
             return;
         }
 
-        await Swal.fire({
+        await swalPos({
             icon: 'info',
             title: 'Sin pedido activo',
-            text: 'No existe un pedido que pueda cancelarse desde esta pantalla.',
-            target: canvasEl
-        });
+            text: 'No existe un pedido que pueda cancelarse desde esta pantalla.',});
 
     } catch (err) {
         console.error('❌ Error:', err);
-        Swal.fire({
+        swalPos({
             icon: 'error',
             title: 'Error',
-            text: err.message,
-            target: canvasEl
-        });
+            text: err.message,});
     }
 });    
     </script>

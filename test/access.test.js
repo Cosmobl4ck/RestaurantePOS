@@ -28,6 +28,49 @@ test('los roles operativos no heredan permisos administrativos', () => {
   assert.equal(hasPermission('bar', 'floorplan.edit'), false);
 });
 
+test('la matriz aplicada separa edición de borrado y cierra acciones sensibles', () => {
+  // Productos: cajero solo consulta.
+  assert.equal(hasPermission('cajero', 'products.view'), true);
+  assert.equal(hasPermission('cajero', 'products.edit'), false);
+  assert.equal(hasPermission('cajero', 'products.delete'), false);
+  assert.equal(hasPermission('gerente', 'products.edit'), true);
+  assert.equal(hasPermission('gerente', 'products.delete'), true);
+
+  // Cancelar pedidos: mesero no.
+  assert.equal(hasPermission('mesero', 'orders.cancel'), false);
+  assert.equal(hasPermission('cajero', 'orders.cancel'), true);
+
+  // Reportes: mesero no.
+  assert.equal(hasPermission('mesero', 'reports.view'), false);
+  assert.equal(hasPermission('cajero', 'reports.view'), true);
+
+  // Clientes: mesero edita, no borra.
+  assert.equal(hasPermission('mesero', 'customers.edit'), true);
+  assert.equal(hasPermission('mesero', 'customers.delete'), false);
+  assert.equal(hasPermission('cajero', 'customers.delete'), true);
+
+  // Desperdicios: cajero registra, no borra.
+  assert.equal(hasPermission('cajero', 'waste.create'), true);
+  assert.equal(hasPermission('cajero', 'waste.delete'), false);
+  assert.equal(hasPermission('gerente', 'waste.delete'), true);
+
+  // KDS: mesero fuera.
+  assert.equal(hasPermission('mesero', 'kds.view'), false);
+  assert.equal(hasPermission('cocina', 'kds.view'), true);
+});
+
+test('las rutas sensibles exigen el permiso específico', () => {
+  const read = (...parts) => fs.readFileSync(path.join(__dirname, '..', ...parts), 'utf8');
+  assert.match(read('routes', 'mesas.js'), /requirePermission\('orders\.cancel'\)/);
+  assert.match(read('routes', 'mesas.js'), /requirePermission\('sales\.invoice'\)/);
+  assert.match(read('routes', 'productos.js'), /requirePermission\('products\.delete'\)/);
+  assert.match(read('routes', 'clientes.js'), /requirePermission\('customers\.delete'\)/);
+  assert.match(read('routes', 'desperdicios.js'), /requirePermission\('waste\.delete'\)/);
+  assert.match(read('routes', 'facturas.js'), /requirePermission\('sales\.void'\)/);
+  assert.match(read('routes', 'caja.js'), /requirePermission\('cash\.open'\)/);
+  assert.match(read('routes', 'caja.js'), /requirePermission\('cash\.close'\)/);
+});
+
 test('el limitador de login cuenta fallos, no autenticaciones validas', () => {
   const auth = fs.readFileSync(path.resolve(__dirname, '..', 'routes', 'auth.js'), 'utf8');
   assert.match(auth, /skipSuccessfulRequests:\s*true/);

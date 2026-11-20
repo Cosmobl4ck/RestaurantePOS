@@ -20,21 +20,21 @@ const ROLE_PERMISSIONS = Object.freeze({
     'dashboard.view', 'orders.view', 'orders.create', 'orders.edit', 'orders.send',
     'orders.cancel', 'orders.move', 'kds.view', 'kds.prepare', 'kds.complete',
     'kds.serve', 'floorplan.view', 'floorplan.edit', 'products.view', 'products.edit',
-    'customers.view', 'customers.edit', 'sales.view', 'sales.invoice', 'sales.void',
-    'cash.view', 'cash.open', 'cash.close', 'waste.view', 'waste.create',
-    'waste.delete', 'reports.view', 'users.manage', 'restaurant.manage'
+    'products.delete', 'customers.view', 'customers.edit', 'customers.delete',
+    'sales.view', 'sales.invoice', 'sales.void', 'cash.view', 'cash.open', 'cash.close',
+    'waste.view', 'waste.create', 'waste.delete', 'reports.view', 'users.manage',
+    'restaurant.manage', 'audit.view'
   ],
   cajero: [
     'dashboard.view', 'orders.view', 'orders.create', 'orders.edit', 'orders.send',
     'orders.cancel', 'orders.move', 'kds.view', 'kds.prepare', 'kds.complete',
-    'kds.serve', 'floorplan.view', 'products.view', 'products.edit', 'customers.view',
-    'customers.edit', 'sales.view', 'sales.invoice', 'cash.view', 'cash.open',
-    'cash.close', 'waste.view', 'waste.create', 'reports.view'
+    'kds.serve', 'floorplan.view', 'products.view', 'customers.view', 'customers.edit',
+    'customers.delete', 'sales.view', 'sales.invoice', 'sales.void', 'cash.view',
+    'cash.open', 'cash.close', 'waste.view', 'waste.create', 'reports.view'
   ],
   mesero: [
     'dashboard.view', 'orders.view', 'orders.create', 'orders.edit', 'orders.send',
-    'orders.move', 'kds.view', 'kds.serve', 'floorplan.view', 'products.view',
-    'customers.view', 'customers.edit'
+    'orders.move', 'floorplan.view', 'products.view', 'customers.view', 'customers.edit'
   ],
   cocina: ['kds.view', 'kds.prepare', 'kds.complete'],
   bar: ['kds.view', 'kds.prepare', 'kds.complete']
@@ -73,7 +73,11 @@ function requirePermission(permission) {
     usuario.rol = normalizeRole(usuario.rol);
     if (!hasPermission(usuario.rol, permission)) {
       const payload = { error: { message: 'No tienes permiso para realizar esta operación.', status: 403 } };
-      if (req.accepts('html', 'json') === 'json') return res.status(403).json(payload.error);
+      const quiereJson = req.accepts(['html', 'json']) === 'json'
+        || req.xhr
+        || req.path.startsWith('/api/')
+        || req.method !== 'GET';
+      if (quiereJson) return res.status(403).json(payload.error);
       return res.status(403).render('error', payload);
     }
     next();

@@ -1207,6 +1207,126 @@ input[type="file"]::file-selector-button {
     border-color: var(--pt-border) !important;
 }
 
+/* Pago: ancho controlado, montos legibles y botones apilados en móvil. */
+.swal2-popup {
+    max-width: 92vw !important;
+}
+.swal-pago-total {
+    margin: 0 0 .15rem;
+    font-size: .9rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--pt-muted, #9AA6AD);
+}
+.swal-pago-monto {
+    margin: 0 0 1rem;
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--pt-teal-bright, #00D2BE);
+}
+.swal-cambio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .3rem;
+}
+.swal-cambio span {
+    font-size: .92rem;
+    color: var(--pt-muted, #9AA6AD);
+}
+.swal-cambio strong {
+    font-size: 2.3rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--pt-teal-bright, #00D2BE);
+}
+.swal-cambio small {
+    margin-top: .35rem;
+    font-size: .8rem;
+    color: var(--pt-muted, #9AA6AD);
+}
+.swal2-actions {
+    gap: .5rem;
+}
+@media (max-width: 480px) {
+    .swal2-actions {
+        width: 100%;
+        flex-direction: column-reverse;
+    }
+    .swal2-actions button {
+        width: 100%;
+        margin: 0 !important;
+    }
+    .swal2-input,
+    .swal2-select {
+        width: 100% !important;
+    }
+}
+
+/* Offcanvas del pedido: 450 px en escritorio, nunca más ancho que la pantalla. */
+#canvasPedido {
+    --bs-offcanvas-width: min(450px, 100vw);
+}
+
+/* Popups del POS: siempre por encima del offcanvas y centrados en pantalla. */
+.swal2-container {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 20000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1rem !important;
+    background-color: rgba(0, 0, 0, .55) !important;
+}
+.swal2-container.swal2-backdrop-show {
+    animation: swal-fade-in .2s ease-out;
+}
+.swal2-container.swal2-backdrop-hide {
+    background-color: transparent !important;
+}
+.swal2-popup {
+    margin: 0 !important;
+}
+@keyframes swal-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.swal2-actions button {
+    border-radius: 10px;
+    padding: .6rem 1.1rem;
+    font-weight: 700;
+}
+.swal2-show {
+    animation: swal-pos-in .22s ease-out !important;
+}
+@keyframes swal-pos-in {
+    from { opacity: 0; transform: translateY(10px) scale(.98); }
+    to { opacity: 1; transform: none; }
+}
+.swal-pos {
+    max-height: 90vh;
+    overflow: auto;
+}
+
+/* Factura como popup: tarjeta limpia y acciones modernas. */
+.swal-factura {
+    padding: 0 !important;
+    overflow: hidden;
+}
+.swal-factura .swal2-html-container {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.swal-factura .swal2-actions {
+    padding: 12px 16px 16px;
+    gap: 8px;
+}
+.swal-factura .swal2-close {
+    color: #6b7280;
+}
+
 /* ============================================================
    COMPONENTES HEREDADOS DEL POS
    ============================================================ */

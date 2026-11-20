@@ -3,6 +3,7 @@ const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { verificarSesion } = require('../middlewares/authMiddleware');
 const { requireFeature } = require('../middlewares/planAccess');
+const { requirePermission } = require('../middlewares/access');
 const { registrarAuditoria } = require('../services/auditService');
 
 // =========================================================================
@@ -230,10 +231,7 @@ router.post('/pedidos/:pedidoId/enviar-comanda', verificarSesion, async (req, re
 // =========================================================================
 // POST /mesas/pedidos/:pedidoId/facturar - PROCESAR PAGO
 // =========================================================================
-router.post('/pedidos/:pedidoId/facturar', verificarSesion, async (req, res) => {
-    if (!['admin', 'gerente', 'cajero'].includes(req.session.usuario.rol)) {
-        return res.status(403).json({ error: 'No autorizado para facturar.' });
-    }
+router.post('/pedidos/:pedidoId/facturar', verificarSesion, requirePermission('sales.invoice'), async (req, res) => {
     const restauranteId = req.session.usuario.restaurante_id;
     const formaPago = String(req.body.forma_pago || 'efectivo').toLowerCase();
     if (!['efectivo', 'transferencia'].includes(formaPago)) {
@@ -268,7 +266,7 @@ router.post('/pedidos/:pedidoId/facturar', verificarSesion, async (req, res) => 
 // =========================================================================
 // DELETE /mesas/pedidos/:pedidoId - Cancelar atómicamente pedido, stock y mesa
 // =========================================================================
-router.delete('/pedidos/:pedidoId', verificarSesion, async (req, res) => {
+router.delete('/pedidos/:pedidoId', verificarSesion, requirePermission('orders.cancel'), async (req, res) => {
     const restauranteId = req.session.usuario.restaurante_id;
     try {
         const { data, error } = await supabase.rpc('pos_cancel_order', {

@@ -11,7 +11,7 @@
 <body>
 <%- include('partials/navbar') %>
 
-<style>
+<style nonce="<%= cspNonce %>">
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -198,7 +198,7 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--t
             <div class="legend-item"><div class="ldot" style="background:var(--amber);"></div>Reservada</div>
             <div class="legend-item"><div class="ldot" style="background:var(--blue);"></div>Limpieza</div>
         </div>
-        <button class="btn-add" onclick="abrirModal()">
+        <button class="btn-add" id="btn-nueva-area">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Nueva Área
         </button>
@@ -232,14 +232,14 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--t
         <label class="modal-label">Nombre del Área</label>
         <input class="modal-input" id="input-nombre" type="text" placeholder="Ej: Terraza Norte, Salón VIP..." maxlength="60" autocomplete="off" />
         <div class="modal-btns">
-            <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
-            <button class="btn-crear" id="btn-crear" onclick="crearArea()">Crear y diseñar →</button>
+            <button class="btn-cancel" id="btn-cancelar-modal">Cancelar</button>
+            <button class="btn-crear" id="btn-crear">Crear y diseñar →</button>
         </div>
     </div>
 </div>
 
 <!-- DATOS DEL SERVIDOR -->
-<script id="srv-areas" type="application/json">
+<script id="srv-areas" type="application/json" nonce="<%= cspNonce %>">
     <%- serializeForHtmlScript(areas.map(a => ({
         id:    a.id,
         nombre:a.nombre,
@@ -250,11 +250,11 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--t
         alto:  a.alto_tarjeta  || 180
     }))) %>
 </script>
-<script id="srv-mesas" type="application/json">
+<script id="srv-mesas" type="application/json" nonce="<%= cspNonce %>">
     <%- serializeForHtmlScript(typeof mesasPorArea !== 'undefined' ? mesasPorArea : {}) %>
 </script>
 
-<script>
+<script nonce="<%= cspNonce %>">
 const SNAP  = 10;
 const CARDS = new Map();
 let dragging=null, resizing=null, selected=null;
@@ -285,6 +285,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('input-nombre').addEventListener('keydown', e => { if(e.key==='Enter') crearArea(); if(e.key==='Escape') cerrarModal(); });
     document.getElementById('modal-bg').addEventListener('click', e => { if(e.target.id==='modal-bg') cerrarModal(); });
     document.addEventListener('keydown', e => { if(e.key==='Escape') cerrarModal(); });
+
+    // Handlers extraídos de atributos inline (CSP sin 'unsafe-inline').
+    document.getElementById('btn-nueva-area').addEventListener('click', abrirModal);
+    document.getElementById('btn-cancelar-modal').addEventListener('click', cerrarModal);
+    document.getElementById('btn-crear').addEventListener('click', crearArea);
+    // Botones por tarjeta (delegación; las tarjetas se crean dinámicamente).
+    document.getElementById('areas-canvas').addEventListener('click', e => {
+        const btn = e.target.closest('.btn-ca[data-accion]');
+        if (!btn) return;
+        e.stopPropagation();
+        if (btn.dataset.accion === 'croquis') irCroquis(Number(btn.dataset.id));
+        else if (btn.dataset.accion === 'eliminar') eliminarArea(Number(btn.dataset.id), btn.dataset.nombre);
+    });
 });
 
 function snap(v) { return Math.round(v/SNAP)*SNAP; }
@@ -331,8 +344,8 @@ function crearCard(area) {
             <div class="card-header">
                 <span class="card-nombre">${esc(area.nombre)}</span>
                 <div class="card-actions">
-                    <button class="btn-ca teal" onclick="event.stopPropagation();irCroquis(${area.id})">✏ Croquis</button>
-                    <button class="btn-ca danger" onclick="event.stopPropagation();eliminarArea(${area.id},'${esc(area.nombre)}')">✕</button>
+                    <button class="btn-ca teal" data-accion="croquis" data-id="${area.id}">✏ Croquis</button>
+                    <button class="btn-ca danger" data-accion="eliminar" data-id="${area.id}" data-nombre="${esc(area.nombre)}">✕</button>
                 </div>
             </div>
             <div class="card-body">${bodyHtml}</div>

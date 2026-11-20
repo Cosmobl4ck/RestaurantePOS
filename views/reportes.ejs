@@ -7,8 +7,8 @@
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/font/bootstrap-icons.css">
     <link rel="icon" href="/img/logo-icon.svg">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="/vendor/jspdf/jspdf.umd.min.js"></script>
+    <script src="/vendor/jspdf/jspdf.plugin.autotable.min.js"></script>
     <link rel="stylesheet" href="/css/petronas.css?v=petronas1">
 </head>
 <body>
@@ -24,7 +24,7 @@
                 <i class="bi bi-receipt me-1"></i> Ver Historial de Ventas
             </a>
             <% if (locals.puedeStock) { %>
-            <button onclick="generarListaCompras()" class="btn btn-dark">
+            <button id="btn-lista-compras" class="btn btn-dark">
                 <i class="bi bi-printer me-1"></i> Lista de Compras
             </button>
             <% } %>
@@ -137,9 +137,9 @@
 
 <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="/vendor/chart.js/chart.umd.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
 
-<script>
+<script nonce="<%= cspNonce %>">
     // Recuperar datos del backend
     const datosVentas = <%- serializeForHtmlScript(stats.ventasSemana) %>;
     const datosTop = <%- serializeForHtmlScript(stats.topProductos) %>;
@@ -322,6 +322,8 @@
 
         doc.save(nombreArchivo);
     }
+
+    document.getElementById('btn-lista-compras')?.addEventListener('click', generarListaCompras);
 </script>
 </body>
 </html>

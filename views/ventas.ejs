@@ -8,7 +8,7 @@
     <link rel="icon" href="/img/logo-icon.svg">
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/font/bootstrap-icons.css">
-    <style>
+    <style nonce="<%= cspNonce %>">
         body {
             background-color: #08090A;
             color: #E8EAED;
@@ -201,7 +201,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="button" class="btn btn-primary" onclick="imprimirFactura()">
+                    <button type="button" class="btn btn-primary" id="btn-imprimir-factura">
                         <i class="bi bi-printer"></i> Imprimir
                     </button>
                 </div>
@@ -255,7 +255,7 @@
     </div>
 
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script>
+    <script nonce="<%= cspNonce %>">
         const facturaModal = new bootstrap.Modal(document.getElementById('facturaModal'));
         const detallesModal = new bootstrap.Modal(document.getElementById('detallesModal'));
 
@@ -345,6 +345,8 @@
             const frame = document.getElementById('facturaFrame');
             frame.contentWindow?.print();
         }
+
+        document.getElementById('btn-imprimir-factura').addEventListener('click', imprimirFactura);
 
         document.getElementById('filtrarVentas').addEventListener('click', () => {
             const desde = document.getElementById('fechaDesde').value;

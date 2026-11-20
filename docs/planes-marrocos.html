@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    width: 1600px; height: 900px;
+    background: radial-gradient(1200px 600px at 50% -10%, #10211f 0%, #08090A 55%, #08090A 100%);
+    color: #E8EAED;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    padding: 44px 56px 34px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .top { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 26px; }
+  .brand { display:flex; align-items:center; gap:14px; }
+  .logo {
+    width:54px; height:54px; border-radius:14px;
+    background: linear-gradient(135deg,#00D2BE,#00A19C);
+    display:flex; align-items:center; justify-content:center;
+    color:#06110F; font-size:30px; font-weight:900;
+    box-shadow: 0 10px 30px rgba(0,161,156,.35);
+  }
+  h1 { margin:0; font-size:40px; letter-spacing:.5px; font-weight:800; }
+  h1 span { color:#00D2BE; }
+  .sub { color:#9AA6AD; font-size:16px; margin-top:4px; }
+  .note { color:#9AA6AD; font-size:15px; text-align:right; line-height:1.5; }
+  .note strong { color:#E8EAED; }
+
+  .grid { display:grid; grid-template-columns: repeat(4, 1fr); gap:20px; flex:1; }
+  .card {
+    background: linear-gradient(180deg, #101214 0%, #0B0C0E 100%);
+    border: 1px solid #22272B; border-radius:18px;
+    padding: 24px 22px 20px;
+    display:flex; flex-direction:column;
+    position:relative;
+  }
+  .card.gold { border-color:#3a2f18; background: linear-gradient(180deg,#15130d 0%,#0B0C0E 100%); }
+  .card.premium {
+    border: 2px solid #00A19C;
+    box-shadow: 0 0 0 4px rgba(0,161,156,.10), 0 20px 50px rgba(0,161,156,.18);
+  }
+  .badge {
+    position:absolute; top:-14px; left:50%; transform:translateX(-50%);
+    background:#00A19C; color:#06110F; font-size:12px; font-weight:800;
+    padding:6px 14px; border-radius:999px; letter-spacing:.08em; text-transform:uppercase;
+    white-space:nowrap;
+  }
+  .plan { font-size:14px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:#9AA6AD; }
+  .gold .plan { color:#F5C451; }
+  .price { font-size:44px; font-weight:900; margin:10px 0 0; line-height:1; }
+  .price small { font-size:15px; font-weight:600; color:#9AA6AD; }
+  .desc { color:#9AA6AD; font-size:13px; margin:8px 0 16px; min-height:34px; }
+  ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+  li { display:flex; gap:9px; font-size:14.5px; line-height:1.28; color:#D7DCE0; }
+  li .ck { color:#00D2BE; font-weight:900; flex-shrink:0; }
+  .gold li .ck { color:#F5C451; }
+  .off { color:#5E666D; }
+  .off .ck { color:#5E666D; }
+  .cta {
+    margin-top:auto; padding-top:18px;
+    border-top:1px solid #1C2125;
+  }
+  .btn {
+    display:block; text-align:center; padding:11px 12px; border-radius:10px;
+    font-size:14px; font-weight:800; letter-spacing:.03em;
+    background:#161B1F; color:#E8EAED; border:1px solid #2A3136;
+  }
+  .premium .btn { background:linear-gradient(135deg,#00D2BE,#00A19C); color:#06110F; border:0; }
+  .gold .btn { background:linear-gradient(135deg,#F5C451,#D99B1E); color:#1A1200; border:0; }
+  .footer {
+    display:flex; justify-content:space-between; align-items:center;
+    color:#6F787F; font-size:13px; margin-top:20px;
+  }
+  .footer strong { color:#9AA6AD; }
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="brand">
+      <div class="logo">M</div>
+      <div>
+        <h1>Marrocos<span>POS</span> — Planes</h1>
+        <div class="sub">POS para restaurantes · mesas, cocina, bar, caja y reportes</div>
+      </div>
+    </div>
+    <div class="note"><strong>4 planes</strong><br>Elige según tu operación</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="plan">Trial</div>
+      <div class="price">$0 <small>/ 7 días</small></div>
+      <div class="desc">Prueba todo el sistema sin tarjeta.</div>
+      <ul>
+        <li><span class="ck">✓</span> Funciones de Gold</li>
+        <li><span class="ck">✓</span> Límites de Premium</li>
+        <li><span class="ck">✓</span> 15 usuarios · 50 mesas</li>
+        <li><span class="ck">✓</span> Plano, reservas y auditoría</li>
+        <li><span class="ck">✓</span> Sin tarjeta</li>
+      </ul>
+      <div class="cta"><div class="btn">Empezar gratis</div></div>
+    </div>
+
+    <div class="card">
+      <div class="plan">Básico</div>
+      <div class="price">$19 <small>/ mes</small></div>
+      <div class="desc">POS esencial para un local pequeño.</div>
+      <ul>
+        <li><span class="ck">✓</span> POS de 1 estación</li>
+        <li><span class="ck">✓</span> Mesas, caja y facturas</li>
+        <li><span class="ck">✓</span> KDS cocina</li>
+        <li><span class="ck">✓</span> Clientes y reportes del día</li>
+        <li><span class="ck">✓</span> 5 usuarios · 15 mesas</li>
+      </ul>
+      <div class="cta"><div class="btn">Elegir Básico</div></div>
+    </div>
+
+    <div class="card premium">
+      <div class="badge">Más popular</div>
+      <div class="plan">Premium</div>
+      <div class="price">$39 <small>/ mes</small></div>
+      <div class="desc">Operación completa con bar e inventario.</div>
+      <ul>
+        <li><span class="ck">✓</span> Todo lo de Básico</li>
+        <li><span class="ck">✓</span> KDS bar y tiempos</li>
+        <li><span class="ck">✓</span> Inventario y desperdicios</li>
+        <li><span class="ck">✓</span> Exportaciones y marca</li>
+        <li><span class="ck">✓</span> 15 usuarios · 50 mesas</li>
+      </ul>
+      <div class="cta"><div class="btn">Elegir Premium</div></div>
+    </div>
+
+    <div class="card gold">
+      <div class="plan">Gold</div>
+      <div class="price">$79 <small>/ mes</small></div>
+      <div class="desc">Todo el control, sin límites.</div>
+      <ul>
+        <li><span class="ck">✓</span> Todo lo de Premium</li>
+        <li><span class="ck">✓</span> Plano del salón y reservas</li>
+        <li><span class="ck">✓</span> Auditoría de acciones</li>
+        <li><span class="ck">✓</span> Multi-caja · DTE · API</li>
+        <li><span class="ck">✓</span> Sin límites de usuarios ni mesas</li>
+      </ul>
+      <div class="cta"><div class="btn">Elegir Gold</div></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Precios mensuales en USD · IVA no incluido</span>
+    <span><strong>marrocospos.com</strong></span>
+  </div>
+</body>
+</html>

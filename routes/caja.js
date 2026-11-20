@@ -5,6 +5,7 @@ const excel = require('exceljs');
 const { supabase } = require('../config/supabase');
 const { verificarSesion } = require('../middlewares/authMiddleware');
 const authRole = require('../middlewares/authRole');
+const { requirePermission } = require('../middlewares/access');
 const { getBusinessDate } = require('../utils/business-time');
 const { requireFeature } = require('../middlewares/planAccess');
 const { registrarAuditoria } = require('../services/auditService');
@@ -52,14 +53,14 @@ router.get('/', verificarSesion, authRole(allowedRoles), async (req, res) => {
         const { data: historial, error: errHistorial } = await supabase.from('cortes_caja').select('*')
             .eq('fecha', fecha).eq('restaurante_id', restauranteId).order('turno', { ascending: true });
         if (errHistorial) throw errHistorial;
-        res.render('caja', { caja: cajaAbierta || null, historial: historial || [], usuario: req.session.usuario });
+        res.render('caja', { caja: cajaAbierta || null, historial: historial || [], usuario: req.session.usuario, sinCaja: req.query.sinCaja === '1' });
     } catch (error) {
         console.error('Error cargando caja:', error);
         res.status(500).send('Error en caja');
     }
 });
 
-router.post('/abrir', verificarSesion, authRole(allowedRoles), async (req, res) => {
+router.post('/abrir', verificarSesion, authRole(allowedRoles), requirePermission('cash.open'), async (req, res) => {
     const restauranteId = req.session.usuario.restaurante_id;
     const usuarioId = req.session.usuario.id;
     const { value, error: validationError } = aperturaSchema.validate(req.body, { abortEarly: false, convert: true });
@@ -71,6 +72,7 @@ router.post('/abrir', verificarSesion, authRole(allowedRoles), async (req, res) 
             p_detalles: serializeDetalles(value.detalles)
         });
         if (error) throw error;
+        req.session.cajaAbierta = { at: Date.now(), abierta: true };
         await registrarAuditoria(req, {
             accion: 'caja.abrir',
             entidad: 'caja',
@@ -83,7 +85,7 @@ router.post('/abrir', verificarSesion, authRole(allowedRoles), async (req, res) 
     }
 });
 
-router.post('/cerrar', verificarSesion, authRole(allowedRoles), async (req, res) => {
+router.post('/cerrar', verificarSesion, authRole(allowedRoles), requirePermission('cash.close'), async (req, res) => {
     const restauranteId = req.session.usuario.restaurante_id;
     const usuarioId = req.session.usuario.id;
     const { value, error: validationError } = cierreSchema.validate(req.body, { abortEarly: false, convert: true });
@@ -95,6 +97,7 @@ router.post('/cerrar', verificarSesion, authRole(allowedRoles), async (req, res)
             p_detalles: serializeDetalles(value.detalles)
         });
         if (error) throw error;
+        req.session.cajaAbierta = { at: Date.now(), abierta: false };
         await registrarAuditoria(req, {
             accion: 'caja.cerrar',
             entidad: 'caja',

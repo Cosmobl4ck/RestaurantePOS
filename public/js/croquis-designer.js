@@ -666,7 +666,7 @@ function setupKeyboard() {
 async function guardarCroquis() {
     const canvas = document.getElementById('canvas-area');
     const areaId = parseInt(canvas.dataset.areaId, 10);
-    const btn = document.querySelector('[onclick="guardarCroquis()"]');
+    const btn = document.getElementById('btn-guardar-croquis');
     
     if (btn) { btn.innerText = 'GUARDANDO...'; btn.disabled = true; }
 

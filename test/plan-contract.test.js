@@ -17,10 +17,10 @@ test('el catálogo tiene los cuatro planes y precios aprobados', () => {
   assert.equal(plans.PLAN_DEFINITIONS.trial.duracion_dias, 7);
 });
 
-test('trial usa las funciones y límites de Premium', () => {
+test('trial usa las funciones de Gold y los límites de Premium', () => {
   assert.deepEqual(
     [...plans.PLAN_DEFINITIONS.trial.features].sort(),
-    [...plans.PLAN_DEFINITIONS.premium.features].sort()
+    [...plans.PLAN_DEFINITIONS.gold.features].sort()
   );
   assert.deepEqual(plans.PLAN_DEFINITIONS.trial.limits, plans.PLAN_DEFINITIONS.premium.limits);
 });
@@ -29,6 +29,8 @@ test('Básico no incluye funciones Premium y Gold incluye DTE', () => {
   assert.equal(plans.PLAN_DEFINITIONS.basic.features.includes('kds.bar'), false);
   assert.equal(plans.PLAN_DEFINITIONS.basic.features.includes('inventario.stock'), false);
   assert.equal(plans.PLAN_DEFINITIONS.premium.features.includes('kds.bar'), true);
+  assert.equal(plans.PLAN_DEFINITIONS.premium.features.includes('areas.croquis'), false);
+  assert.equal(plans.PLAN_DEFINITIONS.gold.features.includes('areas.croquis'), true);
   assert.equal(plans.PLAN_DEFINITIONS.gold.features.includes('dte'), true);
   assert.equal(plans.PLAN_DEFINITIONS.gold.limits.usuarios, null);
 });
@@ -54,6 +56,7 @@ test('el servidor aplica guards y expone /mi-plan', () => {
   assert.match(server, /requireFeature\('pos\.mesas'\)/);
   assert.match(server, /requireFeature\('kds\.bar'\)/);
   assert.match(server, /requireFeature\('inventario\.desperdicios'\)/);
+  assert.match(server, /requireFeature\('areas\.croquis'\)/);
   assert.match(server, /app\.use\('\/mi-plan'/);
 });
 

@@ -121,13 +121,13 @@ const PREMIUM_FEATURES = Object.freeze([
   'ventas.exportar',
   'reportes.avanzados',
   'reportes.exportar',
-  'areas.croquis',
-  'areas.reservas',
   'configuracion.marca'
 ]);
 
 const GOLD_FEATURES = Object.freeze([
   ...PREMIUM_FEATURES,
+  'areas.croquis',
+  'areas.reservas',
   'multi_caja',
   'multi_sucursal',
   'dte',
@@ -162,12 +162,12 @@ const PLAN_DEFINITIONS = Object.freeze({
   trial: Object.freeze({
     codigo: 'trial',
     nombre: 'Trial',
-    descripcion: 'Prueba de 7 días con las funciones de Premium.',
+    descripcion: 'Prueba de 7 días con las funciones de Gold y límites de Premium.',
     precio_mensual: 0,
     duracion_dias: 7,
     orden: 0,
     activo: true,
-    features: PREMIUM_FEATURES,
+    features: GOLD_FEATURES,
     limits: PREMIUM_LIMITS
   }),
   basic: Object.freeze({
@@ -192,7 +192,7 @@ const PLAN_DEFINITIONS = Object.freeze({
   premium: Object.freeze({
     codigo: 'premium',
     nombre: 'Premium',
-    descripcion: 'Operación completa con barra, salón, inventario y reportes.',
+    descripcion: 'Operación completa con barra, inventario y reportes.',
     precio_mensual: 39,
     duracion_dias: 30,
     orden: 2,
@@ -203,7 +203,7 @@ const PLAN_DEFINITIONS = Object.freeze({
   gold: Object.freeze({
     codigo: 'gold',
     nombre: 'Gold',
-    descripcion: 'Límites ampliados, soporte prioritario y roadmap avanzado, incluido DTE.',
+    descripcion: 'Plano del salón, límites ampliados, DTE y soporte prioritario.',
     precio_mensual: 79,
     duracion_dias: 30,
     orden: 3,

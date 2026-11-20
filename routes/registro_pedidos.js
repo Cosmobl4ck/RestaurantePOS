@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { verificarSesion } = require('../middlewares/authMiddleware');
-const { formatTimeInTimeZone } = require('../utils/business-time');
+const { dateInTimeZone, formatTimeInTimeZone } = require('../utils/business-time');
 const { requireFeature } = require('../middlewares/planAccess');
 
 const TIMEZONE_DEFAULT = 'America/El_Salvador';
@@ -73,11 +73,11 @@ router.get('/', verificarSesion, soloAdminCajero, async (req, res) => {
         const restauranteId = req.session.usuario.restaurante_id;
         const { desde, hasta, mesa_id, estado } = req.query;
 
-        // Valores por defecto: hoy
-        const hoy = new Date().toISOString().split('T')[0];
+        // Valores por defecto: hoy según la zona horaria del restaurante.
+        const timeZone = await getTimeZone(restauranteId);
+        const hoy = dateInTimeZone(timeZone);
         const fechaDesde = desde || hoy;
         const fechaHasta = hasta || hoy;
-        const timeZone = await getTimeZone(restauranteId);
 
         let query = supabase
             .from('pedidos')
@@ -134,10 +134,10 @@ router.get('/api/lista', verificarSesion, soloAdminCajero, async (req, res) => {
         const restauranteId = req.session.usuario.restaurante_id;
         const { desde, hasta, mesa_id, estado } = req.query;
 
-        const hoy = new Date().toISOString().split('T')[0];
+        const timeZone = await getTimeZone(restauranteId);
+        const hoy = dateInTimeZone(timeZone);
         const fechaDesde = desde || hoy;
         const fechaHasta = hasta || hoy;
-        const timeZone = await getTimeZone(restauranteId);
 
         let query = supabase
             .from('pedidos')
@@ -214,7 +214,8 @@ router.get('/reporte', verificarSesion, soloAdminCajero, requireFeature('reporte
         const restauranteId = req.session.usuario.restaurante_id;
         const { desde, hasta } = req.query;
 
-        const hoy = new Date().toISOString().split('T')[0];
+        const timeZone = await getTimeZone(restauranteId);
+        const hoy = dateInTimeZone(timeZone);
         const fechaDesde = desde || hoy;
         const fechaHasta = hasta || hoy;
 

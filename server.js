@@ -12,6 +12,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 const app = express();
 const { supabase } = require('./config/supabase');
@@ -76,22 +77,33 @@ if (process.env.TRUST_PROXY) {
 // 4. MIDDLEWARES DE SEGURIDAD
 // ==========================================
 
+// Nonce por respuesta: permite los bloques <script>/<style> inline sin
+// 'unsafe-inline'. Se genera antes de helmet para que la directiva lo use.
+app.use((req, res, next) => {
+    res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+    next();
+});
+
 // Helmet: headers de seguridad HTTP.
-// CSP sin 'unsafe-inline' requeriría extraer todos los scripts/estilos inline
-// heredados; se mantiene por compatibilidad y se compensa escapando toda
-// interpolación (ver utils/safe-json.js y las vistas).
+// CSP sin 'unsafe-inline': cada bloque inline lleva nonce="<%= cspNonce %>" y
+// los atributos onclick/onchange se sustituyeron por addEventListener.
+// Las librerias (jQuery, SweetAlert2, Select2, html2canvas, jspdf, animate.css)
+// se sirven desde /vendor (mismo origen), por eso script-src/style-src ya no
+// listan dominios CDN. Solo las fuentes de Google siguen siendo externas.
+// Los atributos style="..." siguen permitidos via style-src-attr (deuda menor).
 app.use(helmet({
     contentSecurityPolicy: {
         useDefaults: true,
         directives: {
-            "script-src": ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://code.jquery.com', 'https://cdnjs.cloudflare.com'],
-            // La app heredada usa onclick/onchange inline en muchas vistas.
-            // Sin esto, helmet (script-src-attr 'none' por defecto) rompe la UI.
-            "script-src-attr": ["'unsafe-inline'"],
-            "style-src": ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com'],
-            // bootstrap-icons carga su .woff2 desde cdn.jsdelivr.net; sin este
-            // dominio los iconos se ven como cuadros vacios.
-            "font-src": ["'self'", 'https://cdn.jsdelivr.net', 'https://fonts.gstatic.com', 'data:'],
+            "script-src": ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
+            "script-src-attr": ["'none'"],
+            "style-src": ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`, 'https://fonts.googleapis.com'],
+            // Los style="..." heredados se mantienen permitidos; migrarlos a
+            // clases es deuda pendiente y no habilita ejecución de scripts.
+            "style-src-attr": ["'unsafe-inline'"],
+            // Bootstrap Icons sirve su .woff2 desde /vendor (mismo origen);
+            // fonts.gstatic.com cubre los .woff2 de las fuentes de Google.
+            "font-src": ["'self'", 'https://fonts.gstatic.com', 'data:'],
             "img-src": ["'self'", 'data:', 'blob:'],
             "connect-src": ["'self'"],
             "object-src": ["'none'"],
@@ -225,6 +237,10 @@ app.use((req, res, next) => {
     return verificarSesion(req, res, next);
 });
 
+// Sin caja abierta no se opera el POS (mesas, KDS, facturas, comandas).
+const { cashGate } = require('./middlewares/cashGate');
+app.use(cashGate);
+
 // ==========================================
 // 12. REDIRECCIÓN DE INICIO
 // ==========================================
@@ -283,22 +299,22 @@ const miPlanRoutes = require('./routes/mi_plan');
 const auditoriaRoutes = require('./routes/auditoria');
 
 // Usar rutas
-app.use('/mesas', authRole(ROLES_OPERACION), requireFeature('pos.mesas'), mesasRoutes);
+app.use('/mesas', requirePermission('orders.view'), requireFeature('pos.mesas'), mesasRoutes);
 app.use('/productos', authRole(ROLES_CAJA), requireFeature('menu.productos'), productosRoutes);
-app.use('/caja', authRole(ROLES_CAJA), requireFeature('caja.basica'), cajaRoutes);
-app.use('/reportes', authRole(ROLES_OPERACION), requireFeature('reportes.basicos'), reportesRoutes);
-app.use('/facturas', authRole(ROLES_CAJA), requireFeature('facturas.internas'), facturasRoutes);
+app.use('/caja', requirePermission('cash.view'), requireFeature('caja.basica'), cajaRoutes);
+app.use('/reportes', requirePermission('reports.view'), requireFeature('reportes.basicos'), reportesRoutes);
+app.use('/facturas', requirePermission('sales.view'), requireFeature('facturas.internas'), facturasRoutes);
 app.use('/clientes', authRole(ROLES_OPERACION), requireFeature('clientes'), clientesRoutes);
 app.use('/cocina', authRole(['admin', 'gerente', 'cajero', 'cocina']), requireFeature('kds.cocina'), cocinaRoutes);
 app.use('/bar', authRole(['admin', 'gerente', 'cajero', 'bar']), requireFeature('kds.bar'), barRoutes);
-app.use('/ventas', authRole(ROLES_CAJA), requireFeature('ventas.historial'), ventasRoutes);
-app.use('/configuracion', authRole(['admin', 'gerente']), requireFeature('configuracion.basica'), configuracionRoutes);
-app.use('/kds', authRole(['admin', 'gerente', 'cajero', 'cocina', 'bar']), kdsRoutes);
-app.use('/areas', authRole(['admin', 'gerente']), requireFeature('areas.croquis'), areasRoutes);
-app.use('/registro-pedidos', authRole(ROLES_OPERACION), requireFeature('pos.pedidos'), registroPedidosRoutes);
-app.use('/desperdicios', authRole(ROLES_CAJA), requireFeature('inventario.desperdicios'), desperdiciosRoutes);
-app.use('/mi-plan', authRole(['admin', 'gerente']), miPlanRoutes);
-app.use('/auditoria', authRole(['admin', 'gerente']), requireFeature('auditoria'), auditoriaRoutes);
+app.use('/ventas', requirePermission('sales.view'), requireFeature('ventas.historial'), ventasRoutes);
+app.use('/configuracion', requirePermission('restaurant.manage'), requireFeature('configuracion.basica'), configuracionRoutes);
+app.use('/kds', requirePermission('kds.view'), kdsRoutes);
+app.use('/areas', requirePermission('floorplan.edit'), requireFeature('areas.croquis'), areasRoutes);
+app.use('/registro-pedidos', authRole(ROLES_CAJA), requireFeature('pos.pedidos'), registroPedidosRoutes);
+app.use('/desperdicios', requirePermission('waste.view'), requireFeature('inventario.desperdicios'), desperdiciosRoutes);
+app.use('/mi-plan', requirePermission('restaurant.manage'), miPlanRoutes);
+app.use('/auditoria', requirePermission('audit.view'), requireFeature('auditoria'), auditoriaRoutes);
 
 // ==========================================
 // 16. MANEJO DE ERRORES

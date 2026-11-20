@@ -23,7 +23,7 @@ test('la ruta de auditoría está protegida por rol y por el plan Gold', () => {
 
     assert.match(
         server,
-        /app\.use\('\/auditoria', authRole\(\['admin', 'gerente'\]\), requireFeature\('auditoria'\), auditoriaRoutes\)/
+        /app\.use\('\/auditoria', requirePermission\('audit\.view'\), requireFeature\('auditoria'\), auditoriaRoutes\)/
     );
     assert.match(server, /const auditoriaRoutes = require\('\.\/routes\/auditoria'\)/);
 });
@@ -77,12 +77,22 @@ test('la vista de auditoría renderiza el estado de migración pendiente', async
         totalPages: 1,
         prevUrl: null,
         nextUrl: null,
-        migrationMissing: true
+        migrationMissing: true,
+        asistencia: { rows: [], resumen: { totalHoras: 0, entradas: 0, salidas: 0, empleados: 0 } },
+        asistDesde: '2026-11-01',
+        asistHasta: '2026-11-19',
+        empleadosFiltro: [],
+        asistSeleccionados: [],
+        activeTab: 'eventos',
+        cspNonce: 'test-nonce'
     });
 
     assert.match(html, /Auditoría de acciones/);
     assert.match(html, /20261112120000_add_audit_log\.sql/);
     assert.match(html, /Falta aplicar la migración/);
+    assert.match(html, /Reporte de asistencia/);
+    assert.match(html, /Eventos registrados/);
+    assert.match(html, /Asistencia de Personal/);
 });
 
 test('la vista de auditoría escapa el detalle de los eventos', async () => {
@@ -111,10 +121,21 @@ test('la vista de auditoría escapa el detalle de los eventos', async () => {
         totalPages: 1,
         prevUrl: null,
         nextUrl: null,
-        migrationMissing: false
+        migrationMissing: false,
+        asistencia: { rows: [], resumen: { totalHoras: 0, entradas: 0, salidas: 0, empleados: 0 } },
+        asistDesde: '2026-11-01',
+        asistHasta: '2026-11-19',
+        empleadosFiltro: [{ id: 93, nombre: 'Mesero1', rol: 'mesero' }],
+        asistSeleccionados: [],
+        activeTab: 'eventos',
+        cspNonce: 'test-nonce'
     });
 
     assert.match(html, /Producto creado/);
     assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
     assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+    assert.match(html, /Nombre/);
+    assert.doesNotMatch(html, /<pre class="audit-detail/);
+    assert.match(html, /name="asist_empleados"/);
+    assert.match(html, /Mesero1/);
 });

@@ -6,6 +6,7 @@ const { supabase } = require('../config/supabase');
 const { hasXlsxSignature, uploadErrorMiddleware } = require('../utils/upload-security');
 const { hasFeatureSync, getUsage, getLimitSync } = require('../services/planService');
 const { requireFeature, enforceLimit, enforcementEnabled } = require('../middlewares/planAccess');
+const { requirePermission } = require('../middlewares/access');
 const { registrarAuditoria } = require('../services/auditService');
 
 const upload = multer({
@@ -255,7 +256,7 @@ router.get('/alergenos', async (req, res) => {
 // ==========================================
 // 2. CREAR PRODUCTO
 // ==========================================
-router.post('/', enforceLimit('productos'), async (req, res) => {
+router.post('/', requirePermission('products.edit'), enforceLimit('productos'), async (req, res) => {
     try {
         const restauranteId = getRestauranteId(req);
         const categoria = normalizarCategoria(req.body.categoria);
@@ -301,7 +302,7 @@ router.post('/', enforceLimit('productos'), async (req, res) => {
 // ==========================================
 // 3. ACTUALIZAR PRODUCTO
 // ==========================================
-router.put('/:id', async (req, res) => {
+router.put('/:id', requirePermission('products.edit'), async (req, res) => {
     try {
         const restauranteId = getRestauranteId(req);
         const codigo = String(req.body.codigo || '').trim();
@@ -347,7 +348,7 @@ router.put('/:id', async (req, res) => {
 // ==========================================
 // 4. ELIMINAR PRODUCTO
 // ==========================================
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requirePermission('products.delete'), async (req, res) => {
     try {
         const restauranteId = getRestauranteId(req);
 
@@ -402,7 +403,7 @@ router.get('/plantilla', requireFeature('inventario.importar'), async (req, res)
     res.end();
 });
 
-router.post('/importar', requireFeature('inventario.importar'), uploadErrorMiddleware(upload.single('archivo')), async (req, res) => {
+router.post('/importar', requirePermission('products.edit'), requireFeature('inventario.importar'), uploadErrorMiddleware(upload.single('archivo')), async (req, res) => {
     try {
         const restauranteId = getRestauranteId(req);
 

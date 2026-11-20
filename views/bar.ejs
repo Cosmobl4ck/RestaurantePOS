@@ -6,7 +6,7 @@
     <title>Monitor de Bar</title>
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/font/bootstrap-icons.css">
-    <style>
+    <style nonce="<%= cspNonce %>">
         body { background-color: #08090A; color: #E8EAED; }
         .card-pedido { transition: transform 0.2s; border: 1px solid #1A1D20 !important; box-shadow: 0 12px 28px rgba(0,0,0,.35); }
         .card-pedido:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(0,0,0,.5), 0 0 0 1px rgba(0,161,156,.25); }
@@ -35,7 +35,7 @@
     </div>
 
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> <script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script> <script nonce="<%= cspNonce %>">
         // Función principal de carga
         async function cargarPedidos() {
             const contenedor = document.getElementById('contenedor-pedidos');
@@ -90,8 +90,8 @@
                     
                     // BOTÓN: Si está listo -> Entregar (Borrar). Si no -> Marcar Listo.
                     const boton = esListo 
-                        ? `<button onclick="cambiarEstado(${pedido.id}, 'entregado')" class="btn btn-success w-100 py-3 fw-bold fs-5 animate-pulse"><i class="bi bi-check2-all"></i> ENTREGAR Y BORRAR</button>`
-                        : `<button onclick="cambiarEstado(${pedido.id}, 'listo')" class="btn btn-outline-primary w-100 py-3 fw-bold"><i class="bi bi-check-lg"></i> MARCAR LISTO</button>`;
+                        ? `<button data-accion="estado" data-id="${pedido.id}" data-estado="entregado" class="btn btn-success w-100 py-3 fw-bold fs-5 animate-pulse"><i class="bi bi-check2-all"></i> ENTREGAR Y BORRAR</button>`
+                        : `<button data-accion="estado" data-id="${pedido.id}" data-estado="listo" class="btn btn-outline-primary w-100 py-3 fw-bold"><i class="bi bi-check-lg"></i> MARCAR LISTO</button>`;
 
                     html += `
                     <div class="col-12 col-md-6 col-lg-4 col-xl-3">
@@ -141,12 +141,17 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('contenedor-pedidos').addEventListener('click', (e) => {
+                const btn = e.target.closest('button[data-accion="estado"]');
+                if (!btn) return;
+                cambiarEstado(Number(btn.dataset.id), btn.dataset.estado);
+            });
             cargarPedidos();
             setInterval(cargarPedidos, 3000); // 3 segundos para que se sienta más rápido
         });
     </script>
     
-    <style>
+    <style nonce="<%= cspNonce %>">
         /* Animación para el botón de entregar */
         @keyframes pulse {
             0% { transform: scale(1); }

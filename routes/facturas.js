@@ -3,6 +3,7 @@ const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { verificarSesion } = require('../middlewares/authMiddleware');
 const authRole = require('../middlewares/authRole');
+const { requirePermission } = require('../middlewares/access');
 const { registrarAuditoria } = require('../services/auditService');
 
 // ===================================
@@ -56,7 +57,7 @@ router.get('/', verificarSesion, authRole(['admin','gerente','cajero']), async (
 // ========================================
 // 2. RUTA PARA ANULAR Y DEVOLVER STOCK
 // ========================================
-router.post('/anular/:id', verificarSesion, authRole(['admin','gerente','cajero']), async (req, res) => {
+router.post('/anular/:id', verificarSesion, requirePermission('sales.void'), authRole(['admin','gerente','cajero']), async (req, res) => {
     const restauranteId = req.session.usuario.restaurante_id;
     try {
         const { data, error } = await supabase.rpc('pos_void_invoice', {

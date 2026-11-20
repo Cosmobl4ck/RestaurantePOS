@@ -3,13 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MarrocosPOS - Crear Usuario</title>
+    <title>MarrocosPOS - Personal</title>
     <link rel="icon" href="/img/logo-icon.svg">
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/font/bootstrap-icons.css">
-    <style>
+    <style nonce="<%= cspNonce %>">
         body { background-color: #08090A; color: #E8EAED; }
-        .card-register { max-width: 500px; margin: 50px auto; }
+        .card-register { max-width: 500px; margin: 40px auto 20px; }
+        .card-personal { max-width: 1100px; margin: 0 auto 50px; }
+        .emp-avatar {
+            width: 34px; height: 34px; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: rgba(0, 161, 156, .16); color: #00D2BE; font-weight: 700;
+            flex-shrink: 0;
+        }
+        .table-personal { --bs-table-bg: transparent; }
+        .table-personal th {
+            font-size: .72rem; letter-spacing: .06em; text-transform: uppercase;
+            color: #9AA6AD; font-weight: 600;
+        }
+        .table-personal td { vertical-align: middle; }
     </style>
     <link rel="stylesheet" href="/css/petronas.css?v=petronas1">
 </head>
@@ -89,6 +102,26 @@
                         <% } %>
                     </div>
 
+                    <!-- Correo -->
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Correo</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                            <input type="email" class="form-control" id="email" name="email"
+                                   placeholder="empleado@correo.com" maxlength="120" autocomplete="email">
+                        </div>
+                    </div>
+
+                    <!-- Dirección -->
+                    <div class="mb-3">
+                        <label for="direccion" class="form-label">Dirección</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                            <input type="text" class="form-control" id="direccion" name="direccion"
+                                   placeholder="Colonia, calle, número" maxlength="200" autocomplete="street-address">
+                        </div>
+                    </div>
+
                     <!-- PIN -->
                     <div class="mb-4">
                         <label for="pin" class="form-label">PIN de Acceso (4 a 12 dígitos)</label>
@@ -108,7 +141,164 @@
                 </form>
             </div>
         </div>
+
+        <!-- LISTA DE EMPLEADOS -->
+        <%
+          const etiquetasRol = { admin: 'Administrador', gerente: 'Gerente', cajero: 'Cajero', mesero: 'Mesero', cocina: 'Cocina', bar: 'Bar' };
+          const coloresRol = { admin: 'danger', gerente: 'warning', cajero: 'success', mesero: 'info', cocina: 'secondary', bar: 'secondary' };
+          const listaEmpleados = typeof empleados !== 'undefined' ? empleados : [];
+        %>
+        <div class="card shadow card-personal">
+            <div class="card-header d-flex justify-content-between align-items-center gap-2">
+                <h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>Empleados</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge text-bg-secondary"><%= listaEmpleados.length %></span>
+                    <a href="/register/asistencia" class="btn btn-sm btn-outline-info">
+                        <i class="bi bi-calendar3 me-1"></i>Historial
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <% if (!listaEmpleados.length) { %>
+                    <p class="text-muted text-center py-4 mb-0">Aún no hay empleados registrados.</p>
+                <% } else { %>
+                <div class="table-responsive">
+                    <table class="table table-hover table-personal align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">Empleado</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Correo</th>
+                                <th>Dirección</th>
+                                <th>Alta</th>
+                                <th class="text-end pe-3">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% listaEmpleados.forEach(function(e) { %>
+                            <tr>
+                                <td class="ps-3">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="emp-avatar"><%= String(e.nombre || '?').charAt(0).toUpperCase() %></span>
+                                        <span class="fw-semibold"><%= e.nombre %></span>
+                                    </div>
+                                </td>
+                                <td><span class="badge text-bg-<%= coloresRol[e.rol] || 'secondary' %>"><%= etiquetasRol[e.rol] || e.rol %></span></td>
+                                <td>
+                                    <% if (Number(e.estado) === 1) { %>
+                                        <span class="badge text-bg-success">Activo</span>
+                                    <% } else { %>
+                                        <span class="badge text-bg-secondary">Inactivo</span>
+                                    <% } %>
+                                </td>
+                                <td><%= e.email || '—' %></td>
+                                <td><%= e.direccion || '—' %></td>
+                                <td class="text-muted small"><%= e.created_at ? new Date(e.created_at).toLocaleDateString('es-SV') : '—' %></td>
+                                <td class="text-end pe-3">
+                                    <button type="button" class="btn btn-sm btn-outline-warning btn-editar-empleado"
+                                            data-id="<%= e.id %>"
+                                            data-nombre="<%= e.nombre %>"
+                                            data-email="<%= e.email || '' %>"
+                                            data-direccion="<%= e.direccion || '' %>"
+                                            data-rol="<%= e.rol %>">
+                                        <i class="bi bi-pencil-square"></i> Editar / PIN
+                                    </button>
+                                    <form action="/register/<%= e.id %>/finalizar-turno" method="POST" class="d-inline ms-1">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                title="Registra la salida y cierra la sesión del empleado">
+                                            <i class="bi bi-box-arrow-right"></i> Finalizar turno
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- ACCESO DEL PERSONAL POR IP -->
+        <div class="card shadow card-personal">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Acceso del personal</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-2">
+                    El personal solo puede iniciar sesión desde estas IPs. Admin y Gerente entran desde cualquier lugar.
+                    Si el campo se deja vacío, no se restringe.
+                </p>
+                <p class="small mb-3">
+                    Tu IP actual: <code><%= ipActual %></code>
+                </p>
+                <form action="/register/ip" method="POST" class="row g-2 align-items-end">
+                    <div class="col-md-9">
+                        <label class="form-label" for="ip_permitida">IPs, primeros 3 octetos o rangos CIDR, separados por coma</label>
+                        <input type="text" class="form-control" id="ip_permitida" name="ip_permitida"
+                               value="<%= ipPermitida || '' %>"
+                               placeholder="Ej: 190.85.12, 190.85.12.34, 192.168.1.0/24">
+                        <div class="form-text">
+                            Si escribes los 3 primeros octetos (ej. 190.85.12) se permite todo ese rango /24.
+                        </div>
+                    </div>
+                    <div class="col-md-3 d-grid">
+                        <button type="submit" class="btn btn-outline-info"><i class="bi bi-save me-1"></i>Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
+
+    <!-- MODAL EDITAR EMPLEADO / RESETEAR PIN -->
+    <div class="modal fade" id="modalEmpleado" tabindex="-1" aria-labelledby="modalEmpleadoTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form id="formEmpleado" method="POST">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalEmpleadoTitle"><i class="bi bi-person-gear me-2"></i>Editar empleado</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-3">Empleado: <strong id="modalEmpleadoNombre"></strong></p>
+                        <div class="mb-3">
+                            <label class="form-label" for="modalEmail">Correo</label>
+                            <input type="email" class="form-control" id="modalEmail" name="email" maxlength="120" autocomplete="email">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="modalDireccion">Dirección</label>
+                            <input type="text" class="form-control" id="modalDireccion" name="direccion" maxlength="200" autocomplete="street-address">
+                        </div>
+                        <hr>
+                        <div class="mb-2">
+                            <label class="form-label" for="modalPin">Nuevo PIN (opcional)</label>
+                            <input type="password" class="form-control" id="modalPin" name="pin" maxlength="12" pattern="\d{4,12}" autocomplete="new-password" placeholder="Dejar vacío para no cambiar">
+                        </div>
+                        <div class="form-text">4 a 12 dígitos. Para Admin/Gerente, mínimo 6.</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning"><i class="bi bi-save me-1"></i>Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script nonce="<%= cspNonce %>">
+        document.querySelectorAll('.btn-editar-empleado').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var form = document.getElementById('formEmpleado');
+                form.action = '/register/' + btn.dataset.id + '/editar';
+                document.getElementById('modalEmpleadoNombre').textContent = btn.dataset.nombre || '';
+                document.getElementById('modalEmail').value = btn.dataset.email || '';
+                document.getElementById('modalDireccion').value = btn.dataset.direccion || '';
+                document.getElementById('modalPin').value = '';
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEmpleado')).show();
+            });
+        });
+    </script>
 
     <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 </body>

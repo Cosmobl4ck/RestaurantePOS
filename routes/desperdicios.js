@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/supabase');
+const { requirePermission } = require('../middlewares/access');
 
 // =====================================================
 // 1. VISTA PRINCIPAL (GET /desperdicios)
@@ -104,7 +105,7 @@ router.post('/', async (req, res) => {
 // =====================================================
 // 3. ELIMINAR (DELETE /desperdicios/:id)
 // =====================================================
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requirePermission('waste.delete'), async (req, res) => {
     try {
         const id = Number(req.params.id);
         const restauranteId = req.session.usuario.restaurante_id;

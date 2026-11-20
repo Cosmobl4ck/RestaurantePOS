@@ -11,7 +11,7 @@
 <body>
 <%- include('partials/navbar') %>
 
-<style>
+<style nonce="<%= cspNonce %>">
     /* ===== PETRONAS CROQUIS DESIGNER v2.0 ===== */
     @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
     
@@ -370,7 +370,7 @@
         <button id="btn-modal-editar" disabled style="background:#FF6B6B; color:#08090A; border:none; padding:12px 24px; border-radius:5px; font-weight:800; cursor:not-allowed; opacity:0.4; transition:all 0.3s; width:100%; text-transform:uppercase; letter-spacing:1px; font-family:'Rajdhani', sans-serif; font-size:14px;">
             Continuar (5s)
         </button>
-        <button onclick="window.location.href='/areas'" style="background:transparent; color:#8A8D91; border:1px solid #1A1D20; padding:10px 24px; border-radius:5px; font-weight:600; cursor:pointer; margin-top:10px; width:100%; transition:all 0.2s; font-size:12px; text-transform:uppercase;">
+        <button id="btn-cancelar-volver" style="background:transparent; color:#8A8D91; border:1px solid #1A1D20; padding:10px 24px; border-radius:5px; font-weight:600; cursor:pointer; margin-top:10px; width:100%; transition:all 0.2s; font-size:12px; text-transform:uppercase;">
             Cancelar y Volver
         </button>
     </div>
@@ -387,7 +387,7 @@
         </div>
 
         <!-- Botón volver — fijo bajo la cabecera -->
-        <button id="btn-volver-areas" onclick="volverAreas()" style="flex-shrink:0;">
+        <button id="btn-volver-areas" style="flex-shrink:0;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
             Volver a Áreas
         </button>
@@ -397,22 +397,22 @@
             <p class="aside-section-title">Formas de Área</p>
             <div class="formas-grid">
                 <div class="forma-item" draggable="true"
-                     ondragstart="event.dataTransfer.setData('figura-tipo','cuadrado')">
+                     data-figura="cuadrado">
                     <div class="forma-preview cuadrado"></div>
                     Cuadrado
                 </div>
                 <div class="forma-item" draggable="true"
-                     ondragstart="event.dataTransfer.setData('figura-tipo','circulo')">
+                     data-figura="circulo">
                     <div class="forma-preview circulo"></div>
                     Círculo
                 </div>
                 <div class="forma-item" draggable="true"
-                     ondragstart="event.dataTransfer.setData('figura-tipo','rect-h')">
+                     data-figura="rect-h">
                     <div class="forma-preview rect-h"></div>
                     Rect. Horiz.
                 </div>
                 <div class="forma-item" draggable="true"
-                     ondragstart="event.dataTransfer.setData('figura-tipo','rect-v')">
+                     data-figura="rect-v">
                     <div class="forma-preview rect-v"></div>
                     Rect. Vert.
                 </div>
@@ -425,22 +425,22 @@
             <p class="aside-section-title">Tipo de Mesa</p>
             <div class="formas-grid">
                 <div class="forma-item" draggable="true"
-                     ondragstart="event.dataTransfer.setData('figura-tipo','cuadrado')">
+                     data-figura="cuadrado">
                     <div class="forma-preview cuadrado"></div>
                     Cuadrado
                 </div>
                 <div class="forma-item" draggable="true"
-                     ondragstart="event.dataTransfer.setData('figura-tipo','circulo')">
+                     data-figura="circulo">
                     <div class="forma-preview circulo"></div>
                     Círculo
                 </div>
                 <div class="forma-item" draggable="true"
-                     ondragstart="event.dataTransfer.setData('figura-tipo','rect-h')">
+                     data-figura="rect-h">
                     <div class="forma-preview rect-h"></div>
                     Rect. Horiz.
                 </div>
                 <div class="forma-item" draggable="true"
-                     ondragstart="event.dataTransfer.setData('figura-tipo','rect-v')">
+                     data-figura="rect-v">
                     <div class="forma-preview rect-v"></div>
                     Rect. Vert.
                 </div>
@@ -462,7 +462,7 @@
 
         <!-- FOOTER FIJO — botón siempre visible abajo -->
         <div class="aside-footer">
-            <button class="btn-guardar-main" onclick="guardarCroquis()">
+            <button class="btn-guardar-main" id="btn-guardar-croquis">
                 &#9889; Guardar Todo
             </button>
         </div>
@@ -500,17 +500,17 @@
 </div>
 
 <!-- Datos desde servidor para cargar mesas guardadas -->
-<script id="data-mesas-guardadas" type="application/json">
+<script id="data-mesas-guardadas" type="application/json" nonce="<%= cspNonce %>">
     <%- serializeForHtmlScript(typeof mesas !== 'undefined' ? mesas : []) %>
 </script>
 
 <!-- Estado inicial de áreas si vienen del servidor -->
-<script id="data-areas-guardadas" type="application/json">
+<script id="data-areas-guardadas" type="application/json" nonce="<%= cspNonce %>">
     <%- serializeForHtmlScript(typeof areas !== 'undefined' ? areas : []) %>
 </script>
 
 <script src="/js/croquis-designer.js"></script>
-<script>
+<script nonce="<%= cspNonce %>">
 // El diseñador debe existir ANTES de hidratar el estado proveniente de Supabase.
 (function hidratarCroquisDesdeServidor() {
     try {
@@ -536,6 +536,20 @@
         console.error('No se pudo hidratar el croquis:', e);
     }
 })();
+</script>
+<script nonce="<%= cspNonce %>">
+// Handlers extraídos de los atributos inline (CSP sin 'unsafe-inline').
+document.getElementById('btn-cancelar-volver').addEventListener('click', () => {
+    window.location.href = '/areas';
+});
+document.getElementById('btn-volver-areas').addEventListener('click', () => volverAreas());
+document.getElementById('btn-guardar-croquis').addEventListener('click', () => guardarCroquis());
+// Las figuras arrastrables usan data-figura; una delegación cubre ambas listas.
+document.addEventListener('dragstart', (e) => {
+    const item = e.target.closest('.forma-item[data-figura]');
+    if (!item || !e.dataTransfer) return;
+    e.dataTransfer.setData('figura-tipo', item.dataset.figura);
+});
 </script>
 <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 </body>
