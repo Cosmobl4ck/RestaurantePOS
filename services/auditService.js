@@ -1,4 +1,5 @@
 const { supabase } = require('../config/supabase');
+const { getClientIp } = require('../utils/ip-access');
 
 const TABLE = 'auditoria_eventos';
 const MAX_DETAIL_BYTES = 12000;
@@ -46,7 +47,7 @@ async function registrarAuditoria(req, { accion, entidad = null, entidadId = nul
         entidad: limitText(entidad, 60),
         entidad_id: limitText(entidadId, 80),
         detalle: safeDetail(detalle),
-        ip: limitText(req.ip, 80),
+        ip: limitText(getClientIp(req), 80),
         user_agent: limitText(typeof req.get === 'function' ? req.get('user-agent') : req.headers?.['user-agent'], 300)
     };
 

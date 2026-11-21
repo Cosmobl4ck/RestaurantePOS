@@ -43,7 +43,7 @@ test('login registra asistencia y respeta la IP del restaurante', () => {
   assert.match(auth, /tipo: 'salida'/);
 
   // Bloqueo por IP y excepcion admin/gerente.
-  assert.match(auth, /ipAllowed\(req\.ip/);
+  assert.match(auth, /ipAllowed\(getClientIp\(req\)/);
   assert.match(middleware, /ipBloqueada/);
   assert.match(middleware, /ip_permitida/);
   assert.match(middleware, /\['admin', 'gerente'\]/);

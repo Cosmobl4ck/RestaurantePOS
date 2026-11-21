@@ -1,6 +1,6 @@
 const { supabase } = require('../config/supabase');
 const { normalizeRole } = require('./access');
-const { isAllowed: ipAllowed } = require('../utils/ip-access');
+const { isAllowed: ipAllowed, getClientIp } = require('../utils/ip-access');
 const planService = require('../services/planService');
 
 // La licencia y el estado del usuario se revalidan contra la base de datos,
@@ -28,7 +28,7 @@ function ipBloqueada(req, permitida) {
     if (!permitida) return false;
     const rol = normalizeRole(req.session?.usuario?.rol);
     if (['admin', 'gerente'].includes(rol)) return false;
-    return !ipAllowed(req.ip, permitida);
+    return !ipAllowed(getClientIp(req), permitida);
 }
 
 function bloquearIp(req, res) {

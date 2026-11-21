@@ -68,9 +68,12 @@ app.locals.serializeForHtmlScript = serializeForHtmlScript;
 
 // Proxy: configurar explícitamente. Sin proxy real, dejarlo desactivado evita
 // que un cliente falsifique X-Forwarded-For y evada el rate limiting.
+// Con Cloudflare Tunnel usar TRUST_PROXY=loopback.
 if (process.env.TRUST_PROXY) {
-    const raw = process.env.TRUST_PROXY;
-    app.set('trust proxy', raw === 'true' ? true : Number(raw) || 1);
+    const raw = String(process.env.TRUST_PROXY).trim();
+    if (raw === 'true') app.set('trust proxy', true);
+    else if (/^\d+$/.test(raw)) app.set('trust proxy', Number(raw));
+    else app.set('trust proxy', raw);
 }
 
 // ==========================================

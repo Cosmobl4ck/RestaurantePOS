@@ -44,6 +44,47 @@ function isIpv4Prefix3(token) {
 }
 
 /**
+ * Cloudflared suele conectar desde loopback o una red privada (Docker).
+ * Solo en ese caso se acepta CF-Connecting-IP, y solo con TRUST_CLOUDFLARE=true.
+ */
+function isLocalOrPrivateIp(value) {
+  const ip = normalizeIp(value);
+  if (!net.isIP(ip)) return false;
+  if (ip === '::1') return true;
+  if (net.isIPv4(ip)) {
+    return inIpv4Cidr(ip, '127.0.0.0/8')
+      || inIpv4Cidr(ip, '10.0.0.0/8')
+      || inIpv4Cidr(ip, '172.16.0.0/12')
+      || inIpv4Cidr(ip, '192.168.0.0/16')
+      || inIpv4Cidr(ip, '169.254.0.0/16');
+  }
+  const lower = ip.toLowerCase();
+  return lower.startsWith('fc') || lower.startsWith('fd')
+    || lower.startsWith('fe8') || lower.startsWith('fe9')
+    || lower.startsWith('fea') || lower.startsWith('feb');
+}
+
+/**
+ * IP real del cliente detrás de Cloudflare Tunnel.
+ * El header CF-Connecting-IP solo se confía si el socket viene de cloudflared
+ * (loopback/red privada) y TRUST_CLOUDFLARE=true. Nunca se confía en él desde
+ * una conexión pública directa.
+ */
+function getClientIp(req) {
+  const socketIp = normalizeIp(req?.socket?.remoteAddress || req?.connection?.remoteAddress);
+  const rawHeader = typeof req?.get === 'function'
+    ? req.get('cf-connecting-ip')
+    : req?.headers?.['cf-connecting-ip'];
+  const cfIp = normalizeIp(String(rawHeader || '').split(',')[0]);
+  const trustsCloudflare = String(process.env.TRUST_CLOUDFLARE || '').toLowerCase() === 'true';
+
+  if (trustsCloudflare && isLocalOrPrivateIp(socketIp) && net.isIP(cfIp)) {
+    return cfIp;
+  }
+  return normalizeIp(req?.ip || socketIp);
+}
+
+/**
  * Sin IP configurada no se restringe. Acepta IPs exactas, los tres primeros
  * octetos (equivale a /24) o CIDR IPv4 separados por coma.
  */
@@ -60,4 +101,4 @@ function isAllowed(clientIp, allowedRaw) {
   });
 }
 
-module.exports = { normalizeIp, parseAllowed, isValidToken, isAllowed };
+module.exports = { normalizeIp, parseAllowed, isValidToken, isAllowed, getClientIp };

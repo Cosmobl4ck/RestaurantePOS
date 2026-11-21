@@ -48,7 +48,7 @@ test('los estáticos se sirven antes del rate limit y el login tiene límite pro
   assert.ok(server.indexOf("express.static") < server.indexOf('const apiLimiter'));
   assert.match(server, /app\.get\('\/healthz'/);
   assert.match(auth, /keyGenerator/);
-  assert.match(auth, /ipKeyGenerator\(req\.ip\)/);
+  assert.match(auth, /ipKeyGenerator\(getClientIp\(req\)\)/);
   assert.match(auth, /max: 10/);
 });
 

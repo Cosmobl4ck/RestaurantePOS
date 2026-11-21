@@ -36,10 +36,13 @@ Completa `.env` sin versionarlo:
 - `SUPABASE_SECRET_KEY` (recomendada) o `SUPABASE_SERVICE_ROLE`: secreto exclusivo del backend.
 - `SESSION_SECRET`: secreto de al menos 32 caracteres aleatorios.
 - `SUPERADMIN_USER` y `SUPERADMIN_PASSWORD`: opcionales; `/superadmin` permanece deshabilitado si faltan.
-- `TRUST_PROXY`: solo si hay un proxy real delante (`1` para uno, `true` para confiar en todos).
+- `TRUST_PROXY`: solo si hay un proxy real delante (`loopback` para Cloudflare Tunnel en el mismo host, `1` para uno, `true` para confiar en todos).
+- `TRUST_CLOUDFLARE`: `true` solo detrás de Cloudflare Tunnel; permite usar `CF-Connecting-IP` como IP real del cliente.
 - `ENFORCE_HTTPS`: `true` obliga a HTTPS (actívalo solo con TLS real).
 - `RATE_LIMIT_MAX`: peticiones API por IP cada 15 minutos (por defecto 3000).
 - `LICENSE_CACHE_TTL_MS`: caché de revalidación de licencia/estado de usuario (por defecto 60000).
+
+Para publicar en Contabo con Cloudflare Tunnel, sigue `docs/CLOUDFLARE_TUNNEL.md`.
 
 Nunca expongas `SUPABASE_SERVICE_ROLE` en `public/`, vistas ni código enviado al navegador.
 

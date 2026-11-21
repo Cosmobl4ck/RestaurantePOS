@@ -8,7 +8,7 @@ const { getPlanSync, getLimitSync, getUsage } = require('../services/planService
 const { enforcementEnabled } = require('../middlewares/planAccess');
 const { registrarAuditoria } = require('../services/auditService');
 const { registrarAsistencia } = require('../services/attendanceService');
-const { isAllowed: ipAllowed, normalizeIp, isValidToken } = require('../utils/ip-access');
+const { isAllowed: ipAllowed, isValidToken, getClientIp } = require('../utils/ip-access');
 const { dateInTimeZone } = require('../utils/business-time');
 
 // Hash de referencia para igualar el tiempo de respuesta cuando el usuario no
@@ -24,7 +24,7 @@ const loginLimiter = rateLimit({
     skipSuccessfulRequests: true,
     keyGenerator: (req) => {
         const usuario = String(req.body?.nombre || '').trim().toLowerCase().slice(0, 50);
-        return `${ipKeyGenerator(req.ip)}:${usuario}`;
+        return `${ipKeyGenerator(getClientIp(req))}:${usuario}`;
     },
     message: 'Demasiados intentos de inicio de sesiÃ³n. Espera 15 minutos.'
 });
@@ -119,7 +119,7 @@ router.post('/login', loginLimiter, async (req, res) => {
         const rolNormalizado = normalizeRole(user.rol);
         if (restaurante.ip_permitida
             && !['admin', 'gerente'].includes(rolNormalizado)
-            && !ipAllowed(req.ip, restaurante.ip_permitida)) {
+            && !ipAllowed(getClientIp(req), restaurante.ip_permitida)) {
             return res.status(403).render('login', {
                 error: 'Solo puedes iniciar sesiÃ³n desde la red del restaurante.'
             });
@@ -147,7 +147,7 @@ router.post('/login', loginLimiter, async (req, res) => {
                 empleadoId: user.id,
                 tipo: 'entrada',
                 metodo: 'pin_manual',
-                ip: req.ip
+                ip: getClientIp(req)
             }).catch((error) => console.error('No se pudo registrar asistencia:', error.message));
             registrarAuditoria(req, {
                 accion: 'sesion.iniciar',
@@ -177,7 +177,7 @@ function cerrarSesion(req, res) {
             empleadoId: usuario.id,
             tipo: 'salida',
             metodo: 'pin_manual',
-            ip: req.ip
+            ip: getClientIp(req)
         }).catch((error) => console.error('No se pudo registrar salida:', error.message));
     }
     req.session.destroy(() => {
@@ -232,7 +232,7 @@ async function renderRegister(req, res, extra = {}) {
         limiteUsuarios: getLimitSync(plan.codigo, 'usuarios'),
         empleados,
         ipPermitida,
-        ipActual: normalizeIp(req.ip),
+        ipActual: getClientIp(req),
         error: null,
         success: null,
         ...extra
@@ -514,7 +514,7 @@ router.get('/register/asistencia', async (req, res) => {
         hasta,
         timezone,
         ipPermitida,
-        ipActual: normalizeIp(req.ip)
+        ipActual: getClientIp(req)
     });
 });
 
@@ -546,7 +546,7 @@ router.post('/register/:id/finalizar-turno', async (req, res) => {
         const { data, error: rpcError } = await supabase.rpc('finalizar_turno', {
             p_restaurante_id: Number(req.session.usuario.restaurante_id),
             p_empleado_id: id,
-            p_ip: String(req.ip || '').slice(0, 80)
+            p_ip: String(getClientIp(req) || '').slice(0, 80)
         });
         if (rpcError) throw rpcError;
 
