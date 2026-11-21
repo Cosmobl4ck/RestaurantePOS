@@ -8,7 +8,7 @@
 
 ### 1. Base de Datos
 1. Abrir MySQL Workbench o el cliente MySQL de tu preferencia
-2. Ejecutar el script `database.sql` que se encuentra en la raíz del proyecto
+2. Ejecutar el script `database.sql` que se encuentra en `docs/sql/`
 
 ### 2. Aplicación
 1. Clonar o descargar este repositorio

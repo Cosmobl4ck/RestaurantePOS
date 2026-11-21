@@ -69,8 +69,8 @@ for (const rel of [
   'routes/kds.js',
   'routes/areas.js',
   'middlewares/access.js',
-  'AUDITORIA_FINAL.md',
-  'SECURITY_REPORT.md'
+  'docs/AUDITORIA_FINAL.md',
+  'docs/SECURITY_REPORT.md'
 ]) {
   if (!fs.existsSync(path.join(root, rel))) fail(`MISSING ${rel}`);
 }

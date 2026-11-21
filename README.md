@@ -70,7 +70,7 @@ La aplicación usa un cliente privilegiado en el backend. RLS no sustituye los f
 ## Seguridad
 
 El detalle del hardening aplicado en la rama `fix/security-hardening` está en
-[`SECURITY_HARDENING_2026-11-06.md`](SECURITY_HARDENING_2026-11-06.md).
+[`SECURITY_HARDENING_2026-11-06.md`](docs/SECURITY_HARDENING_2026-11-06.md).
 Incluye XSS, IDOR cross-tenant, rate limiting, validación global de
 sesión/licencia, CSP, dependencias y la migración pendiente de aplicar.
 
