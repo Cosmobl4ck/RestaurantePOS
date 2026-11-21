@@ -60,6 +60,20 @@
                                     </h5>
                                 </div>
                             </div>
+                            <div class="row text-center mt-2 pt-2 border-top border-secondary-subtle">
+                                <div class="col-4">
+                                    <small class="text-muted">Tarjeta</small>
+                                    <h6>$<%= Number(c.ventas_tarjeta || 0).toFixed(2) %></h6>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted">Transferencia</small>
+                                    <h6>$<%= Number(c.ventas_transferencia || 0).toFixed(2) %></h6>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted">Total ventas</small>
+                                    <h6>$<%= (Number(c.ventas_efectivo || 0) + Number(c.ventas_tarjeta || 0) + Number(c.ventas_transferencia || 0)).toFixed(2) %></h6>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -84,6 +98,27 @@
                 <div class="card-body">
                     <div class="alert alert-info">
                         <strong>Base Inicial:</strong> $<%= Number(caja.monto_apertura).toFixed(2) %>
+                    </div>
+                    <div class="row text-center g-2 mb-3">
+                        <div class="col-6 col-md-3">
+                            <small class="text-muted">Efectivo</small>
+                            <h6 class="mb-0">$<%= Number(ventasTurno.efectivo).toFixed(2) %></h6>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-muted">Tarjeta</small>
+                            <h6 class="mb-0">$<%= Number(ventasTurno.tarjeta).toFixed(2) %></h6>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-muted">Transferencia</small>
+                            <h6 class="mb-0">$<%= Number(ventasTurno.transferencia).toFixed(2) %></h6>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-muted">Total</small>
+                            <h6 class="mb-0 text-success">$<%= Number(ventasTurno.total).toFixed(2) %></h6>
+                        </div>
+                    </div>
+                    <div class="small text-muted mb-3">
+                        El cuadre compara solo el efectivo. Tarjeta y transferencia se registran aparte.
                     </div>
                     <div id="calculadoraContainer"></div>
                     <button id="btnGuardarCierre" class="btn btn-warning w-100 mt-3" data-id="<%= caja.id %>">Realizar Corte y Cerrar</button>

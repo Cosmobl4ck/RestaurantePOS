@@ -177,6 +177,11 @@
                                 <td></td>
                             </tr>
                             <tr>
+                                <td colspan="3" class="text-end">Total Tarjeta:</td>
+                                <td colspan="2" class="text-end" id="totalTarjeta">$0.00</td>
+                                <td></td>
+                            </tr>
+                            <tr>
                                 <td colspan="3" class="text-end">Total General:</td>
                                 <td colspan="2" class="text-end" id="totalGeneral">$0.00</td>
                                 <td></td>
@@ -388,7 +393,7 @@
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
 
         function calcularTotales() {
-            let total = 0, tef = 0, ttr = 0;
+            let total = 0, tef = 0, ttr = 0, ttj = 0;
             document.querySelectorAll('#ventasTabla tr').forEach(tr => {
                 const totalEl = tr.querySelector('[data-total]');
                 const forma = tr.children[3]?.innerText?.trim().toLowerCase();
@@ -396,10 +401,12 @@
                 total += val;
                 if (forma === 'efectivo') tef += val;
                 else if (forma === 'transferencia') ttr += val;
+                else if (forma === 'tarjeta') ttj += val;
             });
             document.getElementById('totalGeneral').textContent = `$${total.toFixed(2)}`;
             document.getElementById('totalEfectivo').textContent = `$${tef.toFixed(2)}`;
             document.getElementById('totalTransferencia').textContent = `$${ttr.toFixed(2)}`;
+            document.getElementById('totalTarjeta').textContent = `$${ttj.toFixed(2)}`;
         }
         calcularTotales();
 

@@ -38,7 +38,11 @@ test('cash routes validate input and delegate financial writes to RPCs', () => {
   assert.match(route, /Joi\.object/);
   assert.match(route, /rpc\('pos_open_cash'/);
   assert.match(route, /rpc\('pos_close_cash'/);
-  assert.doesNotMatch(route, /from\('facturas'\)/);
+  // Las ventas del turno se leen para mostrar el cuadre; nunca se escriben aquí.
+  assert.doesNotMatch(route, /from\('facturas'\)[\s\S]{0,200}?\.(?:insert|update|delete|upsert)\(/);
+  for (const match of route.matchAll(/from\('facturas'\)[\s\S]{0,200}/g)) {
+    assert.match(match[0], /\.select\(/);
+  }
   assert.doesNotMatch(route, /from\('cortes_caja'\)[\s\S]{0,120}\.update\(/);
   assert.doesNotMatch(route, /hoyISO|toISOString\(\)\.split/);
   assert.match(route, /JSON\.stringify\(detalles \|\| \{\}\)/);

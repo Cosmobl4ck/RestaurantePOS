@@ -53,7 +53,25 @@ router.get('/', verificarSesion, authRole(allowedRoles), async (req, res) => {
         const { data: historial, error: errHistorial } = await supabase.from('cortes_caja').select('*')
             .eq('fecha', fecha).eq('restaurante_id', restauranteId).order('turno', { ascending: true });
         if (errHistorial) throw errHistorial;
-        res.render('caja', { caja: cajaAbierta || null, historial: historial || [], usuario: req.session.usuario, sinCaja: req.query.sinCaja === '1' });
+
+        let ventasTurno = { efectivo: 0, tarjeta: 0, transferencia: 0, total: 0 };
+        if (cajaAbierta?.created_at) {
+            const { data: facturasTurno } = await supabase
+                .from('facturas')
+                .select('total, forma_pago')
+                .eq('restaurante_id', restauranteId)
+                .eq('estado', 'activa')
+                .gte('fecha', cajaAbierta.created_at);
+            (facturasTurno || []).forEach((f) => {
+                const valor = Number(f.total) || 0;
+                if (f.forma_pago === 'efectivo') ventasTurno.efectivo += valor;
+                else if (f.forma_pago === 'tarjeta') ventasTurno.tarjeta += valor;
+                else if (f.forma_pago === 'transferencia') ventasTurno.transferencia += valor;
+            });
+            ventasTurno.total = ventasTurno.efectivo + ventasTurno.tarjeta + ventasTurno.transferencia;
+        }
+
+        res.render('caja', { caja: cajaAbierta || null, historial: historial || [], usuario: req.session.usuario, sinCaja: req.query.sinCaja === '1', ventasTurno });
     } catch (error) {
         console.error('Error cargando caja:', error);
         res.status(500).send('Error en caja');
@@ -105,6 +123,8 @@ router.post('/cerrar', verificarSesion, authRole(allowedRoles), requirePermissio
             detalle: {
                 monto_cierre: value.monto_final,
                 ventas_efectivo: data?.ventas_efectivo,
+                ventas_tarjeta: data?.ventas_tarjeta,
+                ventas_transferencia: data?.ventas_transferencia,
                 diferencia: data?.diferencia
             }
         });
@@ -132,15 +152,19 @@ router.get('/exportar/:id?', verificarSesion, authRole(allowedRoles), requireFea
         sheet.columns = [
             { header: 'Turno', key: 'turno', width: 10 }, { header: 'Estado', key: 'estado', width: 10 },
             { header: 'Inicial', key: 'inicial', width: 15 }, { header: '+ Ventas Efec.', key: 'ventas', width: 15 },
-            { header: '= Esperado', key: 'esperado', width: 15 }, { header: 'Real (Contado)', key: 'final', width: 15 },
-            { header: 'Diferencia', key: 'diferencia', width: 15 }
+            { header: '+ Tarjeta', key: 'tarjeta', width: 15 }, { header: '+ Transferencia', key: 'transferencia', width: 18 },
+            { header: '= Esperado (efectivo)', key: 'esperado', width: 20 }, { header: 'Real (Contado)', key: 'final', width: 15 },
+            { header: 'Diferencia', key: 'diferencia', width: 15 }, { header: '= Total ventas', key: 'totalVentas', width: 16 }
         ];
         (cortes || []).forEach((cash) => {
             const esperado = Number(cash.monto_apertura) + Number(cash.ventas_efectivo || 0);
+            const tarjeta = Number(cash.ventas_tarjeta || 0);
+            const transferencia = Number(cash.ventas_transferencia || 0);
+            const totalVentas = Number(cash.ventas_efectivo || 0) + tarjeta + transferencia;
             const row = sheet.addRow({
                 turno: cash.turno || 'Único', estado: String(cash.estado).toUpperCase(), inicial: cash.monto_apertura,
-                ventas: cash.ventas_efectivo || 0, esperado, final: cash.monto_cierre || 0,
-                diferencia: cash.diferencia || 0
+                ventas: cash.ventas_efectivo || 0, tarjeta, transferencia, esperado,
+                final: cash.monto_cierre || 0, diferencia: cash.diferencia || 0, totalVentas
             });
             const cell = row.getCell('diferencia');
             if (Number(cash.diferencia) < 0) {

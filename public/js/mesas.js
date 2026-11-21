@@ -10,6 +10,12 @@ window.swalPos = function (opts) {
     }, opts || {}));
 };
 
+// El offcanvas atrapa el foco; sin esto, el input del Swal no se puede editar.
+document.addEventListener('shown.bs.offcanvas', (event) => {
+    const instance = bootstrap.Offcanvas.getInstance(event.target);
+    if (instance && instance._focustrap) instance._focustrap.deactivate();
+});
+
 // 1. Funciones Globales
 function cerrarMenuLateral() {
     const canvasElement = document.getElementById('canvasPedido');
@@ -351,7 +357,7 @@ $(function() {
                 title: 'Cobrar pedido',
                 html: `<p class="swal-pago-total">Total a pagar</p><p class="swal-pago-monto">${totalTexto}</p>`,
                 input: 'select',
-                inputOptions: { efectivo: '💵 Efectivo', transferencia: '💳 Transferencia' },
+                inputOptions: { efectivo: '💵 Efectivo', tarjeta: '💳 Tarjeta', transferencia: '🏦 Transferencia' },
                 inputValue: 'efectivo',
                 inputValidator: (v) => (!v ? 'Selecciona una forma de pago.' : undefined),
                 showCancelButton: true,
@@ -367,21 +373,32 @@ $(function() {
                     width: anchoPago,
                     title: '¿Con cuánto paga?',
                     html: `<p class="swal-pago-total">Total a pagar</p><p class="swal-pago-monto">${totalTexto}</p>`,
-                    input: 'number',
-                    inputValue: totalPedido,
-                    inputAttributes: { min: 0, step: '0.01', inputmode: 'decimal' },
+                    input: 'text',
+                    inputValue: String(totalPedido),
+                    inputAttributes: { inputmode: 'decimal', autocomplete: 'off', maxlength: '12' },
+                    focusConfirm: false,
+                    didOpen: () => {
+                        const input = Swal.getInput();
+                        if (input) {
+                            input.focus();
+                            input.select();
+                        }
+                    },
                     showCancelButton: true,
                     confirmButtonText: 'Calcular cambio',
                     cancelButtonText: 'Cancelar',
                     reverseButtons: true,
                     inputValidator: (v) => {
-                        if(v === '' || v === null) return 'Ingresa el monto recibido.';
-                        if(Number(v) < totalPedido) return 'Dinero insuficiente.';
+                        const texto = String(v ?? '').trim();
+                        if (!texto) return 'Ingresa el monto recibido.';
+                        const numero = Number(texto.replace(',', '.'));
+                        if (!Number.isFinite(numero)) return 'Monto inválido.';
+                        if (numero < totalPedido) return 'Dinero insuficiente.';
                     }
                 });
                 if(!pagoOk) return;
 
-                const recibido = Number(entregado);
+                const recibido = Number(String(entregado ?? '').replace(',', '.'));
                 const cambio = recibido - totalPedido;
                 await swalPos({
                     width: anchoPago,

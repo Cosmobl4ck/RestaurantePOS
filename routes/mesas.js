@@ -234,7 +234,7 @@ router.post('/pedidos/:pedidoId/enviar-comanda', verificarSesion, async (req, re
 router.post('/pedidos/:pedidoId/facturar', verificarSesion, requirePermission('sales.invoice'), async (req, res) => {
     const restauranteId = req.session.usuario.restaurante_id;
     const formaPago = String(req.body.forma_pago || 'efectivo').toLowerCase();
-    if (!['efectivo', 'transferencia'].includes(formaPago)) {
+    if (!['efectivo', 'tarjeta', 'transferencia'].includes(formaPago)) {
         return res.status(400).json({ error: 'Forma de pago inválida.' });
     }
     try {
