@@ -96,6 +96,14 @@ router.get('/', verificarSesion, async (req, res) => {
 
         if (errPedidos) throw errPedidos;
 
+        const { data: areas, error: errAreas } = await supabase
+            .from('areas_restaurante')
+            .select('id,nombre')
+            .eq('restaurante_id', restauranteId)
+            .order('id', { ascending: true });
+
+        if (errAreas) throw errAreas;
+
         // Orden natural: todas las mesas diseñadas en el croquis deben ser visibles en el POS.
         // Las mesas especiales (para llevar / domicilio) se colocan al final.
         const naturalNumber = (value) => {
@@ -110,10 +118,40 @@ router.get('/', verificarSesion, async (req, res) => {
             return diff || String(a.numero || '').localeCompare(String(b.numero || ''), 'es', { numeric: true });
         });
 
-        const mesasConConteo = mesasOrdenadas.map(m => ({
-            ...m,
-            pedidos_abiertos: pedidos.filter(p => Number(p.mesa_id) === Number(m.id)).length
-        }));
+        const mesasConConteo = mesasOrdenadas
+            .map(m => ({
+                ...m,
+                pedidos_abiertos: pedidos.filter(p => Number(p.mesa_id) === Number(m.id)).length
+            }))
+            .sort((a, b) => Number(b.capacidad || 0) - Number(a.capacidad || 0) || naturalNumber(a.numero) - naturalNumber(b.numero));
+
+        const ordenZonas = ['Bar', 'Terraza', 'Salón principal', 'Salon principal'];
+        const areasConConteo = (areas || [])
+            .map((area) => ({
+                ...area,
+                total: mesasConConteo.filter((m) => Number(m.area_id) === Number(area.id)).length,
+                ocupadas: mesasConConteo.filter((m) => Number(m.area_id) === Number(area.id) && m.estado === 'ocupada').length
+            }))
+            .sort((a, b) => {
+                const ia = ordenZonas.indexOf(a.nombre);
+                const ib = ordenZonas.indexOf(b.nombre);
+                return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+            });
+        const especiales = mesasConConteo.filter((m) => !m.area_id);
+
+        const zonaSolicitada = String(req.query.zona || 'todas');
+        let zonaActiva = zonaSolicitada;
+        let mesasVisibles = mesasConConteo;
+        if (zonaSolicitada === 'especiales') {
+            mesasVisibles = especiales;
+        } else if (zonaSolicitada !== 'todas') {
+            const areaId = Number(zonaSolicitada);
+            if (!Number.isInteger(areaId) || !areasConConteo.some((a) => Number(a.id) === areaId)) {
+                zonaActiva = 'todas';
+            } else {
+                mesasVisibles = mesasConConteo.filter((m) => Number(m.area_id) === areaId);
+            }
+        }
 
         const { data: negocio } = await supabase
             .from('restaurantes')
@@ -121,7 +159,14 @@ router.get('/', verificarSesion, async (req, res) => {
             .eq('id', restauranteId)
             .maybeSingle();
 
-        res.render('mesas', { mesas: mesasConConteo, usuario: req.session.usuario, propinaPorcentaje: Number(negocio?.propina_porcentaje || 0) });
+        res.render('mesas', {
+            mesas: mesasVisibles,
+            areas: areasConConteo,
+            especialesCount: especiales.length,
+            zonaActiva,
+            usuario: req.session.usuario,
+            propinaPorcentaje: Number(negocio?.propina_porcentaje || 0)
+        });
     } catch (error) {
         console.error('Error al cargar mesas:', error);
         res.status(500).render('error', { 

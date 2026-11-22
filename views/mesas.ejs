@@ -174,10 +174,29 @@
     <%- include('partials/navbar') %>
 
     <div class="container mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
             <h4 class="mb-0 fw-bold text-dark">
                 <i class="bi bi-shop me-2 text-teal"></i>Punto de Venta / Entregas
             </h4>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mb-4" role="tablist" aria-label="Zonas del restaurante">
+            <a href="/mesas?zona=todas" class="btn btn-sm <%= zonaActiva === 'todas' ? 'btn-teal' : 'btn-outline-secondary' %>">
+                <i class="bi bi-grid-3x3-gap me-1"></i>Todas
+                <span class="badge text-bg-light ms-1"><%= areas.reduce((acc, a) => acc + a.total, 0) + especialesCount %></span>
+            </a>
+            <% areas.forEach(function (area) { %>
+                <a href="/mesas?zona=<%= area.id %>" class="btn btn-sm <%= String(zonaActiva) === String(area.id) ? 'btn-teal' : 'btn-outline-secondary' %>">
+                    <i class="bi bi-geo-alt me-1"></i><%= area.nombre %>
+                    <span class="badge text-bg-light ms-1"><%= area.ocupadas %>/<%= area.total %></span>
+                </a>
+            <% }); %>
+            <% if (especialesCount > 0) { %>
+                <a href="/mesas?zona=especiales" class="btn btn-sm <%= zonaActiva === 'especiales' ? 'btn-teal' : 'btn-outline-secondary' %>">
+                    <i class="bi bi-bag-check me-1"></i>Especiales
+                    <span class="badge text-bg-light ms-1"><%= especialesCount %></span>
+                </a>
+            <% } %>
         </div>
 
         <div class="row g-4">
@@ -219,7 +238,7 @@
                             </h3>
                             
                             <small class="d-block mb-2 text-uppercase fw-bold" style="font-size: 0.7rem; opacity: 0.8;">
-                                <%= m.estado %>
+                                <%= m.estado %> · <%= Number(m.capacidad || 0) %> pers.
                             </small>
                             
                             <div class="mt-auto w-100">
