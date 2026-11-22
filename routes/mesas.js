@@ -178,6 +178,7 @@ router.get('/', verificarSesion, async (req, res) => {
             areas: areasConConteo,
             especialesCount: especiales.length,
             zonaActiva,
+            puedeAgregarEspecial: ['admin', 'gerente', 'cajero'].includes(req.session.usuario.rol),
             usuario: req.session.usuario,
             propinaPorcentaje: Number(negocio?.propina_porcentaje || 0)
         });
@@ -248,6 +249,65 @@ router.post('/abrir', verificarSesion, async (req, res) => {
         console.error('Error al abrir pedido:', error.message);
         const status = /mesa|reservada|bloqueada/i.test(error.message || '') ? 409 : 500;
         res.status(status).json({ error: status === 500 ? 'Error interno del servidor.' : (error.message || 'Error al abrir pedido.') });
+    }
+});
+
+// =========================================================================
+// POST /mesas/especial - Crear cuadrito extra de para llevar / domicilio
+// =========================================================================
+router.post('/especial', verificarSesion, requirePermission('orders.create'), async (req, res) => {
+    const restauranteId = req.session.usuario.restaurante_id;
+    const tipo = String(req.body?.tipo || '').toLowerCase();
+    if (!['llevar', 'domicilio'].includes(tipo)) {
+        return res.status(400).json({ error: 'Tipo de cuadrito inválido.' });
+    }
+    const prefijo = tipo === 'llevar' ? 'PARA LLEVAR' : 'A DOMICILIO';
+
+    try {
+        const { data: existentes, error } = await supabase
+            .from('mesas')
+            .select('numero')
+            .eq('restaurante_id', restauranteId)
+            .is('area_id', null)
+            .ilike('numero', `${prefijo}%`);
+        if (error) throw error;
+
+        if ((existentes || []).length >= 20) {
+            return res.status(400).json({ error: `Máximo 20 cuadritos de ${prefijo.toLowerCase()}.` });
+        }
+
+        const numeros = (existentes || []).map((m) => {
+            const match = String(m.numero || '').match(/(\d+)\s*$/);
+            return match ? Number(match[1]) : 0;
+        });
+        const siguiente = Math.max(1, ...numeros) + 1;
+        const numero = `${prefijo} ${siguiente}`;
+
+        const { data, error: insertError } = await supabase
+            .from('mesas')
+            .insert({
+                restaurante_id: restauranteId,
+                numero,
+                estado: 'libre',
+                area_id: null,
+                capacidad: 4,
+                forma: 'rect-h',
+                id_externo: numero
+            })
+            .select('id,numero,estado,area_id,capacidad')
+            .single();
+        if (insertError) throw insertError;
+
+        await registrarAuditoria(req, {
+            accion: 'mesa.especial_crear',
+            entidad: 'mesa',
+            entidadId: data.id,
+            detalle: { numero, tipo }
+        });
+        return res.status(201).json({ success: true, mesa: data });
+    } catch (error) {
+        console.error('Error creando cuadrito especial:', error.message);
+        return res.status(500).json({ error: 'No se pudo crear el cuadrito.' });
     }
 });
 

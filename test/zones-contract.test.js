@@ -15,6 +15,9 @@ test('POS filtra mesas por zona y conserva especiales', () => {
   assert.match(route, /especialesCount/);
   assert.match(route, /areasConConteo/);
   assert.match(route, /zonaSolicitada === 'zonas'/);
+  assert.match(route, /router\.post\('\/especial'/);
+  assert.match(view, /data-especial/);
+  assert.match(view, /Agregar para llevar/);
   assert.match(view, /\?zona=/);
   assert.match(view, /zonaActiva === 'zonas'/);
   assert.match(view, /Personas/);

@@ -140,6 +140,26 @@ $(function() {
         ));
     });
 
+    document.querySelectorAll('[data-especial]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const tipo = btn.dataset.especial;
+            btn.disabled = true;
+            try {
+                const resp = await fetch('/mesas/especial', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tipo })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) throw new Error(data.error || 'No se pudo crear el cuadrito.');
+                location.reload();
+            } catch (err) {
+                btn.disabled = false;
+                swalPos({ icon: 'error', title: 'Error', text: err.message });
+            }
+        });
+    });
+
     async function abrirMesaNueva(mesaId, nombreCliente, personas) {
         try {
             const resp = await fetch('/mesas/abrir', {

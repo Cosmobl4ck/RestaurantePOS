@@ -50,6 +50,10 @@ GET /mesas?zona=todas
 - Al facturar o cancelar, la mesa vuelve a 0 clientes.
 - El pedido abierto de `T-1` se conservó.
 - `PARA LLEVAR` y `A DOMICILIO` quedan fuera de las 3 zonas, en Especiales.
+- En Especiales, Admin/Gerente/Cajero pueden crear cuadritos extra:
+  - `Agregar para llevar` → `PARA LLEVAR 2`, `PARA LLEVAR 3`, etc.
+  - `Agregar a domicilio` → `A DOMICILIO 2`, `A DOMICILIO 3`, etc.
+- Host puede verlos, pero no crearlos.
 - El croquis sigue disponible para Admin/Gerente en Gold, pero la operación diaria usa cuadrícula.
 
 ## Visibilidad por rol
