@@ -1510,3 +1510,41 @@ body.factura-print .acciones .btn-cerrar {
         display: none !important;
     }
 }
+
+/* Modal de cobro: menos redondeado y con más aire. */
+.swal-pos {
+    border-radius: 6px !important;
+    padding: 1.6rem 1.8rem !important;
+}
+.swal-pos .swal2-title {
+    padding: 0 0 .9rem !important;
+    font-size: 1.55rem;
+}
+.swal-pos .swal2-html-container {
+    margin: .2rem 0 0 !important;
+    padding: 0 !important;
+}
+.swal-pos .form-label {
+    margin-bottom: .45rem;
+    font-weight: 600;
+}
+.swal-pos .form-select,
+.swal-pos .form-control {
+    margin-bottom: .25rem;
+    padding: .65rem .8rem;
+    border-radius: 4px;
+}
+.swal-pos .form-select + .form-label,
+.swal-pos .form-control + .form-label {
+    margin-top: .9rem;
+}
+.swal-pos .swal2-actions {
+    width: 100%;
+    margin-top: 1.5rem !important;
+    gap: .75rem;
+}
+.swal-pos .swal2-actions button {
+    border-radius: 4px !important;
+    padding: .7rem 1.2rem !important;
+}
+

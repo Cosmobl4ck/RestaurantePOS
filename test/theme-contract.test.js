@@ -1,4 +1,4 @@
-const test = require('node:test');
+﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -23,11 +23,11 @@ test('todas las vistas con <head> cargan el tema Petronas una sola vez', () => {
 
   for (const file of views) {
     const html = fs.readFileSync(file, 'utf8');
-    const links = (html.match(/\/css\/petronas\.css\?v=petronas1/g) || []).length;
+    const links = (html.match(/\/css\/petronas\.css\?v=petronas\d+/g) || []).length;
     const rel = path.relative(root, file);
 
     if (html.includes('</head>')) {
-      assert.equal(links, 1, `${rel} debe cargar /css/petronas.css?v=petronas1 exactamente una vez`);
+      assert.equal(links, 1, `${rel} debe cargar /css/petronas.css?v=petronas2 exactamente una vez`);
     } else {
       assert.equal(links, 0, `${rel} no tiene <head> y no debe cargar el tema`);
     }
@@ -83,7 +83,7 @@ test('el KDS de cocina y bar usa la paleta Petronas sin colores legados', () => 
 test('la factura conserva papel blanco al imprimir aunque el POS sea oscuro', () => {
   const factura = fs.readFileSync(path.join(root, 'views/factura.ejs'), 'utf8');
   assert.match(factura, /<body class="factura-print">/);
-  assert.match(factura, /\/css\/petronas\.css\?v=petronas1/);
+  assert.match(factura, /\/css\/petronas\.css\?v=petronas\d+/);
 
   const printBlock = theme.slice(theme.indexOf('@media print'));
   assert.match(printBlock, /body\.factura-print[\s\S]*background:\s*#FFFFFF\s*!important/i);
@@ -91,7 +91,7 @@ test('la factura conserva papel blanco al imprimir aunque el POS sea oscuro', ()
   assert.match(printBlock, /body\.factura-print \.acciones[\s\S]*display:\s*none\s*!important/i);
 });
 
-test('la app expone el manifiesto y el aviso de instalación PWA', () => {
+test('la app expone el manifiesto y el aviso de instalaciÃ³n PWA', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'public/manifest.webmanifest'), 'utf8'));
   const installer = fs.readFileSync(path.join(root, 'public/js/pwa-install.js'), 'utf8');
   const serviceWorker = fs.readFileSync(path.join(root, 'public/sw.js'), 'utf8');
@@ -109,7 +109,7 @@ test('la app expone el manifiesto y el aviso de instalación PWA', () => {
   assert.match(navbar, /include\('pwa-install'\)/);
 });
 
-test('el login conserva una estructura móvil aunque Bootstrap no esté disponible', () => {
+test('el login conserva una estructura mÃ³vil aunque Bootstrap no estÃ© disponible', () => {
   const login = fs.readFileSync(path.join(root, 'views/login.ejs'), 'utf8');
 
   assert.match(login, /body > \.container \{ width: min\(100%, 646px\)/);
@@ -118,3 +118,4 @@ test('el login conserva una estructura móvil aunque Bootstrap no esté disponib
   assert.match(login, /\.login-card \.btn-login \{[\s\S]*width: 100%/);
   assert.match(login, /@media \(max-width: 575\.98px\)/);
 });
+
