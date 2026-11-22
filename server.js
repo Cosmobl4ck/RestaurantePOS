@@ -226,7 +226,7 @@ app.get('/healthz', (req, res) => {
 // 10. DEFINICIÓN DE ROLES
 // ==========================================
 const ROLES_CAJA = ['admin', 'gerente', 'cajero'];
-const ROLES_OPERACION = ['admin', 'gerente', 'cajero', 'mesero'];
+const ROLES_OPERACION = ['admin', 'gerente', 'cajero', 'host', 'mesero'];
 
 // ==========================================
 // 11. GUARDIA GLOBAL DE SESIÓN + LICENCIA
@@ -313,7 +313,7 @@ app.use('/bar', authRole(['admin', 'gerente', 'cajero', 'bar']), requireFeature(
 app.use('/ventas', requirePermission('sales.view'), requireFeature('ventas.historial'), ventasRoutes);
 app.use('/configuracion', requirePermission('restaurant.manage'), requireFeature('configuracion.basica'), configuracionRoutes);
 app.use('/kds', requirePermission('kds.view'), kdsRoutes);
-app.use('/areas', requirePermission('floorplan.edit'), requireFeature('areas.croquis'), areasRoutes);
+app.use('/areas', requirePermission('floorplan.view'), requireFeature('areas.croquis'), areasRoutes);
 app.use('/registro-pedidos', authRole(ROLES_CAJA), requireFeature('pos.pedidos'), registroPedidosRoutes);
 app.use('/desperdicios', requirePermission('waste.view'), requireFeature('inventario.desperdicios'), desperdiciosRoutes);
 app.use('/mi-plan', requirePermission('restaurant.manage'), miPlanRoutes);

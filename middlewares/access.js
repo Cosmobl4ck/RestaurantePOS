@@ -9,6 +9,7 @@ const ROLES = Object.freeze({
   ADMIN: 'admin',
   GERENTE: 'gerente',
   CAJERO: 'cajero',
+  HOST: 'host',
   MESERO: 'mesero',
   COCINA: 'cocina',
   BAR: 'bar'
@@ -35,6 +36,9 @@ const ROLE_PERMISSIONS = Object.freeze({
   mesero: [
     'dashboard.view', 'orders.view', 'orders.create', 'orders.edit', 'orders.send',
     'orders.move', 'floorplan.view', 'products.view', 'customers.view', 'customers.edit'
+  ],
+  host: [
+    'dashboard.view', 'orders.view', 'floorplan.view', 'customers.view'
   ],
   cocina: ['kds.view', 'kds.prepare', 'kds.complete'],
   bar: ['kds.view', 'kds.prepare', 'kds.complete']

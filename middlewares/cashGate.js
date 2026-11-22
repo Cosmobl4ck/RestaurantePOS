@@ -46,9 +46,12 @@ async function cajaAbierta(req) {
 async function cashGate(req, res, next) {
   if (!req.session?.usuario) return next();
 
-  // Admin y gerente pueden ver reportes y administrar sin caja abierta.
+  // Admin, gerente y host pueden ver el plano/mesas sin caja abierta.
   const rol = normalizeRole(req.session.usuario.rol);
-  if (['admin', 'gerente'].includes(rol)) return next();
+  if (['admin', 'gerente', 'host'].includes(rol)) return next();
+
+  // El cajero puede consultar mesas aunque no haya caja; no puede operar.
+  if (req.method === 'GET' && req.path === '/mesas' && rol === 'cajero') return next();
 
   if (!esRutaBloqueada(req.path)) return next();
 

@@ -350,7 +350,7 @@ const puede = (featureKey) => typeof locals.planPuede === 'function' ? locals.pl
 const rol = usuario?.rol || '';
 const esAdmin = ['admin', 'gerente'].includes(rol);
 const esCaja = ['admin', 'gerente', 'cajero'].includes(rol);
-const esOperacion = ['admin', 'gerente', 'cajero', 'mesero'].includes(rol);
+const esOperacion = ['admin', 'gerente', 'cajero', 'host', 'mesero'].includes(rol);
 const esCocina = ['admin', 'gerente', 'cajero', 'cocina'].includes(rol);
 const esBar = ['admin', 'gerente', 'cajero', 'bar'].includes(rol);
 const negocio = usuario?.nombre_negocio || 'Demo';
@@ -360,7 +360,7 @@ const rutaActual = String(locals.currentPath || '');
 const activo = (ruta) => ruta === '/kds/cocina' || ruta === '/kds/bar'
     ? rutaActual.startsWith(ruta)
     : rutaActual === ruta || rutaActual.startsWith(`${ruta}/`);
-const verDashboard = esCaja;
+const verDashboard = esCaja || rol === 'host';
 const verMesas = esOperacion && puede('pos.mesas');
 const verProductos = esCaja && puede('menu.productos');
 const verCaja = esCaja && puede('caja.basica');
@@ -372,7 +372,7 @@ const verAuditoria = Boolean(usuario && ['admin', 'gerente'].includes(usuario.ro
 const verClientes = esOperacion && puede('clientes');
 const verKdsCocina = esCocina && puede('kds.cocina');
 const verKdsBar = esBar && puede('kds.bar');
-const verAreas = esAdmin && puede('areas.croquis');
+const verAreas = (esAdmin || rol === 'host') && puede('areas.croquis');
 const verDesperdicios = esCaja && puede('inventario.desperdicios');
 const verConfiguracion = esAdmin && puede('configuracion.basica');
 const verPersonal = esAdmin && puede('usuarios');

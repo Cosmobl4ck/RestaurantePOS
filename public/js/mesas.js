@@ -84,18 +84,46 @@ $(function() {
 
     window.recargarItemsActuales = function(id) { cargarItemsPedido(id); };
 
-    window.gestionarMesa = function(id, numero, estado) {
+    window.gestionarMesa = function(id, numero, estado, capacidad) {
         if (estado === 'libre') {
+            const maxPersonas = Math.max(1, Number(capacidad) || 1);
             swalPos({
                 title: `Mesa #${numero}`,
-                text: "Nombre del cliente:",
-                input: 'text',
-                inputPlaceholder: 'Ej. Juan Pérez',
+                html: `
+                    <div class="text-start small">
+                        <label class="form-label" for="swalMesaNombre">Nombre del cliente</label>
+                        <input id="swalMesaNombre" type="text" maxlength="100" class="form-control form-control-sm" placeholder="Ej. Juan Pérez">
+                        <label class="form-label mt-2" for="swalMesaPersonas">Cantidad de clientes</label>
+                        <input id="swalMesaPersonas" type="number" min="1" max="${maxPersonas}" value="1" class="form-control form-control-sm">
+                        <div class="form-text">Capacidad de la mesa: ${maxPersonas} personas.</div>
+                    </div>`,
+                focusConfirm: false,
                 showCancelButton: true,
                 confirmButtonText: 'Abrir mesa',
-                inputValidator: (value) => { if (!value) return '¡Necesitas un nombre!'; }
+                cancelButtonText: 'Cancelar',
+                didOpen: () => {
+                    const popup = Swal.getPopup();
+                    const nombre = popup.querySelector('#swalMesaNombre');
+                    if (nombre) nombre.focus();
+                },
+                preConfirm: () => {
+                    const popup = Swal.getPopup();
+                    const nombre = String(popup.querySelector('#swalMesaNombre').value || '').trim();
+                    const personas = Number(popup.querySelector('#swalMesaPersonas').value || 0);
+                    if (!nombre) {
+                        Swal.showValidationMessage('Necesitas un nombre.');
+                        return false;
+                    }
+                    if (!Number.isInteger(personas) || personas < 1 || personas > maxPersonas) {
+                        Swal.showValidationMessage(`La cantidad debe estar entre 1 y ${maxPersonas}.`);
+                        return false;
+                    }
+                    return { nombre, personas };
+                }
             }).then((result) => {
-                if (result.isConfirmed) abrirMesaNueva(id, result.value);
+                if (result.isConfirmed && result.value) {
+                    abrirMesaNueva(id, result.value.nombre, result.value.personas);
+                }
             });
         } else {
             $('#pedidoMesa').text(numero).data('id', id); 
@@ -107,18 +135,20 @@ $(function() {
         card.addEventListener('click', () => window.gestionarMesa(
             Number(card.dataset.mesaId),
             card.dataset.mesaNumero,
-            card.dataset.mesaEstado
+            card.dataset.mesaEstado,
+            Number(card.dataset.mesaCapacidad || 1)
         ));
     });
 
-    async function abrirMesaNueva(mesaId, nombreCliente) {
+    async function abrirMesaNueva(mesaId, nombreCliente, personas) {
         try {
             const resp = await fetch('/mesas/abrir', {
                 method: 'POST',
                 headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ mesa_id: mesaId, cliente_nombre: nombreCliente })
+                body: JSON.stringify({ mesa_id: mesaId, cliente_nombre: nombreCliente, personas })
             });
-            if(!resp.ok) throw new Error("Error al abrir mesa");
+            const data = await resp.json().catch(() => ({}));
+            if(!resp.ok) throw new Error(data.error || "Error al abrir mesa");
             location.reload();
         } catch(err) { swalPos({icon:'error', title: err.message}); }
     }

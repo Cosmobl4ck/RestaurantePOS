@@ -182,6 +182,10 @@ router.post('/abrir', verificarSesion, async (req, res) => {
     const { mesa_id, cliente_nombre, notas } = req.body || {};
     const restauranteId = req.session.usuario.restaurante_id;
     if (!mesa_id) return res.status(400).json({ error: 'Mesa requerida' });
+    const personasRaw = Number(req.body?.personas);
+    const personas = Number.isInteger(personasRaw) && personasRaw > 0
+        ? Math.min(99, personasRaw)
+        : null;
 
     try {
         // Si la mesa ya tiene un pedido abierto, recuperarlo (idempotente).
@@ -200,6 +204,12 @@ router.post('/abrir', verificarSesion, async (req, res) => {
         if (existenteError) throw existenteError;
 
         if (pedidoExistente) {
+            if (personas) {
+                await supabase.from('mesas')
+                    .update({ personas_actuales: personas })
+                    .eq('id', Number(mesa_id))
+                    .eq('restaurante_id', restauranteId);
+            }
             return res.status(200).json({
                 success: true,
                 pedido: { ...pedidoExistente, existing: true }
@@ -213,6 +223,12 @@ router.post('/abrir', verificarSesion, async (req, res) => {
             p_notas: String(notas || '').slice(0, 500) || null
         });
         if (error) throw error;
+        if (personas) {
+            await supabase.from('mesas')
+                .update({ personas_actuales: personas })
+                .eq('id', Number(mesa_id))
+                .eq('restaurante_id', restauranteId);
+        }
         res.status(data?.existing ? 200 : 201).json({ success: true, pedido: data });
     } catch (error) {
         console.error('Error al abrir pedido:', error.message);
@@ -366,6 +382,18 @@ router.post('/pedidos/:pedidoId/facturar', verificarSesion, requirePermission('s
             descuento_motivo: req.body.descuento_motivo,
             propina_porcentaje: req.body.propina_porcentaje
         });
+        const { data: pedidoMesa } = await supabase
+            .from('pedidos')
+            .select('mesa_id')
+            .eq('id', Number(req.params.pedidoId))
+            .eq('restaurante_id', Number(restauranteId))
+            .maybeSingle();
+        if (pedidoMesa?.mesa_id) {
+            await supabase.from('mesas')
+                .update({ personas_actuales: 0 })
+                .eq('id', pedidoMesa.mesa_id)
+                .eq('restaurante_id', Number(restauranteId));
+        }
         await registrarAuditoria(req, {
             accion: 'pedido.facturar',
             entidad: 'pedido',
@@ -401,6 +429,12 @@ router.delete('/pedidos/:pedidoId', verificarSesion, requirePermission('orders.c
             p_pedido_id: Number(req.params.pedidoId)
         });
         if (error) throw error;
+        if (data?.mesa_id) {
+            await supabase.from('mesas')
+                .update({ personas_actuales: 0 })
+                .eq('id', data.mesa_id)
+                .eq('restaurante_id', Number(restauranteId));
+        }
         await registrarAuditoria(req, {
             accion: 'pedido.cancelar',
             entidad: 'pedido',

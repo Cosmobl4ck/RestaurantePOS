@@ -29,7 +29,7 @@ const loginLimiter = rateLimit({
     message: 'Demasiados intentos de inicio de sesiÃ³n. Espera 15 minutos.'
 });
 
-const ROLES_VALIDOS = ['admin', 'gerente', 'cajero', 'mesero', 'cocina', 'bar'];
+const ROLES_VALIDOS = ['admin', 'gerente', 'cajero', 'host', 'mesero', 'cocina', 'bar'];
 const ROLES_SOLO_ADMIN = ['admin', 'gerente'];
 const NOMBRE_RE = /^[\p{L}\p{N} ._-]{2,50}$/u;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

@@ -23,7 +23,7 @@ test('el POS exige caja abierta y redirige a /caja', () => {
   assert.match(gate, /CAJA_CERRADA/);
   assert.match(gate, /render\('caja-cerrada'/);
   assert.match(gate, /puedeAbrir/);
-  assert.match(gate, /\['admin', 'gerente'\]\.includes\(rol\)/);
+  assert.match(gate, /\['admin', 'gerente', 'host'\]\.includes\(rol\)/);
 
   assert.match(caja, /req\.session\.cajaAbierta = \{ at: Date\.now\(\), abierta: true \}/);
   assert.match(caja, /req\.session\.cajaAbierta = \{ at: Date\.now\(\), abierta: false \}/);

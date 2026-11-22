@@ -190,6 +190,10 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--t
             <div class="gstat-sep"></div>
             <div class="gstat"><span class="gstat-val" id="stat-pers" style="color:var(--amber);">0</span><span class="gstat-lbl">Personas</span></div>
             <div class="gstat-sep"></div>
+            <div class="gstat"><span class="gstat-val" id="stat-cap" style="color:var(--teal);">0</span><span class="gstat-lbl">Capacidad</span></div>
+            <div class="gstat-sep"></div>
+            <div class="gstat"><span class="gstat-val" id="stat-disp" style="color:var(--green);">0</span><span class="gstat-lbl">Disponibles</span></div>
+            <div class="gstat-sep"></div>
             <div class="gstat"><span class="gstat-val" id="stat-lib" style="color:var(--green);">0</span><span class="gstat-lbl">Libres</span></div>
         </div>
         <div class="legend">
@@ -198,10 +202,12 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--t
             <div class="legend-item"><div class="ldot" style="background:var(--amber);"></div>Reservada</div>
             <div class="legend-item"><div class="ldot" style="background:var(--blue);"></div>Limpieza</div>
         </div>
+        <% if (puedeEditar) { %>
         <button class="btn-add" id="btn-nueva-area">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Nueva Área
         </button>
+        <% } %>
     </div>
 
     <div class="areas-canvas" id="areas-canvas">
@@ -287,7 +293,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', e => { if(e.key==='Escape') cerrarModal(); });
 
     // Handlers extraídos de atributos inline (CSP sin 'unsafe-inline').
-    document.getElementById('btn-nueva-area').addEventListener('click', abrirModal);
+    const btnNuevaArea = document.getElementById('btn-nueva-area');
+    if (btnNuevaArea) btnNuevaArea.addEventListener('click', abrirModal);
     document.getElementById('btn-cancelar-modal').addEventListener('click', cerrarModal);
     document.getElementById('btn-crear').addEventListener('click', crearArea);
     // Botones por tarjeta (delegación; las tarjetas se crean dinámicamente).
@@ -311,6 +318,8 @@ function crearCard(area) {
     const res    = m.filter(x=>x.estado==='reservada').length;
     const limp   = m.filter(x=>x.estado==='limpieza').length;
     const pers   = m.reduce((s,x)=>s+(parseInt(x.personas_actuales)||0),0);
+    const cap    = m.reduce((s,x)=>s+(parseInt(x.capacidad)||0),0);
+    const disp   = Math.max(0, cap - pers);
     const pct    = total>0?Math.round((ocup/total)*100):0;
     const barClr = pct>=80?'var(--red)':pct>=40?'var(--amber)':'var(--green)';
 
@@ -325,7 +334,10 @@ function crearCard(area) {
            </div>
            <div class="stat-row">
                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-               <strong>${pers}</strong>&nbsp;persona${pers!==1?'s':''} en sala
+               <strong>${pers}/${cap}</strong>&nbsp;personas en sala
+           </div>
+           <div class="stat-row">
+               <strong style="color:var(--green);">${disp}</strong>&nbsp;espacios disponibles
            </div>
            ${res>0?`<div class="stat-row">
                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -417,17 +429,20 @@ function deselect() {
 }
 
 function actualizarStats() {
-    let tot=0,ocu=0,per=0,lib=0;
+    let tot=0,ocu=0,per=0,lib=0,cap=0;
     CARDS.forEach(({data})=>{
         const m=data.mesas||[];
         tot+=m.length; ocu+=m.filter(x=>x.estado==='ocupada').length;
         per+=m.reduce((s,x)=>s+(parseInt(x.personas_actuales)||0),0);
+        cap+=m.reduce((s,x)=>s+(parseInt(x.capacidad)||0),0);
         lib+=m.filter(x=>!x.estado||x.estado==='libre').length;
     });
     document.getElementById('stat-areas').textContent=CARDS.size;
     document.getElementById('stat-total').textContent=tot;
     document.getElementById('stat-ocup').textContent=ocu;
     document.getElementById('stat-pers').textContent=per;
+    document.getElementById('stat-cap').textContent=cap;
+    document.getElementById('stat-disp').textContent=Math.max(0,cap-per);
     document.getElementById('stat-lib').textContent=lib;
 }
 

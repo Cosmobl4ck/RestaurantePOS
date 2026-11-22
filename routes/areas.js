@@ -3,6 +3,7 @@ const router = express.Router();
 const { supabase } = require('../config/supabase');
 const { enforceLimit, enforcementEnabled } = require('../middlewares/planAccess');
 const { getPlanSync, getLimitSync } = require('../services/planService');
+const { requirePermission, hasPermission } = require('../middlewares/access');
 
 function getUsuario(req) {
     return (req.session && req.session.usuario) || req.usuario || req.user || null;
@@ -35,7 +36,7 @@ router.get('/', async (req, res) => {
         // Mesas del tenant agrupadas por área para alimentar el plano operativo.
         const { data: mesas, error: mesasError } = await supabase
             .from('mesas')
-            .select('id, numero, estado, area_id, personas_actuales')
+            .select('id, numero, estado, area_id, personas_actuales, capacidad')
             .eq('restaurante_id', usuario.restaurante_id);
 
         if (mesasError) throw mesasError;
@@ -52,8 +53,9 @@ router.get('/', async (req, res) => {
             usuario, 
             currentPath: req.originalUrl,
             title: 'Gestión de Áreas',
-            areas: areas || [], // Pasamos el array de áreas a la vista EJS
-            mesasPorArea
+            areas: areas || [],
+            mesasPorArea,
+            puedeEditar: hasPermission(usuario.rol, 'floorplan.edit')
         });
     } catch (err) {
         console.error('Error GET /areas:', err);
@@ -64,7 +66,7 @@ router.get('/', async (req, res) => {
 // ============================================================
 // NUEVO: POST /areas/crear (Para el Modo A)
 // ============================================================
-router.post('/crear', enforceLimit('areas'), async (req, res) => {
+router.post('/crear', requirePermission('floorplan.edit'), enforceLimit('areas'), async (req, res) => {
     try {
         const usuario = getUsuario(req);
         if (!usuario) return res.status(401).send('No autenticado.');
@@ -91,7 +93,7 @@ router.post('/crear', enforceLimit('areas'), async (req, res) => {
 // ============================================================
 // GET /areas/editar-croquis/:area_id
 // ============================================================
-router.get('/editar-croquis/:area_id', async (req, res) => {
+router.get('/editar-croquis/:area_id', requirePermission('floorplan.edit'), async (req, res) => {
     try {
         const usuario = getUsuario(req);
         if (!usuario) return res.status(401).send('No autenticado.');
@@ -144,7 +146,7 @@ router.get('/editar-croquis/:area_id', async (req, res) => {
 // ============================================================
 // POST /areas/guardar-croquis
 // ============================================================
-router.post('/guardar-croquis', async (req, res) => {
+router.post('/guardar-croquis', requirePermission('floorplan.edit'), async (req, res) => {
     try {
         const usuario = getUsuario(req);
         if (!usuario) return res.status(401).json({ success: false, message: 'Sesión expirada.' });
@@ -357,7 +359,7 @@ router.post('/guardar-croquis', async (req, res) => {
 // ============================================================
 // POST /areas/mesa/estado  — Producción: cambiar estado
 // ============================================================
-router.post('/mesa/estado', async (req, res) => {
+router.post('/mesa/estado', requirePermission('floorplan.edit'), async (req, res) => {
     try {
         const usuario = getUsuario(req);
         if (!usuario) return res.status(401).json({ success: false });
@@ -404,7 +406,7 @@ router.post('/mesa/estado', async (req, res) => {
 // ============================================================
 // POST /areas/mesa/reservar  — Bloquear con reservación
 // ============================================================
-router.post('/mesa/reservar', async (req, res) => {
+router.post('/mesa/reservar', requirePermission('floorplan.edit'), async (req, res) => {
     try {
         const usuario = getUsuario(req);
         if (!usuario) return res.status(401).json({ success: false });
@@ -440,7 +442,7 @@ router.post('/mesa/reservar', async (req, res) => {
 // ============================================================
 // POST /areas/mesa/desbloquear  — Solo admin / cajero / gerente
 // ============================================================
-router.post('/mesa/desbloquear', async (req, res) => {
+router.post('/mesa/desbloquear', requirePermission('floorplan.edit'), async (req, res) => {
     try {
         const usuario = getUsuario(req);
         if (!usuario) return res.status(401).json({ success: false });
@@ -478,7 +480,7 @@ router.post('/mesa/desbloquear', async (req, res) => {
 // ============================================================
 // POST /areas/guardar-posiciones — orden visual de tarjetas de áreas
 // ============================================================
-router.post('/guardar-posiciones', async (req, res) => {
+router.post('/guardar-posiciones', requirePermission('floorplan.edit'), async (req, res) => {
     const usuario = getUsuario(req);
     if (!usuario) return res.status(401).json({ success: false, message: 'No autenticado.' });
     const posiciones = Array.isArray(req.body.posiciones) ? req.body.posiciones : [];
@@ -509,7 +511,7 @@ router.post('/guardar-posiciones', async (req, res) => {
 // ============================================================
 // DELETE /areas/eliminar/:id — no elimina áreas con mesas en uso
 // ============================================================
-router.delete('/eliminar/:id', async (req, res) => {
+router.delete('/eliminar/:id', requirePermission('floorplan.edit'), async (req, res) => {
     const usuario = getUsuario(req);
     if (!usuario) return res.status(401).json({ success: false, message: 'No autenticado.' });
     const areaId = Number(req.params.id);

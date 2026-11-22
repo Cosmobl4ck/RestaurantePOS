@@ -34,10 +34,36 @@ GET /mesas?zona=todas
 ## Operación
 
 - Las mesas se ordenan por capacidad y número.
-- Cada tarjeta muestra estado y capacidad.
+- Cada tarjeta muestra estado, capacidad y **número de clientes** en mesas ocupadas.
+- Al abrir una mesa se solicita nombre y cantidad de clientes; la cantidad se guarda en `mesas.personas_actuales`.
+- Al facturar o cancelar, la mesa vuelve a 0 clientes.
 - El pedido abierto de `T-1` se conservó.
 - `PARA LLEVAR` y `A DOMICILIO` quedan fuera de las 3 zonas, en Especiales.
 - El croquis sigue disponible para Admin/Gerente en Gold, pero la operación diaria usa cuadrícula.
+
+## Visibilidad por rol
+
+| Rol | Mesas | Plano/croquis | Clientes por mesa | Editar croquis |
+|---|---|---|---|---|
+| Admin | Sí | Sí | Sí | Sí |
+| Gerente | Sí | Sí | Sí | Sí |
+| Host | Sí | Sí | Sí | No |
+| Cajero | Sí | Sí | Sí | No |
+| Mesero | Sí | No | Sí | No |
+
+Host no puede abrir caja, facturar ni editar el plano; solo consulta y ubicación.
+
+## Croquis: métricas
+
+El plano muestra:
+
+- Total de mesas.
+- Mesas ocupadas.
+- Personas actuales.
+- Capacidad total.
+- Espacios disponibles (`capacidad - personas`).
+- Mesas libres.
+
 
 ## Pendiente para multitenant
 

@@ -222,7 +222,8 @@
 
                 <div class="col-6 col-md-4 col-lg-3 col-xl-2"> 
                     <div class="card h-100 text-center p-3 mesa-card <%= cardClass %>"
-                        data-mesa-id="<%= m.id %>" data-mesa-numero="<%= m.numero %>" data-mesa-estado="<%= m.estado %>">
+                        data-mesa-id="<%= m.id %>" data-mesa-numero="<%= m.numero %>" data-mesa-estado="<%= m.estado %>"
+                        data-mesa-capacidad="<%= Number(m.capacidad || 1) %>">
                         
                         <div class="card-body p-2 d-flex flex-column justify-content-center align-items-center">
                             <h3 class="fw-bold mb-1 <%= titleColor %>" style="font-size: 1.2rem;">
@@ -244,8 +245,11 @@
                             <div class="mt-auto w-100">
                                 <% if (m.estado === 'ocupada') { %>
                                     <div class="badge bg-white text-teal text-truncate w-100 p-2 shadow-sm rounded-pill">
-                                        <i class="bi bi-person-fill me-1"></i> <%= m.descripcion || 'Cliente' %>
+                                        <i class="bi bi-people-fill me-1"></i> <%= Number(m.personas_actuales || 0) %> clientes
                                     </div>
+                                    <% if (m.descripcion) { %>
+                                        <small class="d-block text-white-50 mt-1 text-truncate"><%= m.descripcion %></small>
+                                    <% } %>
                                 <% } else { %>
                                     <i class="<%= icon %> fs-2 opacity-50"></i>
                                 <% } %>

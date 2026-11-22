@@ -20,12 +20,17 @@ test('cada rol canónico tiene el acceso esperado', () => {
 });
 
 test('los roles operativos no heredan permisos administrativos', () => {
-  for (const role of ['cajero', 'mesero', 'cocina', 'bar']) {
+  for (const role of ['cajero', 'host', 'mesero', 'cocina', 'bar']) {
     assert.equal(hasPermission(role, 'users.manage'), false, role);
     assert.equal(hasPermission(role, 'restaurant.manage'), false, role);
   }
   assert.equal(hasPermission('cocina', 'sales.invoice'), false);
   assert.equal(hasPermission('bar', 'floorplan.edit'), false);
+  assert.equal(hasPermission('host', 'orders.view'), true);
+  assert.equal(hasPermission('host', 'floorplan.view'), true);
+  assert.equal(hasPermission('host', 'floorplan.edit'), false);
+  assert.equal(hasPermission('host', 'sales.invoice'), false);
+  assert.equal(hasPermission('host', 'cash.view'), false);
 });
 
 test('la matriz aplicada separa edición de borrado y cierra acciones sensibles', () => {

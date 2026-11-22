@@ -95,6 +95,7 @@
                             <select class="form-select" id="rol" name="rol" required>
                                 <option value="" selected disabled>Seleccione un rol...</option>
                                 <option value="mesero">Mesero (Toma pedidos)</option>
+                                <option value="host">Host (Recibe y ubica clientes)</option>
                                 <option value="cajero">Cajero (Cobra y ve caja)</option>
                                 <option value="cocina">Cocina (Monitor de comandas)</option>
                                 <option value="bar">Bar (Monitor de bebidas)</option>
@@ -155,8 +156,8 @@
 
         <!-- LISTA DE EMPLEADOS -->
         <%
-          const etiquetasRol = { admin: 'Administrador', gerente: 'Gerente', cajero: 'Cajero', mesero: 'Mesero', cocina: 'Cocina', bar: 'Bar' };
-          const coloresRol = { admin: 'danger', gerente: 'warning', cajero: 'success', mesero: 'info', cocina: 'secondary', bar: 'secondary' };
+          const etiquetasRol = { admin: 'Administrador', gerente: 'Gerente', cajero: 'Cajero', host: 'Host', mesero: 'Mesero', cocina: 'Cocina', bar: 'Bar' };
+          const coloresRol = { admin: 'danger', gerente: 'warning', cajero: 'success', host: 'primary', mesero: 'info', cocina: 'secondary', bar: 'secondary' };
           const listaEmpleados = typeof empleados !== 'undefined' ? empleados : [];
         %>
         <div class="card shadow card-personal">
