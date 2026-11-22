@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarrocosPOS - Faltas de empleados</title>
+    <link rel="icon" href="/img/logo-icon.svg">
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/font/bootstrap-icons.css">
+    <style nonce="<%= cspNonce %>">
+        body { background-color: #08090A; color: #E8EAED; }
+        .card-faltas { max-width: 1200px; margin: 30px auto 50px; }
+        .table-faltas { --bs-table-bg: transparent; }
+        .table-faltas th { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: #9AA6AD; }
+    </style>
+    <link rel="stylesheet" href="/css/petronas.css?v=petronas1">
+</head>
+<body>
+<%- include('partials/navbar') %>
+
+<div class="container">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <h2 class="h4 mb-0"><i class="bi bi-person-exclamation me-2"></i>Faltas de empleados</h2>
+    </div>
+
+    <% if (success) { %><div class="alert alert-success mt-3"><%= success %></div><% } %>
+    <% if (error) { %><div class="alert alert-danger mt-3"><%= error %></div><% } %>
+
+    <div class="card shadow card-faltas">
+        <div class="card-body">
+            <form action="/register/faltas" method="POST" class="row g-2 align-items-end mb-4">
+                <div class="col-md-3">
+                    <label class="form-label small" for="empleado_id">Empleado</label>
+                    <select class="form-select" id="empleado_id" name="empleado_id" required>
+                        <option value="">Selecciona...</option>
+                        <% empleados.forEach(function (e) { %>
+                            <option value="<%= e.id %>"><%= e.nombre %> (<%= e.rol %>)</option>
+                        <% }); %>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small" for="tipo">Tipo</label>
+                    <select class="form-select" id="tipo" name="tipo" required>
+                        <% tipos.forEach(function (t) { %>
+                            <option value="<%= t %>"><%= t.replace(/_/g, ' ') %></option>
+                        <% }); %>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small" for="fecha">Fecha</label>
+                    <input type="date" class="form-control" id="fecha" name="fecha" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small" for="descripcion">Descripción</label>
+                    <input type="text" class="form-control" id="descripcion" name="descripcion" maxlength="1000" required placeholder="Motivo o detalle">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Registrar</button>
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label small" for="accion_tomada">Acción tomada (opcional)</label>
+                    <input type="text" class="form-control" id="accion_tomada" name="accion_tomada" maxlength="1000" placeholder="Ej: se cubrió turno, se llamó la atención">
+                </div>
+            </form>
+
+            <% if (!faltas.length) { %>
+                <p class="text-center text-muted py-4 mb-0">Sin faltas registradas.</p>
+            <% } else { %>
+                <div class="table-responsive">
+                    <table class="table table-hover table-faltas align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Empleado</th>
+                                <th>Tipo</th>
+                                <th>Descripción</th>
+                                <th>Acción</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% faltas.forEach(function (f) { %>
+                                <tr>
+                                    <td class="text-nowrap"><%= f.fecha %></td>
+                                    <td class="fw-semibold"><%= f.empleado_nombre %></td>
+                                    <td><span class="badge text-bg-warning"><%= String(f.tipo || '').replace(/_/g, ' ') %></span></td>
+                                    <td><%= f.descripcion %></td>
+                                    <td><%= f.accion_tomada || '—' %></td>
+                                    <td><span class="badge text-bg-<%= f.estado === 'resuelto' ? 'success' : f.estado === 'en_revision' ? 'info' : 'danger' %>"><%= f.estado %></span></td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script nonce="<%= cspNonce %>">
+    document.getElementById('fecha').value = new Date().toISOString().slice(0, 10);
+</script>
+</body>
+</html>

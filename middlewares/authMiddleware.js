@@ -39,6 +39,20 @@ function bloquearIp(req, res) {
     });
 }
 
+function avisoLicencia(req, res, fechaVencimiento) {
+    const rol = normalizeRole(req.session?.usuario?.rol);
+    if (!['admin', 'gerente'].includes(rol) || !fechaVencimiento) return;
+    const vence = new Date(fechaVencimiento);
+    if (Number.isNaN(vence.getTime())) return;
+    const dias = Math.ceil((vence.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+    if (dias > 5) return;
+    res.locals.licenseNotice = {
+        dias: Math.max(0, dias),
+        fecha: vence.toISOString().slice(0, 10),
+        vencida: dias < 0
+    };
+}
+
 async function attachPlanContext(req, res) {
     await planService.loadCatalog();
     const plan = planService.getPlanSync(req.session?.usuario?.plan || 'trial');
@@ -74,6 +88,7 @@ const verificarSesion = async (req, res, next) => {
             return denegar(req, res, cache.status || 403, cache.message);
         }
         if (ipBloqueada(req, cache.ipPermitida)) return bloquearIp(req, res);
+        avisoLicencia(req, res, cache.fechaVencimiento);
         await attachPlanContext(req, res);
         return next();
     }
@@ -139,11 +154,12 @@ const verificarSesion = async (req, res, next) => {
         }
 
         if (ipBloqueada(req, negocio.ip_permitida)) {
-            req.session.licenseCheck = { at: Date.now(), ok: true, ipPermitida: negocio.ip_permitida };
+            req.session.licenseCheck = { at: Date.now(), ok: true, ipPermitida: negocio.ip_permitida, fechaVencimiento: negocio.fecha_vencimiento };
             return bloquearIp(req, res);
         }
 
-        req.session.licenseCheck = { at: Date.now(), ok: true, ipPermitida: negocio.ip_permitida || null };
+        avisoLicencia(req, res, negocio.fecha_vencimiento);
+        req.session.licenseCheck = { at: Date.now(), ok: true, ipPermitida: negocio.ip_permitida || null, fechaVencimiento: negocio.fecha_vencimiento || null };
         await attachPlanContext(req, res);
         return next();
     } catch (error) {

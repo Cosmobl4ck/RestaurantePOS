@@ -348,14 +348,20 @@ $(function() {
             }
 
             const totalPedido = items.reduce((acc, it) => acc + (Number(it.subtotal || (it.cantidad * (it.precio_unitario || it.precio)))), 0);
+            const propinaPct = Number(window.POS_PROPINA_PORCENTAJE || 0);
+            const propina = propinaPct > 0 ? Math.round(totalPedido * propinaPct) / 100 : 0;
+            const totalCobrar = Math.round((totalPedido + propina) * 100) / 100;
 
-            const totalTexto = formatear(totalPedido);
+            const totalTexto = formatear(totalCobrar);
+            const detallePropina = propina > 0
+                ? `<p class="swal-pago-total">Incluye propina ${propinaPct}%: ${formatear(propina)}</p>`
+                : '';
             const anchoPago = 'min(92vw, 430px)';
 
             const { value: formaPago, isConfirmed } = await swalPos({
                 width: anchoPago,
                 title: 'Cobrar pedido',
-                html: `<p class="swal-pago-total">Total a pagar</p><p class="swal-pago-monto">${totalTexto}</p>`,
+                html: `<p class="swal-pago-total">Total a pagar</p><p class="swal-pago-monto">${totalTexto}</p>${detallePropina}`,
                 input: 'select',
                 inputOptions: { efectivo: '💵 Efectivo', tarjeta: '💳 Tarjeta', transferencia: '🏦 Transferencia' },
                 inputValue: 'efectivo',
@@ -372,9 +378,9 @@ $(function() {
                 const { value: entregado, isConfirmed: pagoOk } = await swalPos({
                     width: anchoPago,
                     title: '¿Con cuánto paga?',
-                    html: `<p class="swal-pago-total">Total a pagar</p><p class="swal-pago-monto">${totalTexto}</p>`,
+                    html: `<p class="swal-pago-total">Total a pagar</p><p class="swal-pago-monto">${totalTexto}</p>${detallePropina}`,
                     input: 'text',
-                    inputValue: String(totalPedido),
+                    inputValue: String(totalCobrar),
                     inputAttributes: { inputmode: 'decimal', autocomplete: 'off', maxlength: '12' },
                     focusConfirm: false,
                     didOpen: () => {
@@ -393,13 +399,13 @@ $(function() {
                         if (!texto) return 'Ingresa el monto recibido.';
                         const numero = Number(texto.replace(',', '.'));
                         if (!Number.isFinite(numero)) return 'Monto inválido.';
-                        if (numero < totalPedido) return 'Dinero insuficiente.';
+                        if (numero < totalCobrar) return 'Dinero insuficiente.';
                     }
                 });
                 if(!pagoOk) return;
 
                 const recibido = Number(String(entregado ?? '').replace(',', '.'));
-                const cambio = recibido - totalPedido;
+                const cambio = recibido - totalCobrar;
                 await swalPos({
                     width: anchoPago,
                     title: 'Cambio',

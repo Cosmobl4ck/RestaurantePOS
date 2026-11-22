@@ -518,6 +518,145 @@ router.get('/register/asistencia', async (req, res) => {
     });
 });
 
+// ==========================================
+// Faltas e incidentes de empleados (solo admin/gerente)
+// ==========================================
+const TIPOS_FALTA = ['falta', 'falta_injustificada', 'tardanza', 'salida_temprana', 'baja', 'otro'];
+
+router.get('/register/faltas', async (req, res) => {
+    if (!req.session.usuario) return res.redirect('/login');
+    if (!ROLES_SOLO_ADMIN.includes(req.session.usuario.rol)) {
+        return res.redirect('/dashboard');
+    }
+    const restauranteId = req.session.usuario.restaurante_id;
+    const [{ data: empleados }, { data: faltas }] = await Promise.all([
+        supabase.from('usuarios').select('id,nombre,rol,estado').eq('restaurante_id', restauranteId).order('nombre'),
+        supabase.from('incidentes_empleados').select('*').eq('restaurante_id', restauranteId)
+            .order('fecha', { ascending: false }).order('id', { ascending: false }).limit(200)
+    ]);
+    return res.render('faltas', {
+        usuario: req.session.usuario,
+        empleados: empleados || [],
+        faltas: faltas || [],
+        tipos: TIPOS_FALTA,
+        success: req.query.success || null,
+        error: req.query.error || null
+    });
+});
+
+router.post('/register/faltas', async (req, res) => {
+    if (!req.session.usuario) return res.redirect('/login');
+    if (!ROLES_SOLO_ADMIN.includes(req.session.usuario.rol)) {
+        return res.status(403).send('No autorizado.');
+    }
+    const restauranteId = req.session.usuario.restaurante_id;
+    const empleadoId = Number(req.body.empleado_id);
+    const tipo = String(req.body.tipo || '').trim();
+    const fecha = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body.fecha || '')) ? String(req.body.fecha) : null;
+    const descripcion = String(req.body.descripcion || '').trim().slice(0, 1000);
+    const accion = String(req.body.accion_tomada || '').trim().slice(0, 1000) || null;
+    const volver = (tipoMsg, mensaje) => res.redirect(`/register/faltas?${tipoMsg}=${encodeURIComponent(mensaje)}`);
+
+    if (!Number.isInteger(empleadoId) || !TIPOS_FALTA.includes(tipo) || !fecha || descripcion.length < 3) {
+        return volver('error', 'Empleado, tipo, fecha y descripción son obligatorios.');
+    }
+
+    try {
+        const { data: empleado, error } = await supabase
+            .from('usuarios')
+            .select('id,nombre,rol')
+            .eq('id', empleadoId)
+            .eq('restaurante_id', restauranteId)
+            .maybeSingle();
+        if (error) throw error;
+        if (!empleado) return volver('error', 'Empleado no encontrado.');
+
+        const { error: insertError } = await supabase.from('incidentes_empleados').insert({
+            restaurante_id: restauranteId,
+            empleado_id: empleado.id,
+            empleado_nombre: empleado.nombre,
+            tipo,
+            fecha,
+            descripcion,
+            accion_tomada: accion,
+            estado: 'abierto',
+            registrado_por: req.session.usuario.id
+        });
+        if (insertError) throw insertError;
+
+        await registrarAuditoria(req, {
+            accion: 'empleado.falta_registrar',
+            entidad: 'empleado',
+            entidadId: empleado.id,
+            detalle: { tipo, fecha, descripcion }
+        });
+        return volver('success', `Falta de ${empleado.nombre} registrada.`);
+    } catch (error) {
+        console.error('Error registrando falta:', error.message);
+        return volver('error', 'No se pudo registrar la falta.');
+    }
+});
+
+router.post('/register/:id/baja', async (req, res) => {
+    if (!req.session.usuario) return res.redirect('/login');
+    if (!ROLES_SOLO_ADMIN.includes(req.session.usuario.rol)) {
+        return res.status(403).send('No autorizado.');
+    }
+    const id = Number(req.params.id);
+    const motivo = String(req.body.motivo || '').trim().slice(0, 1000);
+    if (!Number.isInteger(id) || id <= 0 || motivo.length < 3) {
+        return res.redirect('/register?error=' + encodeURIComponent('Motivo de baja obligatorio.'));
+    }
+    try {
+        const { data: objetivo, error } = await supabase
+            .from('usuarios')
+            .select('id,nombre,rol,estado')
+            .eq('id', id)
+            .eq('restaurante_id', req.session.usuario.restaurante_id)
+            .maybeSingle();
+        if (error) throw error;
+        if (!objetivo) return res.redirect('/register?error=' + encodeURIComponent('Empleado no encontrado.'));
+        if (id === req.session.usuario.id) {
+            return res.redirect('/register?error=' + encodeURIComponent('No puedes darte de baja a ti mismo.'));
+        }
+        if (req.session.usuario.rol === 'gerente' && ROLES_SOLO_ADMIN.includes(objetivo.rol)) {
+            return res.status(403).send('Solo un administrador puede dar de baja a administradores o gerentes.');
+        }
+
+        const { error: updateError } = await supabase
+            .from('usuarios')
+            .update({ estado: 0 })
+            .eq('id', id)
+            .eq('restaurante_id', req.session.usuario.restaurante_id);
+        if (updateError) throw updateError;
+
+        const { error: incidentError } = await supabase.from('incidentes_empleados').insert({
+            restaurante_id: req.session.usuario.restaurante_id,
+            empleado_id: objetivo.id,
+            empleado_nombre: objetivo.nombre,
+            tipo: 'baja',
+            fecha: dateInTimeZone('America/El_Salvador'),
+            descripcion: motivo,
+            accion_tomada: 'Usuario desactivado por baja.',
+            estado: 'resuelto',
+            registrado_por: req.session.usuario.id,
+            resuelto_at: new Date().toISOString()
+        });
+        if (incidentError) throw incidentError;
+
+        await registrarAuditoria(req, {
+            accion: 'empleado.baja',
+            entidad: 'empleado',
+            entidadId: id,
+            detalle: { nombre: objetivo.nombre, motivo }
+        });
+        return res.redirect('/register?success=' + encodeURIComponent(`Baja de ${objetivo.nombre} registrada.`));
+    } catch (error) {
+        console.error('Error dando de baja empleado:', error.message);
+        return res.redirect('/register?error=' + encodeURIComponent('No se pudo registrar la baja.'));
+    }
+});
+
 // Finaliza el turno de un empleado: registra salida y cierra sus sesiones.
 router.post('/register/:id/finalizar-turno', async (req, res) => {
     if (!req.session.usuario) return res.redirect('/login');

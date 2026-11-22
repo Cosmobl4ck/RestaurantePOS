@@ -40,6 +40,13 @@ router.get('/', verificarSesion, async (req, res) => {
             ? res.locals.planPuede('configuracion.marca')
             : hasFeatureSync(req.session.usuario.plan, 'configuracion.marca');
 
+        const { data: negocioConfig } = await supabase
+            .from('restaurantes')
+            .select('propina_porcentaje')
+            .eq('id', restauranteId)
+            .maybeSingle();
+        const propinaPorcentaje = Number(negocioConfig?.propina_porcentaje || 0);
+
         // Buscamos la configuración específica de ESTE restaurante
         const { data: config, error } = await supabase
             .from('configuracion_impresion')
@@ -64,6 +71,7 @@ router.get('/', verificarSesion, async (req, res) => {
                     qr_src: null
                 },
                 puedeMarca,
+                propinaPorcentaje,
                 usuario: req.session.usuario
             });
         }
@@ -89,6 +97,7 @@ router.get('/', verificarSesion, async (req, res) => {
         res.render('configuracion', {
             config: configParaVista,
             puedeMarca,
+            propinaPorcentaje,
             usuario: req.session.usuario
         });
     } catch (error) {
@@ -182,6 +191,35 @@ router.post('/', verificarSesion, uploadErrorMiddleware(upload.fields([
     } catch (error) {
         console.error('Error en el procesamiento de config:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Propina obligatoria por ticket: solo Admin/Gerente.
+router.post('/propina', verificarSesion, async (req, res) => {
+    const usuario = req.session.usuario;
+    if (!['admin', 'gerente'].includes(usuario.rol)) {
+        return res.status(403).json({ error: 'Solo administradores o gerentes pueden configurar la propina.' });
+    }
+    const porcentaje = Number(req.body.propina_porcentaje);
+    if (!Number.isFinite(porcentaje) || porcentaje < 0 || porcentaje > 100) {
+        return res.status(400).json({ error: 'La propina debe estar entre 0 y 100.' });
+    }
+    try {
+        const { error } = await supabase
+            .from('restaurantes')
+            .update({ propina_porcentaje: Math.round(porcentaje * 100) / 100 })
+            .eq('id', usuario.restaurante_id);
+        if (error) throw error;
+        await registrarAuditoria(req, {
+            accion: 'configuracion.propina',
+            entidad: 'restaurante',
+            entidadId: usuario.restaurante_id,
+            detalle: { propina_porcentaje: porcentaje }
+        });
+        res.redirect('/configuracion');
+    } catch (error) {
+        console.error('Error guardando propina:', error.message);
+        res.status(500).json({ error: 'No se pudo guardar la propina.' });
     }
 });
 

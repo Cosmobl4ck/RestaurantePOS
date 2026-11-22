@@ -6,6 +6,31 @@ const { requireFeature } = require('../middlewares/planAccess');
 const { requirePermission } = require('../middlewares/access');
 const { registrarAuditoria } = require('../services/auditService');
 
+async function aplicarPropina(restauranteId, resultado) {
+    if (!resultado || resultado.already_invoiced || !resultado.factura_id) return resultado;
+    const { data: negocio, error } = await supabase
+        .from('restaurantes')
+        .select('propina_porcentaje')
+        .eq('id', restauranteId)
+        .maybeSingle();
+    if (error) throw error;
+
+    const porcentaje = Number(negocio?.propina_porcentaje || 0);
+    const subtotal = Number(resultado.total || 0);
+    const propina = porcentaje > 0 ? Math.round(subtotal * porcentaje) / 100 : 0;
+    if (propina <= 0) return { ...resultado, subtotal, propina: 0, propina_porcentaje: porcentaje };
+
+    const total = Math.round((subtotal + propina) * 100) / 100;
+    const { error: updateError } = await supabase
+        .from('facturas')
+        .update({ propina, propina_porcentaje: porcentaje, total })
+        .eq('id', resultado.factura_id)
+        .eq('restaurante_id', restauranteId);
+    if (updateError) throw updateError;
+
+    return { ...resultado, subtotal, propina, propina_porcentaje: porcentaje, total };
+}
+
 // =========================================================================
 // GET /mesas - Renderizar vista principal
 // =========================================================================
@@ -49,7 +74,13 @@ router.get('/', verificarSesion, async (req, res) => {
             pedidos_abiertos: pedidos.filter(p => Number(p.mesa_id) === Number(m.id)).length
         }));
 
-        res.render('mesas', { mesas: mesasConConteo, usuario: req.session.usuario });
+        const { data: negocio } = await supabase
+            .from('restaurantes')
+            .select('propina_porcentaje')
+            .eq('id', restauranteId)
+            .maybeSingle();
+
+        res.render('mesas', { mesas: mesasConConteo, usuario: req.session.usuario, propinaPorcentaje: Number(negocio?.propina_porcentaje || 0) });
     } catch (error) {
         console.error('Error al cargar mesas:', error);
         res.status(500).render('error', { 
@@ -244,18 +275,21 @@ router.post('/pedidos/:pedidoId/facturar', verificarSesion, requirePermission('s
             p_forma_pago: formaPago
         });
         if (error) throw error;
+        const resultado = await aplicarPropina(Number(restauranteId), data);
         await registrarAuditoria(req, {
             accion: 'pedido.facturar',
             entidad: 'pedido',
             entidadId: req.params.pedidoId,
             detalle: {
                 forma_pago: formaPago,
-                factura_id: data?.factura_id,
-                total: data?.total,
-                already_invoiced: Boolean(data?.already_invoiced)
+                factura_id: resultado?.factura_id,
+                subtotal: resultado?.subtotal,
+                propina: resultado?.propina,
+                total: resultado?.total,
+                already_invoiced: Boolean(resultado?.already_invoiced)
             }
         });
-        res.json({ success: true, ...(data || {}) });
+        res.json({ success: true, ...(resultado || {}) });
     } catch (error) {
         console.error('❌ Error al facturar:', error.message);
         const status = /pedido|productos|pago|cancelado/i.test(error.message || '') ? 400 : 500;

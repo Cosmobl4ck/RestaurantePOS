@@ -21,7 +21,7 @@ test('el POS acepta efectivo, tarjeta y transferencia', () => {
   assert.match(client, /tarjeta:/);
   assert.match(client, /inputmode: 'decimal'/);
   assert.match(client, /_focustrap/);
-  assert.match(client, /const cambio = recibido - totalPedido/);
+  assert.match(client, /const cambio = recibido - totalCobrar/);
 
   // Totales de ventas.
   assert.match(ventas, /totalTarjeta/);

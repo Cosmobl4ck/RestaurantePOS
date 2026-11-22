@@ -70,6 +70,8 @@
         const total = factura.total != null
             ? Number(factura.total)
             : (detalles || []).reduce((acc, d) => acc + Number(d.subtotal || 0), 0);
+        const propina = Number(factura.propina || 0);
+        const subtotal = (detalles || []).reduce((acc, d) => acc + Number(d.subtotal || 0), 0);
     %>
     <div class="acciones">
         <button type="button" class="btn-imprimir">Imprimir</button>
@@ -126,6 +128,17 @@
         </table>
 
         <div class="separador"></div>
+
+        <% if (propina > 0) { %>
+            <div class="meta">
+                <span>Subtotal</span>
+                <span>$<%= money(subtotal) %></span>
+            </div>
+            <div class="meta">
+                <span>Propina (<%= Number(factura.propina_porcentaje || 0) %>%)</span>
+                <span>$<%= money(propina) %></span>
+            </div>
+        <% } %>
 
         <div class="total">
             <span>TOTAL</span>

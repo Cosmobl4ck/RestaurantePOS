@@ -325,6 +325,25 @@
     }
 </style>
 
+<% if (locals.licenseNotice) { %>
+<div class="container mt-2">
+    <div class="alert <%= locals.licenseNotice.vencida ? 'alert-danger' : 'alert-warning' %> d-flex flex-wrap justify-content-between align-items-center gap-2 mb-0" role="alert">
+        <div>
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <% if (locals.licenseNotice.vencida) { %>
+                La licencia está vencida.
+            <% } else if (locals.licenseNotice.dias === 0) { %>
+                La licencia vence hoy.
+            <% } else { %>
+                La licencia vence en <strong><%= locals.licenseNotice.dias %> día<%= locals.licenseNotice.dias === 1 ? '' : 's' %></strong>.
+            <% } %>
+            <span class="ms-1">Fecha: <%= locals.licenseNotice.fecha %>.</span>
+        </div>
+        <a href="/mi-plan" class="btn btn-sm btn-dark">Renovar plan</a>
+    </div>
+</div>
+<% } %>
+
 <%
 const usuario = locals.usuario || null;
 const puede = (featureKey) => typeof locals.planPuede === 'function' ? locals.planPuede(featureKey) : true;
@@ -562,6 +581,17 @@ const grupoAdmin = verAreas || verDesperdicios || verConfiguracion || verPersona
 </aside>
 
 <%- include('pwa-install') %>
+
+<% if (esCaja) { %>
+<script nonce="<%= cspNonce %>">
+    document.addEventListener('keydown', (event) => {
+        if (event.altKey && !event.ctrlKey && !event.metaKey && String(event.key).toLowerCase() === 'h') {
+            event.preventDefault();
+            window.location.assign('/caja');
+        }
+    });
+</script>
+<% } %>
 
 <script nonce="<%= cspNonce %>">
     document.addEventListener('DOMContentLoaded', function () {

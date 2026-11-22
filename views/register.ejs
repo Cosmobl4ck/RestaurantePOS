@@ -63,6 +63,17 @@
                             <%= plan.limits.usuarios == null ? ' / Sin límite' : ` / ${plan.limits.usuarios}` %>
                         </span>
                     </div>
+                    <% if (plan.limits.usuarios != null && typeof usoUsuarios === 'number' && usoUsuarios / plan.limits.usuarios >= 0.8) { %>
+                        <div class="alert <%= usoUsuarios >= plan.limits.usuarios ? 'alert-danger' : 'alert-warning' %> small mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            <% if (usoUsuarios >= plan.limits.usuarios) { %>
+                                Límite de usuarios alcanzado. No podrás crear más empleados con el plan actual.
+                            <% } else { %>
+                                Estás cerca del límite: quedan <%= plan.limits.usuarios - usoUsuarios %> usuario(s).
+                            <% } %>
+                            <a href="/mi-plan" class="alert-link">Ver planes</a>
+                        </div>
+                    <% } %>
                 <% } %>
 
                 <form action="/register" method="POST">
@@ -156,6 +167,9 @@
                     <a href="/register/asistencia" class="btn btn-sm btn-outline-info">
                         <i class="bi bi-calendar3 me-1"></i>Historial
                     </a>
+                    <a href="/register/faltas" class="btn btn-sm btn-outline-warning">
+                        <i class="bi bi-person-exclamation me-1"></i>Faltas
+                    </a>
                 </div>
             </div>
             <div class="card-body p-0">
@@ -210,6 +224,13 @@
                                             <i class="bi bi-box-arrow-right"></i> Finalizar turno
                                         </button>
                                     </form>
+                                    <% if (Number(e.estado) === 1) { %>
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-baja-empleado ms-1"
+                                            data-id="<%= e.id %>" data-nombre="<%= e.nombre %>"
+                                            title="Dar de baja y registrar incidente">
+                                        <i class="bi bi-person-dash"></i> Baja
+                                    </button>
+                                    <% } %>
                                 </td>
                             </tr>
                             <% }); %>
@@ -296,6 +317,23 @@
                 document.getElementById('modalDireccion').value = btn.dataset.direccion || '';
                 document.getElementById('modalPin').value = '';
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEmpleado')).show();
+            });
+        });
+
+        document.querySelectorAll('.btn-baja-empleado').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var motivo = window.prompt('Motivo de baja de ' + (btn.dataset.nombre || '') + ':');
+                if (!motivo || motivo.trim().length < 3) return;
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/register/' + btn.dataset.id + '/baja';
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'motivo';
+                input.value = motivo.trim();
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
             });
         });
     </script>
