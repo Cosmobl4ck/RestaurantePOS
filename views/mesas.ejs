@@ -181,6 +181,9 @@
         </div>
 
         <div class="d-flex flex-wrap gap-2 mb-4" role="tablist" aria-label="Zonas del restaurante">
+            <a href="/mesas?zona=zonas" class="btn btn-sm <%= zonaActiva === 'zonas' ? 'btn-teal' : 'btn-outline-secondary' %>">
+                <i class="bi bi-grid me-1"></i>Zonas
+            </a>
             <a href="/mesas?zona=todas" class="btn btn-sm <%= zonaActiva === 'todas' ? 'btn-teal' : 'btn-outline-secondary' %>">
                 <i class="bi bi-grid-3x3-gap me-1"></i>Todas
                 <span class="badge text-bg-light ms-1"><%= areas.reduce((acc, a) => acc + a.total, 0) + especialesCount %></span>
@@ -199,6 +202,55 @@
             <% } %>
         </div>
 
+        <% if (zonaActiva === 'zonas') { %>
+        <div class="row g-4">
+            <% areas.forEach(function (area) { %>
+                <div class="col-12 col-md-4">
+                    <a href="/mesas?zona=<%= area.id %>" class="text-decoration-none">
+                        <div class="card h-100 p-4 shadow-sm">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h3 class="h5 fw-bold mb-0 text-teal"><%= area.nombre %></h3>
+                                <span class="badge text-bg-<%= area.ocupadas > 0 ? 'warning' : 'success' %>">
+                                    <%= area.ocupadas %>/<%= area.total %> ocupadas
+                                </span>
+                            </div>
+                            <div class="row text-center g-2">
+                                <div class="col-6">
+                                    <div class="small text-muted">Personas</div>
+                                    <div class="fw-bold"><%= area.personas %>/<%= area.capacidad %></div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="small text-muted">Disponibles</div>
+                                    <div class="fw-bold text-success"><%= area.disponibles %></div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="small text-muted">Mesas libres</div>
+                                    <div class="fw-bold"><%= area.libres %></div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="small text-muted">Total mesas</div>
+                                    <div class="fw-bold"><%= area.total %></div>
+                                </div>
+                            </div>
+                            <div class="mt-3 text-teal small fw-bold">Abrir mesas →</div>
+                        </div>
+                    </a>
+                </div>
+            <% }); %>
+            <% if (especialesCount > 0) { %>
+                <div class="col-12 col-md-4">
+                    <a href="/mesas?zona=especiales" class="text-decoration-none">
+                        <div class="card h-100 p-4 shadow-sm">
+                            <h3 class="h5 fw-bold mb-3 text-teal">Especiales</h3>
+                            <div class="small text-muted mb-1">Para llevar y a domicilio</div>
+                            <div class="fw-bold"><%= especialesCount %> mesas</div>
+                            <div class="mt-3 text-teal small fw-bold">Abrir mesas →</div>
+                        </div>
+                    </a>
+                </div>
+            <% } %>
+        </div>
+        <% } else { %>
         <div class="row g-4">
             <% mesas.forEach(m => { %>
                 <% 
@@ -259,6 +311,7 @@
                 </div>
             <% }) %>
         </div>
+        <% } %>
     </div>
 
     <!-- Offcanvas para Pedidos -->

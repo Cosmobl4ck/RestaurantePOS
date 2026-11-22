@@ -127,11 +127,20 @@ router.get('/', verificarSesion, async (req, res) => {
 
         const ordenZonas = ['Bar', 'Terraza', 'Salón principal', 'Salon principal'];
         const areasConConteo = (areas || [])
-            .map((area) => ({
-                ...area,
-                total: mesasConConteo.filter((m) => Number(m.area_id) === Number(area.id)).length,
-                ocupadas: mesasConConteo.filter((m) => Number(m.area_id) === Number(area.id) && m.estado === 'ocupada').length
-            }))
+            .map((area) => {
+                const mesasArea = mesasConConteo.filter((m) => Number(m.area_id) === Number(area.id));
+                const personas = mesasArea.reduce((sum, m) => sum + Number(m.personas_actuales || 0), 0);
+                const capacidad = mesasArea.reduce((sum, m) => sum + Number(m.capacidad || 0), 0);
+                return {
+                    ...area,
+                    total: mesasArea.length,
+                    ocupadas: mesasArea.filter((m) => m.estado === 'ocupada').length,
+                    libres: mesasArea.filter((m) => m.estado === 'libre').length,
+                    personas,
+                    capacidad,
+                    disponibles: Math.max(0, capacidad - personas)
+                };
+            })
             .sort((a, b) => {
                 const ia = ordenZonas.indexOf(a.nombre);
                 const ib = ordenZonas.indexOf(b.nombre);
@@ -139,15 +148,20 @@ router.get('/', verificarSesion, async (req, res) => {
             });
         const especiales = mesasConConteo.filter((m) => !m.area_id);
 
-        const zonaSolicitada = String(req.query.zona || 'todas');
+        const zonaSolicitada = String(req.query.zona || 'zonas');
         let zonaActiva = zonaSolicitada;
-        let mesasVisibles = mesasConConteo;
-        if (zonaSolicitada === 'especiales') {
+        let mesasVisibles = [];
+        if (zonaSolicitada === 'zonas') {
+            mesasVisibles = [];
+        } else if (zonaSolicitada === 'especiales') {
             mesasVisibles = especiales;
-        } else if (zonaSolicitada !== 'todas') {
+        } else if (zonaSolicitada === 'todas') {
+            mesasVisibles = mesasConConteo;
+        } else {
             const areaId = Number(zonaSolicitada);
             if (!Number.isInteger(areaId) || !areasConConteo.some((a) => Number(a.id) === areaId)) {
-                zonaActiva = 'todas';
+                zonaActiva = 'zonas';
+                mesasVisibles = [];
             } else {
                 mesasVisibles = mesasConConteo.filter((m) => Number(m.area_id) === areaId);
             }

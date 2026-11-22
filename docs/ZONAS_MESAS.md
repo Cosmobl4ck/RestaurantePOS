@@ -13,8 +13,18 @@ Total operable: 34 mesas.
 
 ## Navegación
 
-En `/mesas` hay tabs:
+`/mesas` inicia con **un cuadro por zona**:
 
+- Bar
+- Terraza
+- Salón principal
+- Especiales
+
+Cada cuadro muestra ocupadas/total, personas/capacidad, disponibles y mesas libres. Al hacer clic se abren las mesas de esa zona.
+
+Dentro de una zona también hay tabs:
+
+- Zonas
 - Todas
 - Bar
 - Terraza
@@ -26,6 +36,7 @@ Cada tab muestra `ocupadas/total`.
 El filtro se hace en servidor con:
 
 ```text
+GET /mesas?zona=zonas
 GET /mesas?zona=<area_id>
 GET /mesas?zona=especiales
 GET /mesas?zona=todas
