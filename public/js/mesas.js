@@ -252,6 +252,14 @@ $(function() {
             tbody.append(row);
         });
         $('#totalPedido').text(formatear(total));
+        const propinaPct = Number(window.POS_PROPINA_PORCENTAJE || 0);
+        const propina = propinaPct > 0 ? Math.round(total * propinaPct) / 100 : 0;
+        const $propina = $('#propinaPedido');
+        if (propina > 0) {
+            $propina.text(`Propina ${propinaPct}%: ${formatear(propina)}`).prop('hidden', false);
+        } else {
+            $propina.text('').prop('hidden', true);
+        }
     }
 
     async function cargarItemsPedido(pedidoId){
@@ -386,9 +394,15 @@ $(function() {
                         <input id="swalDescMotivo" type="text" maxlength="200" class="form-control form-control-sm mt-2" placeholder="Motivo del descuento (opcional)">
                         <label class="form-label mt-2" for="swalTipPct">Propina</label>
                         <select id="swalTipPct" class="form-select form-select-sm">${htmlPropina}</select>
-                        <div class="d-flex justify-content-between mt-3 pt-2 border-top">
-                            <span>Total a cobrar</span>
-                            <strong id="swalTotalPreview">${formatear(totalPedido)}</strong>
+                        <label class="form-label mt-2" for="swalFormaPago">Forma de pago</label>
+                        <select id="swalFormaPago" class="form-select form-select-sm">
+                            <option value="efectivo">💵 Efectivo</option>
+                            <option value="tarjeta">💳 Tarjeta</option>
+                            <option value="transferencia">🏦 Transferencia</option>
+                        </select>
+                        <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                            <span class="fw-bold">Total a cobrar</span>
+                            <strong id="swalTotalPreview" class="fs-2">${formatear(totalPedido)}</strong>
                         </div>
                     </div>`,
                 focusConfirm: false,
@@ -429,6 +443,7 @@ $(function() {
                     const desc = popup.querySelector('#swalDescPct');
                     const descCustom = popup.querySelector('#swalDescCustom');
                     const tip = popup.querySelector('#swalTipPct');
+                    const formaPago = popup.querySelector('#swalFormaPago');
                     const motivo = popup.querySelector('#swalDescMotivo');
                     const descPct = desc.value === 'custom' ? Number(descCustom.value || 0) : Number(desc.value || 0);
                     const tipPct = Number(tip.value || 0);
@@ -441,6 +456,7 @@ $(function() {
                     const propina = Math.round(base * tipPct) / 100;
                     const total = Math.round((base + propina) * 100) / 100;
                     return {
+                        forma_pago: formaPago.value,
                         descuento_porcentaje: descPct,
                         descuento_motivo: String(motivo.value || '').trim(),
                         propina_porcentaje: tipPct,
@@ -452,6 +468,7 @@ $(function() {
             });
 
             if (!ajusteOk || !ajuste) return;
+            const formaPago = ajuste.forma_pago || 'efectivo';
 
             const totalCobrar = Number(ajuste.total);
             const totalTexto = formatear(totalCobrar);
@@ -459,22 +476,6 @@ $(function() {
                 Number(ajuste.descuento) > 0 ? `<p class="swal-pago-total">Descuento ${ajuste.descuento_porcentaje}%: -${formatear(ajuste.descuento)}</p>` : '',
                 Number(ajuste.propina) > 0 ? `<p class="swal-pago-total">Propina ${ajuste.propina_porcentaje}%: ${formatear(ajuste.propina)}</p>` : ''
             ].join('');
-
-            const { value: formaPago, isConfirmed } = await swalPos({
-                width: anchoPago,
-                title: 'Cobrar pedido',
-                html: `<p class="swal-pago-total">Total a pagar</p><p class="swal-pago-monto">${totalTexto}</p>${detalleAjuste}`,
-                input: 'select',
-                inputOptions: { efectivo: '💵 Efectivo', tarjeta: '💳 Tarjeta', transferencia: '🏦 Transferencia' },
-                inputValue: 'efectivo',
-                inputValidator: (v) => (!v ? 'Selecciona una forma de pago.' : undefined),
-                showCancelButton: true,
-                confirmButtonText: 'Cobrar',
-                cancelButtonText: 'Cancelar',
-                reverseButtons: true
-            });
-
-            if(!isConfirmed) return;
 
             if(formaPago === 'efectivo') {
                 const { value: entregado, isConfirmed: pagoOk } = await swalPos({

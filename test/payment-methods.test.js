@@ -18,7 +18,7 @@ test('el POS acepta efectivo, tarjeta y transferencia', () => {
   assert.match(migration, /facturas_forma_pago_check/);
 
   // UI de pago: opcion tarjeta, input editable y teclado numerico.
-  assert.match(client, /tarjeta:/);
+  assert.match(client, /value="tarjeta"/);
   assert.match(client, /inputmode: 'decimal'/);
   assert.match(client, /_focustrap/);
   assert.match(client, /const cambio = recibido - totalCobrar/);
