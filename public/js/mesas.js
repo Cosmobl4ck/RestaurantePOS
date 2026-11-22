@@ -251,12 +251,13 @@ $(function() {
             row.append(productCell, quantityCell, subtotalCell);
             tbody.append(row);
         });
-        $('#totalPedido').text(formatear(total));
         const propinaPct = Number(window.POS_PROPINA_PORCENTAJE || 0);
         const propina = propinaPct > 0 ? Math.round(total * propinaPct) / 100 : 0;
+        const totalConPropina = Math.round((total + propina) * 100) / 100;
+        $('#totalPedido').text(formatear(totalConPropina));
         const $propina = $('#propinaPedido');
         if (propina > 0) {
-            $propina.text(`Propina ${propinaPct}%: ${formatear(propina)}`).prop('hidden', false);
+            $propina.text(`Propina ${propinaPct}% incluida: ${formatear(propina)}`).prop('hidden', false);
         } else {
             $propina.text('').prop('hidden', true);
         }

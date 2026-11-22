@@ -35,6 +35,7 @@ test('Sprint 1: caja puede ajustar propina 10/5/0 y descuento', () => {
   assert.match(client, /swalTipPct/);
   assert.match(client, /swalFormaPago/);
   assert.match(client, /propinaPedido/);
+  assert.match(client, /totalConPropina/);
   assert.match(client, /quitar 5%/);
   assert.match(client, /quitar \$\{propinaConfigurada\}%/);
   assert.match(client, /Otro %/);
