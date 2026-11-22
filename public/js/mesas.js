@@ -348,20 +348,122 @@ $(function() {
             }
 
             const totalPedido = items.reduce((acc, it) => acc + (Number(it.subtotal || (it.cantidad * (it.precio_unitario || it.precio)))), 0);
-            const propinaPct = Number(window.POS_PROPINA_PORCENTAJE || 0);
-            const propina = propinaPct > 0 ? Math.round(totalPedido * propinaPct) / 100 : 0;
-            const totalCobrar = Math.round((totalPedido + propina) * 100) / 100;
+            const propinaConfigurada = Number(window.POS_PROPINA_PORCENTAJE || 0);
+            const propinaReducida = Math.max(0, Math.round((propinaConfigurada - 5) * 100) / 100);
+            const opcionesPropina = propinaConfigurada > 0
+                ? [
+                    { valor: propinaConfigurada, etiqueta: `${propinaConfigurada}% (completa)` },
+                    ...(propinaReducida !== propinaConfigurada ? [{ valor: propinaReducida, etiqueta: `${propinaReducida}% (quitar 5%)` }] : []),
+                    { valor: 0, etiqueta: propinaConfigurada > 0 ? `0% (quitar ${propinaConfigurada}%)` : 'Sin propina' }
+                ]
+                : [{ valor: 0, etiqueta: 'Sin propina' }];
+            const opcionesDescuento = [
+                { valor: 0, etiqueta: 'Sin descuento' },
+                { valor: 5, etiqueta: '5%' },
+                { valor: 10, etiqueta: '10%' },
+                { valor: 15, etiqueta: '15%' },
+                { valor: 20, etiqueta: '20%' },
+                { valor: 'custom', etiqueta: 'Otro %' }
+            ];
+            const anchoPago = 'min(94vw, 480px)';
+            const htmlPropina = opcionesPropina.map((o) => `<option value="${o.valor}">${o.etiqueta}</option>`).join('');
+            const htmlDescuento = opcionesDescuento.map((o) => `<option value="${o.valor}">${o.etiqueta}</option>`).join('');
 
+            const { value: ajuste, isConfirmed: ajusteOk } = await swalPos({
+                width: anchoPago,
+                title: 'Descuento y propina',
+                html: `
+                    <div class="text-start small">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal</span>
+                            <strong>${formatear(totalPedido)}</strong>
+                        </div>
+                        <label class="form-label" for="swalDescPct">Descuento</label>
+                        <select id="swalDescPct" class="form-select form-select-sm">${htmlDescuento}</select>
+                        <div id="swalDescCustomWrap" class="mt-1 d-none">
+                            <input id="swalDescCustom" type="number" min="0" max="100" step="0.01" class="form-control form-control-sm" placeholder="Porcentaje de descuento">
+                        </div>
+                        <input id="swalDescMotivo" type="text" maxlength="200" class="form-control form-control-sm mt-2" placeholder="Motivo del descuento (opcional)">
+                        <label class="form-label mt-2" for="swalTipPct">Propina</label>
+                        <select id="swalTipPct" class="form-select form-select-sm">${htmlPropina}</select>
+                        <div class="d-flex justify-content-between mt-3 pt-2 border-top">
+                            <span>Total a cobrar</span>
+                            <strong id="swalTotalPreview">${formatear(totalPedido)}</strong>
+                        </div>
+                    </div>`,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Continuar',
+                cancelButtonText: 'Cancelar',
+                reverseButtons: true,
+                didOpen: () => {
+                    const popup = Swal.getPopup();
+                    const desc = popup.querySelector('#swalDescPct');
+                    const descCustom = popup.querySelector('#swalDescCustom');
+                    const descWrap = popup.querySelector('#swalDescCustomWrap');
+                    const tip = popup.querySelector('#swalTipPct');
+                    const preview = popup.querySelector('#swalTotalPreview');
+
+                    const leerAjuste = () => {
+                        const descPct = desc.value === 'custom'
+                            ? Number(descCustom.value || 0)
+                            : Number(desc.value || 0);
+                        const tipPct = Number(tip.value || 0);
+                        const descuento = Math.round(totalPedido * descPct) / 100;
+                        const base = Math.max(0, Math.round((totalPedido - descuento) * 100) / 100);
+                        const propina = Math.round(base * tipPct) / 100;
+                        const total = Math.round((base + propina) * 100) / 100;
+                        return { descPct, tipPct, descuento, base, propina, total };
+                    };
+                    const actualizar = () => {
+                        descWrap.classList.toggle('d-none', desc.value !== 'custom');
+                        preview.textContent = formatear(leerAjuste().total);
+                    };
+                    desc.addEventListener('change', actualizar);
+                    descCustom.addEventListener('input', actualizar);
+                    tip.addEventListener('change', actualizar);
+                    actualizar();
+                },
+                preConfirm: () => {
+                    const popup = Swal.getPopup();
+                    const desc = popup.querySelector('#swalDescPct');
+                    const descCustom = popup.querySelector('#swalDescCustom');
+                    const tip = popup.querySelector('#swalTipPct');
+                    const motivo = popup.querySelector('#swalDescMotivo');
+                    const descPct = desc.value === 'custom' ? Number(descCustom.value || 0) : Number(desc.value || 0);
+                    const tipPct = Number(tip.value || 0);
+                    if (!Number.isFinite(descPct) || descPct < 0 || descPct > 100) {
+                        Swal.showValidationMessage('El descuento debe estar entre 0 y 100.');
+                        return false;
+                    }
+                    const descuento = Math.round(totalPedido * descPct) / 100;
+                    const base = Math.max(0, Math.round((totalPedido - descuento) * 100) / 100);
+                    const propina = Math.round(base * tipPct) / 100;
+                    const total = Math.round((base + propina) * 100) / 100;
+                    return {
+                        descuento_porcentaje: descPct,
+                        descuento_motivo: String(motivo.value || '').trim(),
+                        propina_porcentaje: tipPct,
+                        descuento,
+                        propina,
+                        total
+                    };
+                }
+            });
+
+            if (!ajusteOk || !ajuste) return;
+
+            const totalCobrar = Number(ajuste.total);
             const totalTexto = formatear(totalCobrar);
-            const detallePropina = propina > 0
-                ? `<p class="swal-pago-total">Incluye propina ${propinaPct}%: ${formatear(propina)}</p>`
-                : '';
-            const anchoPago = 'min(92vw, 430px)';
+            const detalleAjuste = [
+                Number(ajuste.descuento) > 0 ? `<p class="swal-pago-total">Descuento ${ajuste.descuento_porcentaje}%: -${formatear(ajuste.descuento)}</p>` : '',
+                Number(ajuste.propina) > 0 ? `<p class="swal-pago-total">Propina ${ajuste.propina_porcentaje}%: ${formatear(ajuste.propina)}</p>` : ''
+            ].join('');
 
             const { value: formaPago, isConfirmed } = await swalPos({
                 width: anchoPago,
                 title: 'Cobrar pedido',
-                html: `<p class="swal-pago-total">Total a pagar</p><p class="swal-pago-monto">${totalTexto}</p>${detallePropina}`,
+                html: `<p class="swal-pago-total">Total a pagar</p><p class="swal-pago-monto">${totalTexto}</p>${detalleAjuste}`,
                 input: 'select',
                 inputOptions: { efectivo: '💵 Efectivo', tarjeta: '💳 Tarjeta', transferencia: '🏦 Transferencia' },
                 inputValue: 'efectivo',
@@ -378,7 +480,7 @@ $(function() {
                 const { value: entregado, isConfirmed: pagoOk } = await swalPos({
                     width: anchoPago,
                     title: '¿Con cuánto paga?',
-                    html: `<p class="swal-pago-total">Total a pagar</p><p class="swal-pago-monto">${totalTexto}</p>${detallePropina}`,
+                    html: `<p class="swal-pago-total">Total a pagar</p><p class="swal-pago-monto">${totalTexto}</p>${detalleAjuste}`,
                     input: 'text',
                     inputValue: String(totalCobrar),
                     inputAttributes: { inputmode: 'decimal', autocomplete: 'off', maxlength: '12' },
@@ -424,18 +526,24 @@ $(function() {
             const resp = await fetch(`/mesas/pedidos/${pedidoId}/facturar`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ forma_pago: formaPago })
+                body: JSON.stringify({
+                    forma_pago: formaPago,
+                    descuento_porcentaje: ajuste.descuento_porcentaje,
+                    descuento_motivo: ajuste.descuento_motivo,
+                    propina_porcentaje: ajuste.propina_porcentaje
+                })
             });
 
             const dataRespuesta = await resp.json(); 
             if(!resp.ok) throw new Error(dataRespuesta.error || "Error al facturar");
+            const totalFinal = formatear(Number(dataRespuesta.total || totalCobrar));
 
             cerrarMenuLateral();
             swalPos({
                 width: 'min(92vw, 430px)',
                 icon: 'success',
                 title: 'Venta cerrada',
-                html: `<p class="swal-pago-total">Total cobrado</p><p class="swal-pago-monto">${totalTexto}</p>`,
+                html: `<p class="swal-pago-total">Total cobrado</p><p class="swal-pago-monto">${totalFinal}</p>`,
                 confirmButtonText: 'Aceptar'
             }).then(() => location.reload());
 

@@ -6,8 +6,9 @@ const { requireFeature } = require('../middlewares/planAccess');
 const { requirePermission } = require('../middlewares/access');
 const { registrarAuditoria } = require('../services/auditService');
 
-async function aplicarPropina(restauranteId, resultado) {
+async function aplicarAjustes(restauranteId, resultado, opciones = {}) {
     if (!resultado || resultado.already_invoiced || !resultado.factura_id) return resultado;
+
     const { data: negocio, error } = await supabase
         .from('restaurantes')
         .select('propina_porcentaje')
@@ -15,20 +16,60 @@ async function aplicarPropina(restauranteId, resultado) {
         .maybeSingle();
     if (error) throw error;
 
-    const porcentaje = Number(negocio?.propina_porcentaje || 0);
-    const subtotal = Number(resultado.total || 0);
-    const propina = porcentaje > 0 ? Math.round(subtotal * porcentaje) / 100 : 0;
-    if (propina <= 0) return { ...resultado, subtotal, propina: 0, propina_porcentaje: porcentaje };
+    const configurada = Math.max(0, Math.min(10, Number(negocio?.propina_porcentaje || 0)));
+    const descuentoPct = Number(opciones.descuento_porcentaje ?? 0);
+    if (!Number.isFinite(descuentoPct) || descuentoPct < 0 || descuentoPct > 100) {
+        throw new Error('AJUSTE_DESCUENTO_INVALIDO');
+    }
 
-    const total = Math.round((subtotal + propina) * 100) / 100;
+    // La propina solo puede quedar en la configurada, en configurada - 5, o en 0.
+    const permitidas = [...new Set([
+        configurada,
+        Math.max(0, configurada - 5),
+        0
+    ].map((value) => Math.round(value * 100) / 100))];
+    let propinaPct = opciones.propina_porcentaje;
+    if (propinaPct === undefined || propinaPct === null || propinaPct === '') {
+        propinaPct = configurada;
+    } else {
+        propinaPct = Math.round(Number(propinaPct) * 100) / 100;
+    }
+    if (!permitidas.includes(propinaPct)) {
+        throw new Error('AJUSTE_PROPINA_INVALIDO');
+    }
+
+    const subtotal = Number(resultado.total || 0);
+    const descuento = Math.round(subtotal * descuentoPct) / 100;
+    const base = Math.max(0, Math.round((subtotal - descuento) * 100) / 100);
+    const propina = Math.round(base * propinaPct) / 100;
+    const total = Math.round((base + propina) * 100) / 100;
+    const motivo = String(opciones.descuento_motivo || '').trim().slice(0, 200) || null;
+
     const { error: updateError } = await supabase
         .from('facturas')
-        .update({ propina, propina_porcentaje: porcentaje, total })
+        .update({
+            subtotal,
+            descuento,
+            descuento_porcentaje: descuentoPct,
+            descuento_motivo: motivo,
+            propina,
+            propina_porcentaje: propinaPct,
+            total
+        })
         .eq('id', resultado.factura_id)
         .eq('restaurante_id', restauranteId);
     if (updateError) throw updateError;
 
-    return { ...resultado, subtotal, propina, propina_porcentaje: porcentaje, total };
+    return {
+        ...resultado,
+        subtotal,
+        descuento,
+        descuento_porcentaje: descuentoPct,
+        descuento_motivo: motivo,
+        propina,
+        propina_porcentaje: propinaPct,
+        total
+    };
 }
 
 // =========================================================================
@@ -275,7 +316,11 @@ router.post('/pedidos/:pedidoId/facturar', verificarSesion, requirePermission('s
             p_forma_pago: formaPago
         });
         if (error) throw error;
-        const resultado = await aplicarPropina(Number(restauranteId), data);
+        const resultado = await aplicarAjustes(Number(restauranteId), data, {
+            descuento_porcentaje: req.body.descuento_porcentaje,
+            descuento_motivo: req.body.descuento_motivo,
+            propina_porcentaje: req.body.propina_porcentaje
+        });
         await registrarAuditoria(req, {
             accion: 'pedido.facturar',
             entidad: 'pedido',
@@ -284,7 +329,10 @@ router.post('/pedidos/:pedidoId/facturar', verificarSesion, requirePermission('s
                 forma_pago: formaPago,
                 factura_id: resultado?.factura_id,
                 subtotal: resultado?.subtotal,
+                descuento: resultado?.descuento,
+                descuento_porcentaje: resultado?.descuento_porcentaje,
                 propina: resultado?.propina,
+                propina_porcentaje: resultado?.propina_porcentaje,
                 total: resultado?.total,
                 already_invoiced: Boolean(resultado?.already_invoiced)
             }
@@ -292,7 +340,7 @@ router.post('/pedidos/:pedidoId/facturar', verificarSesion, requirePermission('s
         res.json({ success: true, ...(resultado || {}) });
     } catch (error) {
         console.error('❌ Error al facturar:', error.message);
-        const status = /pedido|productos|pago|cancelado/i.test(error.message || '') ? 400 : 500;
+        const status = /pedido|productos|pago|cancelado|AJUSTE_/i.test(error.message || '') ? 400 : 500;
         res.status(status).json({ error: status === 500 ? 'Error interno del servidor.' : (error.message || 'No se pudo facturar.') });
     }
 });

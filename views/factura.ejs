@@ -71,7 +71,9 @@
             ? Number(factura.total)
             : (detalles || []).reduce((acc, d) => acc + Number(d.subtotal || 0), 0);
         const propina = Number(factura.propina || 0);
-        const subtotal = (detalles || []).reduce((acc, d) => acc + Number(d.subtotal || 0), 0);
+        const descuento = Number(factura.descuento || 0);
+        const subtotal = Number(factura.subtotal || (detalles || []).reduce((acc, d) => acc + Number(d.subtotal || 0), 0));
+        const baseConDescuento = Math.max(0, Math.round((subtotal - descuento) * 100) / 100);
     %>
     <div class="acciones">
         <button type="button" class="btn-imprimir">Imprimir</button>
@@ -129,15 +131,27 @@
 
         <div class="separador"></div>
 
-        <% if (propina > 0) { %>
+        <% if (descuento > 0 || propina > 0) { %>
             <div class="meta">
                 <span>Subtotal</span>
                 <span>$<%= money(subtotal) %></span>
             </div>
-            <div class="meta">
-                <span>Propina (<%= Number(factura.propina_porcentaje || 0) %>%)</span>
-                <span>$<%= money(propina) %></span>
-            </div>
+            <% if (descuento > 0) { %>
+                <div class="meta">
+                    <span>Descuento (<%= Number(factura.descuento_porcentaje || 0) %>%)</span>
+                    <span>-$<%= money(descuento) %></span>
+                </div>
+            <% } %>
+            <% if (propina > 0) { %>
+                <div class="meta">
+                    <span>Base</span>
+                    <span>$<%= money(baseConDescuento) %></span>
+                </div>
+                <div class="meta">
+                    <span>Propina (<%= Number(factura.propina_porcentaje || 0) %>%)</span>
+                    <span>$<%= money(propina) %></span>
+                </div>
+            <% } %>
         <% } %>
 
         <div class="total">

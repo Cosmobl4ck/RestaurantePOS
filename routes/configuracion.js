@@ -201,8 +201,8 @@ router.post('/propina', verificarSesion, async (req, res) => {
         return res.status(403).json({ error: 'Solo administradores o gerentes pueden configurar la propina.' });
     }
     const porcentaje = Number(req.body.propina_porcentaje);
-    if (!Number.isFinite(porcentaje) || porcentaje < 0 || porcentaje > 100) {
-        return res.status(400).json({ error: 'La propina debe estar entre 0 y 100.' });
+    if (!Number.isFinite(porcentaje) || porcentaje < 0 || porcentaje > 10) {
+        return res.status(400).json({ error: 'La propina debe estar entre 0 y 10.' });
     }
     try {
         const { error } = await supabase

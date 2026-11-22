@@ -15,15 +15,21 @@
 - Meseros, cocina y bar no tienen permiso `cash.view`; no pueden entrar.
 - El atajo no abre el cajón físico. Para eso se necesita la integración de impresora/cajón.
 
-## Propina por ticket
+## Propina y descuentos en el cobro
 
-- Configurable solo por Admin/Gerente en `/configuracion`.
-- Campo: `restaurantes.propina_porcentaje` (0 a 100).
-- Se calcula sobre el subtotal del ticket y se guarda en `facturas.propina`.
-- `facturas.total` incluye la propina; la caja la cobra y la incluye en el cierre.
-- El ticket muestra Subtotal, Propina (%) y Total.
+- Configurable por Admin/Gerente en `/configuracion`.
+- **Propina máxima: 10%**.
+- El cajero puede elegir:
+  - propina completa configurada (por ejemplo 10%);
+  - reducir 5 puntos (por ejemplo 5%);
+  - quitar toda la propina (0%).
+- El descuento se aplica **antes** de la propina.
+- Opciones de descuento: 0%, 5%, 10%, 15%, 20% o porcentaje personalizado.
+- El motivo del descuento es opcional, pero queda auditado.
+- Se guarda `subtotal`, `descuento`, `descuento_porcentaje`, `descuento_motivo`, `propina`, `propina_porcentaje` y `total`.
+- El ticket muestra Subtotal, Descuento, Base, Propina y Total.
 - Cajero/Gerente/Admin pueden ver el ticket. Meseros, cocina y bar no.
-- Si el porcentaje es `0`, no se agrega propina.
+- El servidor recalcula y valida; no confía en el total enviado por el navegador.
 
 ## Faltas y bajas
 
@@ -38,10 +44,16 @@
 ## Migración
 
 `supabase/migrations/20261121190000_sprint1_propina_incidentes.sql`
+`supabase/migrations/20261121200000_cobro_descuentos.sql`
+`supabase/migrations/20261121201000_propina_max_10.sql`
 
-Incluye:
+Incluyen:
 
-- `restaurantes.propina_porcentaje`
+- `restaurantes.propina_porcentaje` (máximo 10)
 - `facturas.propina`
 - `facturas.propina_porcentaje`
+- `facturas.subtotal`
+- `facturas.descuento`
+- `facturas.descuento_porcentaje`
+- `facturas.descuento_motivo`
 - `incidentes_empleados`

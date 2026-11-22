@@ -113,14 +113,14 @@
                         <label class="form-label" for="propina_porcentaje">Porcentaje de propina</label>
                         <div class="input-group">
                             <input type="number" class="form-control" id="propina_porcentaje" name="propina_porcentaje"
-                                   min="0" max="100" step="0.01" value="<%= propinaPorcentaje %>" required>
+                                   min="0" max="10" step="0.01" value="<%= propinaPorcentaje %>" required>
                             <span class="input-group-text">%</span>
                         </div>
                     </div>
                     <div class="col-md-8">
                         <div class="form-text mb-2">
-                            Se suma al total de cada ticket. Solo Admin/Gerente configura; caja la cobra.
-                            Meseros, cocina y bar no ven este importe.
+                            Máximo 10%. Se suma al total de cada ticket. Solo Admin/Gerente configura; caja puede
+                            aplicar el 10%, quitar 5% o quitar toda la propina. Meseros, cocina y bar no ven este importe.
                         </div>
                         <button type="submit" class="btn btn-primary">Guardar propina</button>
                     </div>
